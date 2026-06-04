@@ -1,0 +1,12 @@
+.git/
+.vercel/
+node_modules/
+dist/
+generated/
+output/
+coverage/
+.DS_Store
+.env
+.env.*
+*.log
+sop-test-results.json
