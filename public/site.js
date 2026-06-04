@@ -55,6 +55,7 @@ const transcriptScenarios = [
 
 let transcriptScenarioIndex = 0;
 let transcriptTimers = [];
+let transcriptRunId = 0;
 
 function clearTranscriptTimers() {
   transcriptTimers.forEach((timer) => window.clearTimeout(timer));
@@ -80,6 +81,8 @@ function showTranscriptScenario(index, shouldAutoAdvance = true) {
   if (!transcriptCarousel || !transcriptStack) return;
 
   clearTranscriptTimers();
+  transcriptRunId += 1;
+  const currentRunId = transcriptRunId;
   transcriptScenarioIndex = (index + transcriptScenarios.length) % transcriptScenarios.length;
   const scenario = transcriptScenarios[transcriptScenarioIndex];
   transcriptStack.innerHTML = "";
@@ -97,12 +100,14 @@ function showTranscriptScenario(index, shouldAutoAdvance = true) {
   messages.forEach((message, messageIndex) => {
     const revealDelay = 420 + messageIndex * 980;
     transcriptTimers.push(window.setTimeout(() => {
+      if (currentRunId !== transcriptRunId) return;
       message.classList.add("is-visible");
     }, revealDelay));
   });
 
   if (shouldAutoAdvance) {
     transcriptTimers.push(window.setTimeout(() => {
+      if (currentRunId !== transcriptRunId) return;
       showTranscriptScenario(transcriptScenarioIndex + 1, true);
     }, 6500));
   }
