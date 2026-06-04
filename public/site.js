@@ -3,6 +3,11 @@ const mobileMenu = document.querySelector("[data-mobile-menu]");
 const retellModal = document.querySelector("[data-retell-modal]");
 const retellOpeners = document.querySelectorAll("[data-open-retell]");
 const retellClosers = document.querySelectorAll("[data-close-retell]");
+const transcriptCarousel = document.querySelector("[data-transcript-carousel]");
+const transcriptStack = document.querySelector("[data-transcript-stack]");
+const transcriptLabel = document.querySelector("[data-transcript-label]");
+const transcriptDots = document.querySelectorAll("[data-scenario-index]");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const defaultConfig = {
   BRAND_NAME: "Elixis Agency",
@@ -17,6 +22,91 @@ const siteConfig = {
   ...defaultConfig,
   ...(window.ELIXIS_SITE_CONFIG || {}),
 };
+
+const transcriptScenarios = [
+  {
+    label: "Ants / normal lead",
+    messages: [
+      { speaker: "Caller", tone: "caller", text: "I’ve got ants all over the kitchen." },
+      { speaker: "AI", tone: "ai", text: "Got it — I’ll save the request so the team can follow up with a booking link." },
+      { speaker: "Caller", tone: "caller", text: "Can they come this week?" },
+      { speaker: "AI", tone: "ai", text: "I’ll capture that preference so the team can confirm a time." },
+    ],
+  },
+  {
+    label: "Pricing / no fake quote",
+    messages: [
+      { speaker: "Caller", tone: "caller", text: "How much is roach treatment?" },
+      { speaker: "AI", tone: "ai", text: "Pricing depends on the property and severity, so I won’t guess." },
+      { speaker: "Caller", tone: "caller", text: "Can someone still reach out?" },
+      { speaker: "AI", tone: "ai", text: "Yes — I’ll capture the request so the team can follow up." },
+    ],
+  },
+  {
+    label: "Urgent / transfer",
+    messages: [
+      { speaker: "Caller", tone: "caller urgent", text: "There’s a hornet nest by my front door." },
+      { speaker: "AI", tone: "ai urgent", text: "That sounds urgent. I’ll get you connected with someone." },
+      { speaker: "Caller", tone: "caller urgent", text: "My kid almost got stung." },
+      { speaker: "AI", tone: "ai urgent", text: "Understood — I’m routing this as urgent now." },
+    ],
+  },
+];
+
+let transcriptScenarioIndex = 0;
+let transcriptTimers = [];
+
+function clearTranscriptTimers() {
+  transcriptTimers.forEach((timer) => window.clearTimeout(timer));
+  transcriptTimers = [];
+}
+
+function createTranscriptMessage(message) {
+  const item = document.createElement("p");
+  item.className = `transcript-bubble ${message.tone}`;
+  item.innerHTML = `<strong>${message.speaker}</strong> “${message.text}”`;
+  return item;
+}
+
+function setTranscriptDots(index) {
+  transcriptDots.forEach((dot) => {
+    const isActive = Number(dot.getAttribute("data-scenario-index")) === index;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-selected", String(isActive));
+  });
+}
+
+function showTranscriptScenario(index, shouldAutoAdvance = true) {
+  if (!transcriptCarousel || !transcriptStack) return;
+
+  clearTranscriptTimers();
+  transcriptScenarioIndex = (index + transcriptScenarios.length) % transcriptScenarios.length;
+  const scenario = transcriptScenarios[transcriptScenarioIndex];
+  transcriptStack.innerHTML = "";
+  if (transcriptLabel) transcriptLabel.textContent = scenario.label;
+  setTranscriptDots(transcriptScenarioIndex);
+
+  const messages = scenario.messages.map(createTranscriptMessage);
+  messages.forEach((message) => transcriptStack.appendChild(message));
+
+  if (reducedMotion.matches) {
+    messages.forEach((message) => message.classList.add("is-visible"));
+    return;
+  }
+
+  messages.forEach((message, messageIndex) => {
+    const revealDelay = 420 + messageIndex * 980;
+    transcriptTimers.push(window.setTimeout(() => {
+      message.classList.add("is-visible");
+    }, revealDelay));
+  });
+
+  if (shouldAutoAdvance) {
+    transcriptTimers.push(window.setTimeout(() => {
+      showTranscriptScenario(transcriptScenarioIndex + 1, true);
+    }, 6500));
+  }
+}
 
 function isValidOrbUrl(value) {
   try {
@@ -117,6 +207,18 @@ document.querySelectorAll("[data-scroll-target]").forEach((trigger) => {
   });
 });
 
+transcriptDots.forEach((dot) => {
+  dot.addEventListener("click", () => {
+    const nextIndex = Number(dot.getAttribute("data-scenario-index"));
+    if (Number.isNaN(nextIndex)) return;
+    showTranscriptScenario(nextIndex, true);
+  });
+});
+
+reducedMotion.addEventListener?.("change", () => {
+  showTranscriptScenario(transcriptScenarioIndex, !reducedMotion.matches);
+});
+
 function openRetellModal() {
   retellModal?.classList.add("is-open");
   retellModal?.setAttribute("aria-hidden", "false");
@@ -151,6 +253,7 @@ const revealObserver = new IntersectionObserver(
 document.querySelectorAll(".reveal").forEach((section) => revealObserver.observe(section));
 
 applySiteConfig();
+showTranscriptScenario(0, !reducedMotion.matches);
 
 function loadCalEmbed() {
   const target = document.querySelector("#cal-inline");

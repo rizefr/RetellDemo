@@ -8,12 +8,13 @@ This repo contains the Elixis Agency landing page for the pest-control AI recept
 - Vercel project: `retell-pest-control-demo`
 - GitHub repo: `https://github.com/rizefr/RetellDemo`
 - Root Directory: `./`
-- Expected production branch: `main` unless Vercel shows otherwise
+- Production branch: `main`
 
 ## How Deployment Works
 
-- Vercel CLI deploys show source `vercel deploy`.
-- GitHub-connected deploys should show commit and branch information.
+- Previous manual deploys can show source `vercel deploy`.
+- The current deployment goal is GitHub-based: commit to `main`, let Vercel build from `rizefr/RetellDemo`, then verify `https://elixis.agency`.
+- GitHub-connected deploys should show commit and branch information instead of only `vercel deploy`.
 - `Ready` means the deployment built successfully.
 - `Error` means the deployment failed.
 - `Production` means that deployment is currently assigned to the production domain.
@@ -38,8 +39,8 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 
 ## How To Update The Site Going Forward
 
-1. Edit files locally.
-2. Run:
+1. Edit files in GitHub or locally.
+2. If editing locally, run:
 
 ```bash
 npm run build
@@ -47,10 +48,9 @@ npm run lint
 npm test
 ```
 
-3. Commit changes.
-4. Push to `main`.
-5. Wait for Vercel to deploy from GitHub.
-6. Check `https://elixis.agency`.
+3. Commit changes to `main`.
+4. Vercel deploys automatically from GitHub.
+5. Check `https://elixis.agency`.
 
 ## How To Change The AI Demo URL
 

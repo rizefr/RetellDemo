@@ -6,7 +6,7 @@
     <script>document.documentElement.classList.add("js");</script>
     <meta
       name="description"
-      content="Elixis Agency helps pest-control companies catch missed, overflow, and after-hours calls before leads disappear."
+      content="Elixis Agency builds AI receptionist systems for pest-control companies that answer calls, capture leads, route urgent issues, and help customers start booking."
     />
     <title>Elixis Agency | AI Receptionist for Pest Control</title>
     <link rel="icon" href="/images/elixis-phoenix.png" />
@@ -65,9 +65,9 @@
           <div class="mesh-field" aria-hidden="true"></div>
           <div class="section-wrap hero-grid">
             <div class="hero-copy reveal">
-              <p class="kicker">7-Day Missed-Call Recovery System</p>
+              <p class="kicker">AI receptionist for pest-control teams</p>
               <h1>Catch the Pest-Control Calls Your Team Can’t</h1>
-              <p class="hero-subhead">An AI receptionist for pest-control companies that answers <span class="text-accent">missed</span>, <span class="text-accent">overflow</span>, and <span class="text-accent">after-hours</span> calls, captures the lead, and helps the team send the customer a booking link.</p>
+              <p class="hero-subhead">A <span class="text-accent">full AI receptionist</span> for pest-control companies that answers calls, captures leads, routes urgent issues, and helps customers start booking. Use it for <span class="text-accent">missed</span>, <span class="text-accent">overflow</span>, and <span class="text-accent">after-hours</span> coverage when your team is busy.</p>
               <div class="hero-actions">
                 <a href="#booking" class="button button-primary" data-scroll-target="booking"><svg class="icon"><use href="#i-calendar" /></svg>Book Demo</a>
                 <button class="button button-secondary" data-open-retell type="button"><svg class="icon gold-text"><use href="#i-wave" /></svg>Talk to AI</button>
@@ -99,14 +99,17 @@
                   <button class="button button-secondary talk-button" data-open-retell type="button">Talk to AI</button>
                 </div>
 
-                <div class="transcript-card floating-call-card">
-                  <div class="transcript-head">Live transcript</div>
-                  <p class="transcript-bubble caller"><strong>Caller</strong> “I’ve got ants all over the kitchen.”</p>
-                  <p class="transcript-bubble ai"><strong>AI</strong> “Got it — I’ll save the request so the team can follow up with a booking link.”</p>
-                  <p class="transcript-bubble caller"><strong>Caller</strong> “Do you handle roaches too?”</p>
-                  <p class="transcript-bubble ai"><strong>AI</strong> “Yes, the team handles roach control. Pricing depends on the property and severity.”</p>
-                  <p class="transcript-bubble caller urgent"><strong>Caller</strong> “There’s a hornet nest by my front door.”</p>
-                  <p class="transcript-bubble ai"><strong>AI</strong> “That sounds urgent. I’ll get you connected with someone.”</p>
+                <div class="transcript-card floating-call-card" data-transcript-carousel>
+                  <div class="transcript-head">
+                    <span>Live transcript</span>
+                    <span data-transcript-label>Ants / normal lead</span>
+                  </div>
+                  <div class="transcript-stack" data-transcript-stack aria-live="polite"></div>
+                  <div class="transcript-dots" role="tablist" aria-label="Transcript scenarios">
+                    <button class="transcript-dot is-active" type="button" data-scenario-index="0" aria-label="Show ants scenario" aria-selected="true"></button>
+                    <button class="transcript-dot" type="button" data-scenario-index="1" aria-label="Show pricing scenario" aria-selected="false"></button>
+                    <button class="transcript-dot" type="button" data-scenario-index="2" aria-label="Show urgent hornet scenario" aria-selected="false"></button>
+                  </div>
                 </div>
 
                 <div class="lead-summary-card">
@@ -115,14 +118,14 @@
                       <div class="card-label">Lead Summary</div>
                       <p>Structured handoff for the team</p>
                     </div>
-                    <span class="summary-pill captured">Captured</span>
+                    <span class="summary-status-pill"><i></i>Captured</span>
                   </div>
-                  <div class="summary-rows" role="list">
-                    <div class="summary-row" role="listitem"><span><i></i>Pest issue</span><strong>Ants in kitchen</strong></div>
-                    <div class="summary-row" role="listitem"><span><i></i>Urgency</span><strong><mark class="summary-pill calm">Normal</mark></strong></div>
-                    <div class="summary-row" role="listitem"><span><i></i>Status</span><strong><mark class="summary-pill captured">Booking request captured</mark></strong></div>
-                    <div class="summary-row" role="listitem"><span><i></i>Follow-up</span><strong><mark class="summary-pill followup">Send booking link</mark></strong></div>
-                    <div class="summary-row" role="listitem"><span><i></i>Source</span><strong>Missed / overflow call</strong></div>
+                  <div class="summary-list" role="list">
+                    <div class="summary-item" role="listitem"><span>Pest issue</span><strong><i></i>Ants in kitchen</strong></div>
+                    <div class="summary-item" role="listitem"><span>Urgency</span><strong><i></i>Normal</strong></div>
+                    <div class="summary-item" role="listitem"><span>Status</span><strong><i></i>Captured</strong></div>
+                    <div class="summary-item" role="listitem"><span>Follow-up</span><strong><i></i>Booking link</strong></div>
+                    <div class="summary-item" role="listitem"><span>Source</span><strong><i></i>Overflow call</strong></div>
                   </div>
                 </div>
               </div>
@@ -140,7 +143,7 @@
             <div class="section-copy reveal">
               <p class="kicker">Product demo</p>
               <h2>Try the AI receptionist before we talk.</h2>
-              <p>Use the branded demo console to launch the voice experience, call the demo agent, or book the next step. The scenario is built around real pest-control calls: ants, roaches, rodents, hornets, pricing questions, and booking requests.</p>
+              <p>Use the branded demo console to launch the voice experience, call the demo agent, or book the next step. The scenario is built around real pest-control calls: ants, roaches, rodents, urgent issues, common questions, and booking requests.</p>
             </div>
             <div class="demo-panel reveal">
               <div class="panel-grid">
@@ -177,14 +180,26 @@
         <section class="section-block">
           <div class="section-wrap fit-section">
             <div class="section-copy reveal">
-              <p class="kicker">Built for operators</p>
-              <h2>Independent pest-control teams need coverage without a call center rebuild.</h2>
-              <p>For owners and managers who usually answer the phone, but still miss calls when the team is busy, closed, already on another job, or out in the field.</p>
+              <p class="kicker">Full receptionist layer</p>
+              <h2>More than missed-call recovery.</h2>
+              <p>Use it as a <span class="text-accent">full AI receptionist</span> for pest-control calls: answering common questions, qualifying pest issues, capturing contact details, routing urgent calls, and helping customers start the booking process.</p>
             </div>
             <div class="proof-rail reveal">
-              <div><svg class="icon"><use href="#i-check" /></svg>Residential pest control</div>
-              <div><svg class="icon"><use href="#i-check" /></svg>Owner-led teams</div>
-              <div><svg class="icon"><use href="#i-check" /></svg>Calls from Google, Maps, and ads</div>
+              <div><svg class="icon"><use href="#i-check" /></svg>Overflow coverage when your team is busy</div>
+              <div><svg class="icon"><use href="#i-check" /></svg>After-hours support for new leads</div>
+              <div><svg class="icon"><use href="#i-check" /></svg>Call summaries, urgent routing, and booking requests</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-block section-rule">
+          <div class="section-wrap split-section">
+            <div class="section-copy reveal">
+              <p class="kicker">Built for operators</p>
+              <h2>Built for independent pest-control teams that need call coverage without rebuilding their front desk.</h2>
+            </div>
+            <div class="section-copy reveal">
+              <p>It catches the calls your team can’t — and handles normal receptionist work too. Keep the team in control while the AI captures the details, flags urgent issues, and helps customers take the next booking step.</p>
             </div>
           </div>
         </section>
