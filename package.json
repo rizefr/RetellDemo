@@ -1,0 +1,50 @@
+{
+  "name": "retell-pest-control-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-style Retell AI pest-control receptionist demo backend.",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "npm run build:styles && tsc -p tsconfig.json",
+    "build:styles": "tailwindcss -i ./web/styles.css -o ./public/styles.css --minify",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:tools": "vitest run src/tests/tools.test.ts src/tests/leadFlow.test.ts",
+    "test:webhook": "vitest run src/tests/webhookVerification.test.ts",
+    "setup:retell": "tsx src/scripts/setupRetellAgent.ts",
+    "refine:retell": "tsx src/scripts/refineRetellAgent.ts",
+    "create:single-prompt-candidate": "tsx src/scripts/createSinglePromptCandidate.ts",
+    "refine:single-prompt-candidate": "tsx src/scripts/refineSinglePromptCandidate.ts",
+    "setup:supabase": "tsx src/scripts/seedSupabase.ts",
+    "test:retell-tools": "tsx src/scripts/testToolCalls.ts",
+    "test:retell-sop": "tsx src/scripts/runRetellSopBatch.ts",
+    "retell:sop-batch": "npm run test:retell-sop",
+    "set:demo-url": "node scripts/setDemoUrl.mjs",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.87.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "libphonenumber-js": "^1.12.31",
+    "pg": "^8.16.3",
+    "retell-sdk": "5.28.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.19.3",
+    "@types/pg": "^8.16.0",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4",
+    "tailwindcss": "^4.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
