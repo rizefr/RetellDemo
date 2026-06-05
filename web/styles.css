@@ -142,6 +142,8 @@ button {
 
 .menu-button {
   @apply flex h-12 w-12 items-center justify-center rounded-[14px] lg:hidden;
+  flex-direction: column;
+  gap: 4px;
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.04);
 }
@@ -150,7 +152,7 @@ button {
   display: block;
   width: 18px;
   height: 1px;
-  margin: 3px 0;
+  margin: 0;
   background: var(--ivory-100);
 }
 

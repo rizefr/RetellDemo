@@ -1,4 +1,13 @@
 /* Focused landing-page polish overrides. Keep matching rules in web/styles.css. */
+.menu-button {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-button span {
+  margin: 0;
+}
+
 .hero-grid {
   grid-template-columns: minmax(0, 0.9fr) minmax(570px, 1.1fr);
 }
