@@ -55,12 +55,12 @@ The live page is intentionally ordered around one product demo and one primary c
 
 1. Hero and AI receptionist demo console
 2. Missed, overflow, and after-hours coverage
-3. Why it matters
+3. Why it matters, with three response-focused statistic cards
 4. How it works in 7 days
 5. Bonus pest-control visibility audit
 6. Embedded booking calendar
 
-The hero is the only full product-demo section. Avoid adding another demo or receptionist-overview section below it unless the page strategy changes.
+The hero is the only full product-demo section and positions the offer as a full AI receptionist. Missed, overflow, and after-hours language belongs in the coverage section below the hero. The footer contains the demo phone number and both public contact emails.
 
 To update site copy or section order, edit `public/index.html`. To update layout and responsive styling, edit `web/styles.css`, then run `npm run build:styles` to regenerate `public/styles.css`.
 
