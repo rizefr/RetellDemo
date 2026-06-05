@@ -1,0 +1,200 @@
+/* Focused landing-page polish overrides. Keep matching rules in web/styles.css. */
+.hero-grid {
+  grid-template-columns: minmax(0, 0.9fr) minmax(570px, 1.1fr);
+}
+
+.hero-copy h1 {
+  font-size: clamp(3.05rem, 4.8vw, 4.65rem);
+}
+
+.lead-summary-card {
+  padding: 13px 14px 14px 18px;
+  border-radius: 18px;
+}
+
+.lead-summary-header {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-left: 0;
+}
+
+.card-label {
+  margin: 0;
+  font-size: 0.68rem;
+}
+
+.summary-list {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-item {
+  grid-template-columns: 1fr;
+  gap: 6px;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.summary-item span {
+  justify-content: center;
+  font-size: 0.58rem;
+  white-space: nowrap;
+}
+
+.summary-item strong {
+  min-height: 34px;
+  padding: 0.32rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+
+.summary-status-pill {
+  padding: 0.28rem 0.58rem;
+  font-size: 0.64rem;
+}
+
+.coverage-grid,
+.why-grid {
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr;
+  gap: 58px;
+  align-items: center;
+}
+
+.coverage-rail,
+.reason-list {
+  display: grid;
+  gap: 12px;
+}
+
+.coverage-rail article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  padding: 20px 4px;
+}
+
+.coverage-rail article:first-child {
+  padding-top: 4px;
+}
+
+.coverage-rail article:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.coverage-rail article > span {
+  color: var(--gold-400);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.coverage-rail h3,
+.reason-list strong {
+  margin: 0;
+  color: var(--ivory-100);
+  font-size: 1.05rem;
+}
+
+.coverage-rail p,
+.reason-list p {
+  margin: 0.42rem 0 0;
+  color: var(--silver-300);
+  line-height: 1.65;
+}
+
+.reason-list {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.reason-list article {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 22px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.reason-list article:hover {
+  border-color: rgba(222, 182, 117, 0.28);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+}
+
+.center-copy h2 {
+  font-size: clamp(2.8rem, 5.5vw, 5.4rem);
+}
+
+.center-copy p {
+  max-width: 660px;
+  margin: 1rem auto 0;
+  color: var(--silver-300);
+  line-height: 1.7;
+}
+
+.timeline-cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.audit-note {
+  color: rgba(248, 244, 235, 0.8) !important;
+  font-weight: 600;
+}
+
+.audit-cta {
+  margin-top: 24px;
+}
+
+@media (max-width: 980px) {
+  .hero-grid,
+  .coverage-grid,
+  .why-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-copy h1 {
+    font-size: clamp(2.15rem, 9.2vw, 2.65rem);
+    letter-spacing: -0.055em;
+  }
+
+  .hero-subhead {
+    font-size: 0.96rem;
+  }
+
+  .console-topbar > span {
+    display: none;
+  }
+
+  .reason-list {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-item {
+    padding: 7px;
+  }
+
+  .summary-item:last-child {
+    grid-column: 1 / -1;
+  }
+}

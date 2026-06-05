@@ -109,7 +109,7 @@ function showTranscriptScenario(index, shouldAutoAdvance = true) {
     transcriptTimers.push(window.setTimeout(() => {
       if (currentRunId !== transcriptRunId) return;
       showTranscriptScenario(transcriptScenarioIndex + 1, true);
-    }, 6500));
+    }, 9500));
   }
 }
 
