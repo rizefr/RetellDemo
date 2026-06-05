@@ -60,9 +60,25 @@ The live page is intentionally ordered around one product demo and one primary c
 5. Bonus pest-control visibility audit
 6. Embedded booking calendar
 
-The hero is the only full product-demo section and positions the offer as a full AI receptionist. Missed, overflow, and after-hours language belongs in the coverage section below the hero. The footer contains the demo phone number and both public contact emails.
+The hero is the only full product-demo section and positions the offer as a full AI receptionist. Missed, overflow, and after-hours language belongs in the coverage section below the hero. The footer contains the Elixis Agency contact number and both public contact emails.
 
 To update site copy or section order, edit `public/index.html`. To update layout and responsive styling, edit `web/styles.css`, then run `npm run build:styles` to regenerate `public/styles.css`.
+
+## Phone Numbers
+
+The site intentionally uses two different public phone numbers:
+
+- Contact number: `+1 (860) 385-1624` (`tel:+18603851624`). This appears only in the contact/footer area.
+- AI demo number: `+1 (984) 207-5346` (`tel:+19842075346`). This is used by every `Call Demo Agent` link.
+
+Both links are configured in `public/site-config.js`:
+
+```js
+AI_DEMO_PHONE: "tel:+19842075346",
+CONTACT_PHONE: "tel:+18603851624",
+```
+
+Update the matching key when either number changes. Keep the values in international `tel:+1...` format, and update any visible formatted fallback text in `public/index.html`.
 
 ## How To Update The Site Going Forward
 
