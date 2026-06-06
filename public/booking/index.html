@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Book a Demo | Elixis Agency</title>
+    <link rel="icon" href="/images/elixis-phoenix.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link href="/styles.css" rel="stylesheet" />
+    <script src="/site-config.js?v=booking-page-20260606" defer></script>
+    <script src="/site.js?v=booking-page-20260606" defer></script>
+    <style>
+      body {
+        min-height: 100dvh;
+      }
+
+      .booking-page-shell {
+        width: min(100% - 32px, 1100px);
+        margin: 0 auto;
+        padding: 20px 0 32px;
+      }
+
+      .booking-page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 64px;
+      }
+
+      .booking-page-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ivory-100);
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .booking-page-brand img {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        box-shadow: 0 0 28px rgba(199, 156, 90, 0.2);
+      }
+
+      .booking-page-back {
+        color: rgba(248, 244, 235, 0.72);
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .booking-page-back:hover {
+        color: var(--gold-400);
+      }
+
+      .booking-page-heading {
+        max-width: 720px;
+        margin: 32px auto 26px;
+        text-align: center;
+      }
+
+      .booking-page-heading h1 {
+        margin: 0;
+        font-size: clamp(2.25rem, 5vw, 4.5rem);
+        letter-spacing: -0.06em;
+        line-height: 0.96;
+      }
+
+      .booking-page-heading p {
+        margin: 16px auto 0;
+        color: var(--silver-300);
+        line-height: 1.7;
+      }
+
+      .booking-page-panel {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 12px;
+        background:
+          linear-gradient(145deg, rgba(7, 20, 39, 0.8), rgba(3, 10, 21, 0.92)),
+          radial-gradient(circle at 78% 18%, rgba(58, 125, 255, 0.18), transparent 20rem);
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38);
+      }
+
+      .booking-page-panel .cal-inline {
+        min-height: 720px;
+      }
+
+      .booking-page-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px;
+        color: var(--silver-300);
+        font-size: 0.86rem;
+      }
+
+      @media (max-width: 640px) {
+        .booking-page-shell {
+          width: min(100% - 20px, 1100px);
+          padding-top: 10px;
+        }
+
+        .booking-page-header {
+          min-height: 56px;
+        }
+
+        .booking-page-heading {
+          margin-top: 26px;
+        }
+
+        .booking-page-heading p {
+          font-size: 0.95rem;
+        }
+
+        .booking-page-panel {
+          border-radius: 20px;
+          padding: 6px;
+        }
+
+        .booking-page-panel .cal-inline {
+          min-height: 780px;
+        }
+
+        .booking-page-fallback {
+          align-items: stretch;
+          flex-direction: column;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body class="page-shell">
+    <main class="booking-page-shell">
+      <header class="booking-page-header">
+        <a class="booking-page-brand" href="/" aria-label="Return to Elixis Agency">
+          <img src="/images/elixis-phoenix.png" alt="" width="240" height="216" />
+          <span>Elixis Agency</span>
+        </a>
+        <a class="booking-page-back" href="/">Back to main site</a>
+      </header>
+
+      <section class="booking-page-heading" aria-labelledby="booking-page-title">
+        <p class="kicker">Book the next step</p>
+        <h1 id="booking-page-title">Book a short call</h1>
+        <p>See how an Elixis AI receptionist can answer calls, capture pest details, and help customers start booking.</p>
+      </section>
+
+      <section class="booking-page-panel" aria-label="Elixis Agency booking calendar">
+        <div id="cal-inline" class="cal-inline" data-cal-link="retell-demo-eli1/actualmeetingletsgoooo"></div>
+        <div class="booking-page-fallback">
+          <span>If the calendar does not load, use the external booking page.</span>
+          <a
+            class="button button-secondary"
+            href="https://cal.com/elixisagency/15min"
+            data-config-href="BOOKING_URL"
+            target="_blank"
+            rel="noreferrer"
+          >Open booking page</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

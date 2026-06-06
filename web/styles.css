@@ -803,6 +803,26 @@ button {
   padding: 12px;
 }
 
+.booking-link-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px;
+}
+
+.booking-link-panel h3 {
+  margin: 0;
+  color: var(--ivory-100);
+  font-size: 1.35rem;
+}
+
+.booking-link-panel p {
+  margin: 0.55rem 0 0;
+  color: var(--silver-300);
+  line-height: 1.65;
+}
+
 .cal-inline {
   min-height: 720px;
   overflow: hidden;
@@ -1071,6 +1091,12 @@ button {
 
   .cal-inline {
     min-height: 780px;
+  }
+
+  .booking-link-panel {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 22px;
   }
 
   .retell-dialog iframe {

@@ -6,6 +6,7 @@ This repo contains the Elixis Agency landing page for the pest-control AI recept
 
 - Production domain: `https://elixis.agency`
 - Branded voice demo: `https://elixis.agency/demo/`
+- Branded booking page: `https://elixis.agency/booking/`
 - Vercel project: `retell-pest-control-demo`
 - GitHub repo: `https://github.com/rizefr/RetellDemo`
 - Root Directory: `./`
@@ -32,6 +33,7 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 ## Important Website Files
 
 - `public/index.html`: landing page markup and copy.
+- `public/booking/index.html`: standalone branded Cal.com booking page.
 - `public/site-config.js`: public, non-secret website URLs and labels.
 - `public/site.js`: mobile menu, section scrolling, Retell modal, config application, reveal animation, and Cal.com embed bootstrapping.
 - `web/styles.css`: Tailwind v4 source CSS and custom design system.
@@ -59,9 +61,9 @@ The live page is intentionally ordered around one product demo and one primary c
 3. Why it matters, with three response-focused statistic cards
 4. How it works in 7 days
 5. Bonus pest-control visibility audit
-6. Embedded booking calendar
+6. Booking handoff to the dedicated branded calendar page
 
-The hero is the only full product-demo section and positions the offer as a full AI receptionist. Missed, overflow, and after-hours language belongs in the coverage section below the hero. The footer contains the Elixis Agency contact number and both public contact emails.
+The hero is the only full product-demo section and positions the offer as a full AI receptionist. Missed, overflow, and after-hours language belongs in the coverage section below the hero. Primary booking links open `https://elixis.agency/booking/`, where the Cal.com calendar is embedded. The footer contains the Elixis Agency contact number and both public contact emails.
 
 To update site copy or section order, edit `public/index.html`. To update layout and responsive styling, edit `web/styles.css`, then run `npm run build:styles` to regenerate `public/styles.css`.
 
@@ -190,6 +192,14 @@ Current public booking defaults live in `public/site-config.js`:
 - `BOOKING_URL`: external fallback booking page.
 - `CAL_PUBLIC_BOOKING_URL`: public Cal.com event link used by the inline embed.
 - `CAL_EVENT_TYPE_ID`: reference ID for the Cal event type.
+
+The inline calendar is hosted on `public/booking/index.html` and is available at:
+
+```text
+https://elixis.agency/booking/
+```
+
+Primary `Book Demo` and `Book a short call` links should point to `/booking/`. Keep the external Cal.com URL only as a fallback in case the inline calendar cannot load.
 
 If a new Cal event type needs to be resolved, do that server-side or in Cal.com, then put only the public booking URL in `public/site-config.js`.
 
