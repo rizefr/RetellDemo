@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Talk to Elixis AI | Voice Demo</title>
+    <link rel="icon" href="/images/elixis-phoenix.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Geist", Arial, sans-serif;
+        background: #020914;
+        color: #f8f4eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100dvh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 75% 10%, rgba(58, 125, 255, 0.2), transparent 32rem),
+          radial-gradient(circle at 10% 70%, rgba(199, 156, 90, 0.12), transparent 28rem),
+          #020914;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      :focus-visible {
+        outline: 2px solid #deb675;
+        outline-offset: 4px;
+      }
+
+      .demo-shell {
+        width: min(100% - 32px, 1040px);
+        margin: 0 auto;
+        padding: 20px 0 28px;
+      }
+
+      .demo-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 64px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .brand img {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        box-shadow: 0 0 28px rgba(199, 156, 90, 0.2);
+      }
+
+      .back-link {
+        color: rgba(248, 244, 235, 0.72);
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .back-link:hover {
+        color: #deb675;
+      }
+
+      .demo-heading {
+        margin: 28px 0 20px;
+        text-align: center;
+      }
+
+      .demo-heading h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        letter-spacing: -0.055em;
+        line-height: 1;
+      }
+
+      .demo-heading p {
+        max-width: 620px;
+        margin: 14px auto 0;
+        color: #b8c3d0;
+        line-height: 1.65;
+      }
+
+      .orb-frame {
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 26px;
+        background: rgba(7, 20, 39, 0.78);
+        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38);
+      }
+
+      .orb-frame iframe {
+        display: block;
+        width: 100%;
+        min-height: min(720px, calc(100dvh - 250px));
+        border: 0;
+        background: #fff;
+      }
+
+      .demo-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 18px;
+        color: #b8c3d0;
+        font-size: 0.84rem;
+      }
+
+      .demo-fallback a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(222, 182, 117, 0.35);
+        border-radius: 12px;
+        padding: 10px 16px;
+        color: #f8f4eb;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .demo-fallback a:hover {
+        border-color: #deb675;
+        background: rgba(199, 156, 90, 0.1);
+      }
+
+      @media (max-width: 640px) {
+        .demo-shell {
+          width: min(100% - 20px, 1040px);
+          padding-top: 10px;
+        }
+
+        .demo-header {
+          min-height: 56px;
+        }
+
+        .demo-heading {
+          margin-top: 24px;
+        }
+
+        .demo-heading p {
+          font-size: 0.94rem;
+        }
+
+        .orb-frame {
+          border-radius: 20px;
+        }
+
+        .orb-frame iframe {
+          min-height: 640px;
+        }
+
+        .demo-fallback {
+          align-items: stretch;
+          flex-direction: column;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="demo-shell">
+      <header class="demo-header">
+        <a class="brand" href="/" aria-label="Return to Elixis Agency">
+          <img src="/images/elixis-phoenix.png" alt="" width="240" height="216" />
+          <span>Elixis Agency</span>
+        </a>
+        <a class="back-link" href="/">Back to main site</a>
+      </header>
+
+      <section class="demo-heading" aria-labelledby="demo-title">
+        <h1 id="demo-title">Talk to the Elixis AI Receptionist</h1>
+        <p>Try the pest-control call experience directly from this page.</p>
+      </section>
+
+      <section class="orb-frame" aria-label="Elixis AI receptionist voice demo">
+        <iframe
+          title="Elixis Agency AI receptionist demo"
+          src="https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d"
+          allow="microphone; autoplay"
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+        <div class="demo-fallback">
+          <span>If the voice demo does not load, open it directly.</span>
+          <a
+            href="https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d"
+            target="_blank"
+            rel="noreferrer"
+          >Open voice demo</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

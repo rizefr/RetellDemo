@@ -11,7 +11,7 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const defaultConfig = {
   BRAND_NAME: "Elixis Agency",
-  AI_DEMO_ORB_URL: "https://agent.retellai.com/orb/agent_1e77470887528d657c5ad62d4d?token=fea74a2da1190eb438f8613388427a68",
+  AI_DEMO_ORB_URL: "https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d",
   AI_DEMO_PHONE: "tel:+19842075346",
   CONTACT_PHONE: "tel:+18603851624",
   BOOKING_URL: "https://cal.com/elixisagency/15min",

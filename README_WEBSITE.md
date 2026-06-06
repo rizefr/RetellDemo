@@ -5,6 +5,7 @@ This repo contains the Elixis Agency landing page for the pest-control AI recept
 ## Live Site
 
 - Production domain: `https://elixis.agency`
+- Branded voice demo: `https://elixis.agency/demo/`
 - Vercel project: `retell-pest-control-demo`
 - GitHub repo: `https://github.com/rizefr/RetellDemo`
 - Root Directory: `./`
@@ -97,25 +98,80 @@ npm test
 
 ## How To Change The AI Demo URL
 
-The public Retell orb URL lives in:
+Use only a public Retell orb URL in this format:
 
 ```text
-public/site-config.js
+https://agent.retellai.com/orb/AGENT_ID?token=PUBLIC_WIDGET_TOKEN
 ```
 
-The key to update is:
+Do not use a Retell API key, dashboard URL, or backend credential.
 
-```js
-AI_DEMO_ORB_URL: "https://agent.retellai.com/orb/..."
+### Preferred Method
+
+1. Open Terminal and move to the project root:
+
+```bash
+cd "/Users/elithing3/Documents/Demo Retell AI/retell-pest-control-demo"
 ```
 
-Preferred command:
+2. Run the URL update utility with the complete public orb URL:
 
 ```bash
 npm run set:demo-url -- "https://agent.retellai.com/orb/NEW_AGENT_ID?token=PUBLIC_TOKEN"
 ```
 
-The script validates that the URL starts with `https://agent.retellai.com/orb/` and refuses Retell API or dashboard URLs. It updates only `public/site-config.js` and never touches `.env`.
+3. The utility validates the URL and updates all public frontend references:
+
+- `public/site-config.js`: primary public configuration
+- `public/site.js`: safe browser fallback
+- `public/index.html`: iframe and new-tab fallback URLs
+- `public/index.html`: cache tags for `site-config.js` and `site.js`
+- `public/demo/index.html`: standalone `https://elixis.agency/demo/` voice-demo page
+
+It never reads or changes `.env`.
+
+4. Confirm every frontend reference uses the new agent:
+
+```bash
+rg -n "agent\\.retellai\\.com/orb/" public/index.html public/demo/index.html public/site.js public/site-config.js
+```
+
+5. Run the available checks:
+
+```bash
+node --check public/site.js
+npm run build
+npm run lint
+npm test
+```
+
+6. Review the exact files that will be committed:
+
+```bash
+git diff -- public/index.html public/demo/index.html public/site.js public/site-config.js
+git status --short
+```
+
+7. Commit and push to `main`:
+
+```bash
+git add public/index.html public/demo/index.html public/site.js public/site-config.js
+git commit -m "Update AI demo orb URL"
+git push origin main
+```
+
+8. Wait for Vercel to finish the GitHub deployment, then verify:
+
+- Open `https://elixis.agency`
+- Select `Talk to AI`
+- Confirm the new Retell orb loads
+- Open `https://elixis.agency/demo/`
+- Confirm the address bar remains on `elixis.agency/demo/` while the orb loads
+- Confirm `Launch on elixis.agency` opens the same branded demo page
+
+### Manual Method
+
+If the utility cannot run, replace `AI_DEMO_ORB_URL` in both `public/site-config.js` and `public/site.js`, then replace the Retell iframe URL in `public/index.html` and both Retell URLs in `public/demo/index.html`. Also change the `?v=` values on the `site-config.js` and `site.js` script tags so returning browsers do not reuse the previous demo configuration.
 
 Local-only testing override:
 
