@@ -82,9 +82,9 @@ Do not change backend code for ordinary website copy/layout updates.
 
 ### Payment Follow-Up Stat Source
 
-The `/collections/` page uses one carefully attributed late-payment proof point: UK government-commissioned research reported that 22% of surveyed businesses spent staff time chasing late payments, with affected businesses spending an average of 86 hours per year. Source: Office of the Small Business Commissioner, `https://www.smallbusinesscommissioner.gov.uk/late-payments-research-2/`.
+The `/collections/` page uses one carefully attributed U.S.-specific late-payment proof point: a 2025 QuickBooks survey of U.S. small businesses reported that 56% were owed money from unpaid invoices, averaging $17.5K per business. Source: Intuit QuickBooks, `https://quickbooks.intuit.com/r/small-business-data/small-business-late-payments-report-2025/`.
 
-If a stronger US-specific source is available later, update the page and this note together. Do not publish unsourced claims such as “41% of companies’ biggest cashflow problem is payment collection” unless the exact source is verified.
+If a stronger source is available later, update the page and this note together. Do not publish unsourced claims such as “41% of companies’ biggest cashflow problem is payment collection” unless the exact source is verified.
 
 ## Phone Numbers
 
@@ -129,10 +129,10 @@ Do not use a Retell API key, dashboard URL, or backend credential.
 
 ### Preferred Method
 
-1. Open Terminal and move to the project root:
+1. Open Terminal and move to the GitHub repo root on your machine:
 
 ```bash
-cd "/Users/elithing3/Documents/Demo Retell AI/retell-pest-control-demo"
+cd /path/to/RetellDemo
 ```
 
 2. Run the URL update utility with the complete public orb URL:
