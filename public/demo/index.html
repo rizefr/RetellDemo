@@ -4,51 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>Talk to Elixis AI | Voice Demo</title>
+    <title>AI Receptionist Demo | Elixis Agency</title>
     <link rel="icon" href="/images/elixis-phoenix.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="/styles.css" rel="stylesheet" />
+    <script src="/site-config.js?v=agency-general-20260616" defer></script>
+    <script src="/site.js?v=agency-general-20260616" defer></script>
     <style>
-      :root {
-        color-scheme: dark;
-        font-family: "Geist", Arial, sans-serif;
-        background: #020914;
-        color: #f8f4eb;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        min-height: 100dvh;
-        margin: 0;
-        background:
-          radial-gradient(circle at 75% 10%, rgba(58, 125, 255, 0.2), transparent 32rem),
-          radial-gradient(circle at 10% 70%, rgba(199, 156, 90, 0.12), transparent 28rem),
-          #020914;
-      }
-
-      a {
-        color: inherit;
-      }
-
-      :focus-visible {
-        outline: 2px solid #deb675;
-        outline-offset: 4px;
-      }
-
-      .demo-shell {
-        width: min(100% - 32px, 1040px);
+      .demo-page-shell {
+        width: min(100% - 32px, 1120px);
         margin: 0 auto;
-        padding: 20px 0 28px;
+        padding: 20px 0 34px;
       }
 
-      .demo-header {
+      .demo-page-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -56,57 +27,38 @@
         min-height: 64px;
       }
 
-      .brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 0.9rem;
-        font-weight: 700;
-        text-decoration: none;
+      .demo-page-heading {
+        display: grid;
+        grid-template-columns: minmax(0, 0.85fr) minmax(360px, 0.65fr);
+        gap: 36px;
+        align-items: end;
+        margin: 44px 0 24px;
       }
 
-      .brand img {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        object-fit: cover;
-        box-shadow: 0 0 28px rgba(199, 156, 90, 0.2);
-      }
-
-      .back-link {
-        color: rgba(248, 244, 235, 0.72);
-        font-size: 0.86rem;
-        font-weight: 600;
-        text-decoration: none;
-      }
-
-      .back-link:hover {
-        color: #deb675;
-      }
-
-      .demo-heading {
-        margin: 28px 0 20px;
-        text-align: center;
-      }
-
-      .demo-heading h1 {
+      .demo-page-heading h1 {
         margin: 0;
-        font-size: clamp(2rem, 5vw, 3.5rem);
-        letter-spacing: -0.055em;
-        line-height: 1;
+        font-size: clamp(2.35rem, 6vw, 5rem);
+        letter-spacing: -0.065em;
+        line-height: 0.94;
       }
 
-      .demo-heading p {
-        max-width: 620px;
-        margin: 14px auto 0;
-        color: #b8c3d0;
-        line-height: 1.65;
+      .demo-page-heading p {
+        margin: 0;
+        color: var(--silver-300);
+        line-height: 1.75;
+      }
+
+      .demo-demo-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+        gap: 18px;
+        align-items: stretch;
       }
 
       .orb-frame {
         overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 26px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
         background: rgba(7, 20, 39, 0.78);
         box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38);
       }
@@ -114,103 +66,106 @@
       .orb-frame iframe {
         display: block;
         width: 100%;
-        min-height: min(720px, calc(100dvh - 250px));
+        min-height: min(720px, calc(100dvh - 260px));
         border: 0;
         background: #fff;
       }
 
-      .demo-fallback {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px 18px;
-        color: #b8c3d0;
-        font-size: 0.84rem;
+      .demo-side-card {
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 24px;
+        background:
+          linear-gradient(145deg, rgba(7,20,39,0.78), rgba(3,10,21,0.9)),
+          radial-gradient(circle at 90% 10%, rgba(199,156,90,0.18), transparent 16rem);
       }
 
-      .demo-fallback a {
-        min-height: 44px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgba(222, 182, 117, 0.35);
-        border-radius: 12px;
-        padding: 10px 16px;
-        color: #f8f4eb;
-        font-weight: 700;
-        text-decoration: none;
+      .demo-side-card h2 {
+        margin: 0;
+        font-size: 1.45rem;
       }
 
-      .demo-fallback a:hover {
-        border-color: #deb675;
-        background: rgba(199, 156, 90, 0.1);
+      .demo-side-card p,
+      .demo-side-card li {
+        color: var(--silver-300);
+        line-height: 1.65;
       }
 
-      @media (max-width: 640px) {
-        .demo-shell {
-          width: min(100% - 20px, 1040px);
+      .demo-side-card ul {
+        display: grid;
+        gap: 10px;
+        margin: 20px 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .demo-side-actions {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (max-width: 860px) {
+        .demo-page-shell {
+          width: min(100% - 20px, 1120px);
           padding-top: 10px;
         }
 
-        .demo-header {
-          min-height: 56px;
+        .demo-page-heading,
+        .demo-demo-layout {
+          grid-template-columns: 1fr;
         }
 
-        .demo-heading {
-          margin-top: 24px;
-        }
-
-        .demo-heading p {
-          font-size: 0.94rem;
-        }
-
-        .orb-frame {
-          border-radius: 20px;
+        .demo-page-heading {
+          margin-top: 30px;
         }
 
         .orb-frame iframe {
           min-height: 640px;
         }
-
-        .demo-fallback {
-          align-items: stretch;
-          flex-direction: column;
-          text-align: center;
-        }
       }
     </style>
   </head>
-  <body>
-    <main class="demo-shell">
-      <header class="demo-header">
-        <a class="brand" href="/" aria-label="Return to Elixis Agency">
-          <img src="/images/elixis-phoenix.png" alt="" width="240" height="216" />
+  <body class="page-shell">
+    <main class="demo-page-shell">
+      <header class="demo-page-header">
+        <a class="brand-link" href="/" aria-label="Return to Elixis Agency">
+          <img src="/images/elixis-phoenix.png" class="brand-mark" alt="" width="240" height="216" />
           <span>Elixis Agency</span>
         </a>
-        <a class="back-link" href="/">Back to main site</a>
+        <a class="nav-link" href="/">Back to main site</a>
       </header>
 
-      <section class="demo-heading" aria-labelledby="demo-title">
-        <h1 id="demo-title">Talk to the Elixis AI Receptionist</h1>
-        <p>Try the pest-control call experience directly from this page.</p>
+      <section class="demo-page-heading" aria-labelledby="demo-title">
+        <div>
+          <h1 id="demo-title">See an AI Receptionist Handle a Real Service Call</h1>
+        </div>
+        <p>This demo uses a pest-control scenario because the current voice agent is trained for that example. The same receptionist structure can be adapted for other local service and appointment-based businesses.</p>
       </section>
 
-      <section class="orb-frame" aria-label="Elixis AI receptionist voice demo">
-        <iframe
-          title="Elixis Agency AI receptionist demo"
-          src="https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d"
-          allow="microphone; autoplay"
-          referrerpolicy="strict-origin-when-cross-origin"
-        ></iframe>
-        <div class="demo-fallback">
-          <span>If the voice demo does not load, open it directly.</span>
-          <a
-            href="https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d"
-            target="_blank"
-            rel="noreferrer"
-          >Open voice demo</a>
+      <section class="demo-demo-layout" aria-label="AI receptionist voice demo">
+        <div class="orb-frame">
+          <iframe
+            title="Elixis Agency AI receptionist demo"
+            src="https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d"
+            data-config-src="AI_DEMO_ORB_URL"
+            allow="microphone; autoplay"
+            referrerpolicy="strict-origin-when-cross-origin"
+          ></iframe>
         </div>
+        <aside class="demo-side-card">
+          <h2>What to listen for</h2>
+          <p>The goal is a receptionist-style call path: capture the issue, keep the caller moving, and hand your team a useful summary.</p>
+          <ul>
+            <li>Captures pest issue and contact details</li>
+            <li>Routes urgent situations using approved rules</li>
+            <li>Helps customers start the booking process</li>
+            <li>Uses safe language instead of making unsupported promises</li>
+          </ul>
+          <div class="demo-side-actions">
+            <a href="/booking/" class="button button-primary">Book an AI Audit</a>
+            <a href="tel:+19842075346" class="button button-tertiary" data-config-href="AI_DEMO_PHONE" aria-label="Call demo agent at +1 (984) 207-5346">Call Demo Agent</a>
+          </div>
+        </aside>
       </section>
     </main>
   </body>

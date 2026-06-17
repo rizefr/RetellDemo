@@ -1,11 +1,13 @@
 # Elixis Agency Website Operations
 
-This repo contains the Elixis Agency landing page for the pest-control AI receptionist offer. The website is served from `public/` by the same Express app used for the Retell backend, but website files must never contain backend secrets.
+This repo contains the Elixis Agency public website. The homepage now positions Elixis as a general AI systems agency for businesses, with service pages for AI receptionists, B2B payment follow-up, AI search visibility, and AI audits. The website is served from `public/` by the same Express app used for the Retell backend, but website files must never contain backend secrets.
 
 ## Live Site
 
 - Production domain: `https://elixis.agency`
-- Branded voice demo: `https://elixis.agency/demo/`
+- AI receptionist demo: `https://elixis.agency/demo/`
+- B2B payment follow-up: `https://elixis.agency/collections/`
+- AI SEO / visibility: `https://elixis.agency/ai-seo/`
 - Branded booking page: `https://elixis.agency/booking/`
 - Vercel project: `retell-pest-control-demo`
 - GitHub repo: `https://github.com/rizefr/RetellDemo`
@@ -33,6 +35,9 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 ## Important Website Files
 
 - `public/index.html`: landing page markup and copy.
+- `public/demo/index.html`: AI receptionist demo page. The current demo is pest-control-specific, but the page explains that the receptionist structure can adapt to other service businesses.
+- `public/collections/index.html`: public marketing page for AI-assisted B2B payment follow-up. Do not confuse this with protected backend `/outbound` tooling.
+- `public/ai-seo/index.html`: AI SEO / AI search visibility service page.
 - `public/booking/index.html`: standalone branded Cal.com booking page.
 - `public/site-config.js`: public, non-secret website URLs and labels.
 - `public/site.js`: mobile menu, section scrolling, Retell modal, config application, reveal animation, and Cal.com embed bootstrapping.
@@ -42,30 +47,44 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 - `public/images/`: Elixis logo assets.
 - `public/server.ts`: Vercel Express entrypoint. Do not remove unless the backend is intentionally moved elsewhere.
 
-## Transcript Carousel
-
-The hero demo console uses a controlled transcript carousel in `public/site.js`.
-
-- There are exactly 3 pest-control scenarios.
-- Each scenario renders exactly 4 transcript bubbles.
-- The bubbles reveal once per scenario, one after another, then the complete conversation remains visible for about 6 seconds before the carousel advances.
-- The 3 dots under the transcript manually switch scenarios and replay that scenario's reveal.
-- Visitors with reduced-motion enabled see all 4 messages immediately without reveal animation.
-
 ## Current Page Structure
 
-The live page is intentionally ordered around one product demo and one primary conversion path:
+The live website is organized around a general business AI agency offer:
 
-1. Hero and AI receptionist demo console
-2. Missed, overflow, and after-hours coverage
-3. Why it matters, with three response-focused statistic cards
-4. How it works in 7 days
-5. Bonus pest-control visibility audit
-6. Booking handoff to the dedicated branded calendar page
+1. `/`: general Elixis Agency homepage for AI systems that help businesses respond, collect, and grow.
+2. `/demo/`: AI receptionist demo page. The current Retell voice demo uses a pest-control scenario as the example industry.
+3. `/collections/`: AI-assisted B2B payment follow-up / accounts-receivable support marketing page.
+4. `/ai-seo/`: AI SEO and AI-style search visibility audit page.
+5. `/booking/`: standalone embedded Cal.com booking page.
 
-The hero is the only full product-demo section and positions the offer as a full AI receptionist. Missed, overflow, and after-hours language belongs in the coverage section below the hero. Primary booking links open `https://elixis.agency/booking/`, where the Cal.com calendar is embedded. The footer contains the Elixis Agency contact number and both public contact emails.
+The homepage should not be pest-control-specific. It should speak to local service businesses, B2B companies, appointment-based businesses, and companies with customer calls, unpaid invoices, follow-up gaps, or visibility problems. Pest-control-specific copy belongs on `/demo/` because the current Retell demo agent is trained around that example.
 
-To update site copy or section order, edit `public/index.html`. To update layout and responsive styling, edit `web/styles.css`, then run `npm run build:styles` to regenerate `public/styles.css`.
+Primary booking links open `https://elixis.agency/booking/`, where the Cal.com calendar is embedded. The footer contains the Elixis Agency contact number and both public contact emails.
+
+To update site copy or section order, edit the matching page under `public/`. To update layout and responsive styling, edit `web/styles.css`, then run `npm run build:styles` to regenerate `public/styles.css`.
+
+## Backend Boundaries
+
+Do not change backend code for ordinary website copy/layout updates.
+
+- Do not modify `/outbound`, outbound APIs, payment-collection backend routes, Stripe/webhook routes, Retell backend logic, Supabase logic, or server-side database code for public marketing-page edits.
+- The public payment collection marketing page is `/collections/`.
+- If a protected backend/admin outbound route exists at `/outbound`, leave it untouched unless the task explicitly asks for backend work.
+- Website files must not contain API keys, Supabase keys, Retell keys, Cal.com keys, or `.env` values.
+
+## Service Copy Notes
+
+- Homepage: general AI systems agency positioning. Use language like “AI systems that help your business respond, collect, and grow.”
+- `/demo/`: AI receptionist page. Keep the Retell demo working and clearly label the pest-control scenario as an example.
+- `/collections/`: B2B payment follow-up. Use professional accounts-receivable support language. Do not make legal compliance claims or imply aggressive collection tactics.
+- `/ai-seo/`: AI SEO / visibility audit. Do not guarantee rankings, Google AI Overview placement, ChatGPT/Gemini/Perplexity recommendations, or search results.
+- `/booking/`: booking page. Keep the Cal.com embed and external fallback.
+
+### Payment Follow-Up Stat Source
+
+The `/collections/` page uses one carefully attributed late-payment proof point: UK government-commissioned research reported that 22% of surveyed businesses spent staff time chasing late payments, with affected businesses spending an average of 86 hours per year. Source: Office of the Small Business Commissioner, `https://www.smallbusinesscommissioner.gov.uk/late-payments-research-2/`.
+
+If a stronger US-specific source is available later, update the page and this note together. Do not publish unsourced claims such as “41% of companies’ biggest cashflow problem is payment collection” unless the exact source is verified.
 
 ## Phone Numbers
 
@@ -199,7 +218,7 @@ The inline calendar is hosted on `public/booking/index.html` and is available at
 https://elixis.agency/booking/
 ```
 
-Primary `Book Demo` and `Book a short call` links should point to `/booking/`. Keep the external Cal.com URL only as a fallback in case the inline calendar cannot load.
+Primary `Book an AI Audit`, `Book Demo`, and `Book a short call` links should point to `/booking/`. Keep the external Cal.com URL only as a fallback in case the inline calendar cannot load.
 
 If a new Cal event type needs to be resolved, do that server-side or in Cal.com, then put only the public booking URL in `public/site-config.js`.
 
