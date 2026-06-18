@@ -59,7 +59,8 @@ button {
 }
 
 .page-shell {
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
   min-height: 100vh;
   background:
     radial-gradient(circle at 70% 0%, rgba(58, 125, 255, 0.24), transparent 30rem),
@@ -107,7 +108,8 @@ button {
 }
 
 .nav-links {
-  @apply hidden items-center gap-8 lg:flex;
+  @apply hidden items-center lg:flex;
+  gap: clamp(16px, 2vw, 28px);
 }
 
 .nav-link {
@@ -116,6 +118,16 @@ button {
   font-size: 0.9rem;
   font-weight: 500;
   transition: color 160ms ease, transform 160ms ease;
+}
+
+.nav-link[aria-current="page"] {
+  color: var(--ivory-100);
+}
+
+.nav-link[aria-current="page"]::after {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--gold-400), transparent);
+  transform: scaleX(1);
 }
 
 .nav-link::after {
@@ -778,6 +790,21 @@ button {
   gap: 18px;
 }
 
+.primary-service-grid,
+.support-service-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.primary-service-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.support-service-grid {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  margin-top: 18px;
+}
+
 .service-card {
   display: flex;
   min-height: 330px;
@@ -800,6 +827,92 @@ button {
   background:
     linear-gradient(145deg, rgba(199,156,90,0.11), rgba(255,255,255,0.04)),
     radial-gradient(circle at 80% 0%, rgba(58,125,255,0.16), transparent 16rem);
+}
+
+.service-card-primary {
+  min-height: 340px;
+}
+
+.service-card-label {
+  width: fit-content;
+  border: 1px solid rgba(222, 182, 117, 0.24);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(199, 156, 90, 0.08);
+  color: var(--gold-400);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.service-card-label-optional {
+  border-color: rgba(58, 125, 255, 0.28);
+  background: rgba(58, 125, 255, 0.09);
+  color: rgba(186, 207, 255, 0.96);
+}
+
+.support-service-card,
+.audit-entry-card {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 22px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.support-service-card {
+  display: flex;
+  min-height: 236px;
+  flex-direction: column;
+}
+
+.support-service-card h3,
+.audit-entry-card h3 {
+  margin: 1rem 0 0.7rem;
+  color: var(--ivory-100);
+  font-size: 1.24rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.support-service-card p,
+.audit-entry-card p {
+  margin: 0;
+  color: var(--silver-300);
+  line-height: 1.68;
+}
+
+.support-service-card .text-link {
+  margin-top: auto;
+  padding-top: 22px;
+}
+
+.audit-entry-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 24px;
+  background:
+    linear-gradient(145deg, rgba(199, 156, 90, 0.1), rgba(255, 255, 255, 0.035)),
+    radial-gradient(circle at 90% 10%, rgba(58, 125, 255, 0.12), transparent 16rem);
+}
+
+.audit-entry-card .service-card-label {
+  grid-column: 1 / -1;
+}
+
+.audit-entry-card h3 {
+  margin-top: 0;
+}
+
+.support-service-card:hover,
+.audit-entry-card:hover {
+  border-color: rgba(222, 182, 117, 0.28);
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  transform: translateY(-3px);
 }
 
 .service-card > span,
@@ -959,6 +1072,11 @@ button {
   font-weight: 600;
 }
 
+.service-hero-panel .data-list span:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
 .visibility-panel {
   display: grid;
   gap: 14px;
@@ -993,6 +1111,12 @@ button {
 
 .collections-timeline {
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+}
+
+.collections-timeline article {
+  height: 100%;
 }
 
 .section-copy h2,
@@ -1468,8 +1592,14 @@ button {
   }
 
   .service-grid,
+  .primary-service-grid,
+  .support-service-grid,
   .collections-timeline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .support-service-grid {
+    grid-template-columns: 1fr;
   }
 
   .stat-stack {
@@ -1534,6 +1664,7 @@ button {
   .audit-list,
   .stat-stack,
   .service-grid,
+  .primary-service-grid,
   .collections-timeline,
   .data-list,
   .proof-list article {
@@ -1562,6 +1693,23 @@ button {
   .service-card {
     min-height: 0;
     padding: 22px;
+  }
+
+  .service-card-primary,
+  .support-service-card {
+    min-height: 0;
+  }
+
+  .audit-entry-card {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-entry-card .service-card-label {
+    grid-column: auto;
+  }
+
+  .audit-entry-card .button {
+    justify-self: stretch;
   }
 
   .process-steps article {

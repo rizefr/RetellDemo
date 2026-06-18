@@ -1,13 +1,13 @@
 # Elixis Agency Website Operations
 
-This repo contains the Elixis Agency public website. The homepage now positions Elixis as a general AI systems agency for businesses, with service pages for AI receptionists, B2B payment follow-up, AI search visibility, and AI audits. The website is served from `public/` by the same Express app used for the Retell backend, but website files must never contain backend secrets.
+This repo contains the Elixis Agency public website. The homepage positions Elixis as a general AI systems agency with two primary services: AI Payment Follow-Up and AI Front Desk. AI Visibility is an optional add-on, while the AI Audit is the first step used to choose the right workflow. The website is served from `public/` by the same Express app used for the Retell backend, but website files must never contain backend secrets.
 
 ## Live Site
 
 - Production domain: `https://elixis.agency`
-- AI receptionist demo: `https://elixis.agency/demo/`
-- B2B payment follow-up: `https://elixis.agency/collections/`
-- AI SEO / visibility: `https://elixis.agency/ai-seo/`
+- AI Front Desk demo: `https://elixis.agency/demo/`
+- AI Payment Follow-Up: `https://elixis.agency/collections/`
+- Optional AI Visibility add-on: `https://elixis.agency/ai-seo/`
 - Branded booking page: `https://elixis.agency/booking/`
 - Vercel project: `retell-pest-control-demo`
 - GitHub repo: `https://github.com/rizefr/RetellDemo`
@@ -35,9 +35,9 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 ## Important Website Files
 
 - `public/index.html`: landing page markup and copy.
-- `public/demo/index.html`: AI receptionist demo page. The current demo is pest-control-specific, but the page explains that the receptionist structure can adapt to other service businesses.
-- `public/collections/index.html`: public marketing page for AI-assisted B2B payment follow-up. Do not confuse this with protected backend `/outbound` tooling.
-- `public/ai-seo/index.html`: AI SEO / AI search visibility service page.
+- `public/demo/index.html`: AI Front Desk demo page. The current demo is pest-control-specific, but the page explains that the front-desk structure can adapt to other service businesses.
+- `public/collections/index.html`: public marketing page for AI Payment Follow-Up. Do not confuse this with protected backend `/outbound` tooling.
+- `public/ai-seo/index.html`: optional AI Visibility / AI search visibility add-on page.
 - `public/booking/index.html`: standalone branded Cal.com booking page.
 - `public/site-config.js`: public, non-secret website URLs and labels.
 - `public/site.js`: mobile menu, section scrolling, Retell modal, config application, reveal animation, and Cal.com embed bootstrapping.
@@ -51,11 +51,13 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 
 The live website is organized around a general business AI agency offer:
 
-1. `/`: general Elixis Agency homepage for AI systems that help businesses respond, collect, and grow.
-2. `/demo/`: AI receptionist demo page. The current Retell voice demo uses a pest-control scenario as the example industry.
-3. `/collections/`: AI-assisted B2B payment follow-up / accounts-receivable support marketing page.
-4. `/ai-seo/`: AI SEO and AI-style search visibility audit page.
-5. `/booking/`: standalone embedded Cal.com booking page.
+1. `/`: general Elixis Agency homepage. It presents AI Payment Follow-Up first, AI Front Desk second, and AI Visibility as an optional add-on.
+2. `/collections/`: primary AI Payment Follow-Up / accounts-receivable support marketing page.
+3. `/demo/`: primary AI Front Desk demo page. The current Retell voice demo uses a pest-control scenario as the example industry.
+4. `/ai-seo/`: optional AI Visibility and AI-style search audit page.
+5. `/booking/`: standalone embedded Cal.com booking page and AI Audit entry point.
+
+AI Audit is not a fourth service. It is the first step used to identify whether payment follow-up, front-desk coverage, or visibility is the best workflow to improve first.
 
 The homepage should not be pest-control-specific. It should speak to local service businesses, B2B companies, appointment-based businesses, and companies with customer calls, unpaid invoices, follow-up gaps, or visibility problems. Pest-control-specific copy belongs on `/demo/` because the current Retell demo agent is trained around that example.
 
@@ -74,10 +76,10 @@ Do not change backend code for ordinary website copy/layout updates.
 
 ## Service Copy Notes
 
-- Homepage: general AI systems agency positioning. Use language like “AI systems that help your business respond, collect, and grow.”
-- `/demo/`: AI receptionist page. Keep the Retell demo working and clearly label the pest-control scenario as an example.
-- `/collections/`: B2B payment follow-up. Use professional accounts-receivable support language. Do not make legal compliance claims or imply aggressive collection tactics.
-- `/ai-seo/`: AI SEO / visibility audit. Do not guarantee rankings, Google AI Overview placement, ChatGPT/Gemini/Perplexity recommendations, or search results.
+- Homepage: general AI systems agency positioning. Present AI Payment Follow-Up and AI Front Desk as the two primary services. Present AI Visibility as an optional add-on.
+- `/demo/`: AI Front Desk page. Keep the Retell demo working and clearly label the pest-control scenario as an example.
+- `/collections/`: AI Payment Follow-Up. Use professional accounts-receivable support language. Do not make legal compliance claims or imply aggressive collection tactics.
+- `/ai-seo/`: optional AI Visibility audit. Do not guarantee rankings, Google AI Overview placement, ChatGPT/Gemini/Perplexity recommendations, or search results.
 - `/booking/`: booking page. Keep the Cal.com embed and external fallback.
 
 ### Payment Follow-Up Stat Source
@@ -117,7 +119,7 @@ npm test
 4. Vercel deploys automatically from GitHub.
 5. Check `https://elixis.agency`.
 
-## How To Change The AI Demo URL
+## How to update the Retell demo iframe/link
 
 Use only a public Retell orb URL in this format:
 
@@ -127,72 +129,68 @@ https://agent.retellai.com/orb/AGENT_ID?token=PUBLIC_WIDGET_TOKEN
 
 Do not use a Retell API key, dashboard URL, or backend credential.
 
-### Preferred Method
+The public demo URL has one source of truth: `AI_DEMO_ORB_URL` in `public/site-config.js`. The `/demo/` iframe reads that value through `public/site.js`; the Retell URL is not duplicated in the HTML.
 
-1. Open Terminal and move to the GitHub repo root on your machine:
+### Manual method
+
+1. Open `public/site-config.js`.
+2. Replace only the value of `AI_DEMO_ORB_URL` with the complete public Retell orb URL.
+3. Keep `AI_DEMO_PHONE` as `tel:+19842075346` unless the demo phone number also changes.
+4. From the GitHub repo root, run the checks:
 
 ```bash
-cd /path/to/RetellDemo
+npm run build
+npm run lint
+npm test
+node --check public/site.js
 ```
 
-2. Run the URL update utility with the complete public orb URL:
+5. Commit the relevant frontend files to `main`.
+6. Push `main`; Vercel deploys automatically from GitHub.
+7. Open `https://elixis.agency/demo/`, confirm the new orb loads, and verify the page still scrolls on desktop and mobile.
+
+### Safe utility method
+
+The existing utility validates the public Retell orb format, updates `public/site-config.js`, and refreshes the frontend cache tags:
 
 ```bash
 npm run set:demo-url -- "https://agent.retellai.com/orb/NEW_AGENT_ID?token=PUBLIC_TOKEN"
 ```
 
-3. The utility validates the URL and updates all public frontend references:
+The utility updates:
 
-- `public/site-config.js`: primary public configuration
-- `public/site.js`: safe browser fallback
-- `public/index.html`: iframe and new-tab fallback URLs
+- `public/site-config.js`: the single public demo URL value
 - `public/index.html`: cache tags for `site-config.js` and `site.js`
-- `public/demo/index.html`: standalone `https://elixis.agency/demo/` voice-demo page
+- `public/demo/index.html`: cache tags for the standalone demo page
 
 It never reads or changes `.env`.
 
-4. Confirm every frontend reference uses the new agent:
+Confirm the public config contains the intended URL:
 
 ```bash
-rg -n "agent\\.retellai\\.com/orb/" public/index.html public/demo/index.html public/site.js public/site-config.js
+rg -n "AI_DEMO_ORB_URL|agent\\.retellai\\.com/orb/" public/site-config.js public/site.js public/demo/index.html scripts/setDemoUrl.mjs
 ```
 
-5. Run the available checks:
+Review the exact files that will be committed:
 
 ```bash
-node --check public/site.js
-npm run build
-npm run lint
-npm test
-```
-
-6. Review the exact files that will be committed:
-
-```bash
-git diff -- public/index.html public/demo/index.html public/site.js public/site-config.js
+git diff -- public/index.html public/demo/index.html public/site.js public/site-config.js scripts/setDemoUrl.mjs
 git status --short
 ```
 
-7. Commit and push to `main`:
+Commit and push to `main`:
 
 ```bash
-git add public/index.html public/demo/index.html public/site.js public/site-config.js
+git add public/index.html public/demo/index.html public/site.js public/site-config.js scripts/setDemoUrl.mjs
 git commit -m "Update AI demo orb URL"
 git push origin main
 ```
 
-8. Wait for Vercel to finish the GitHub deployment, then verify:
+Wait for Vercel to finish the GitHub deployment, then verify:
 
-- Open `https://elixis.agency`
-- Select `Talk to AI`
-- Confirm the new Retell orb loads
 - Open `https://elixis.agency/demo/`
 - Confirm the address bar remains on `elixis.agency/demo/` while the orb loads
-- Confirm `Launch on elixis.agency` opens the same branded demo page
-
-### Manual Method
-
-If the utility cannot run, replace `AI_DEMO_ORB_URL` in both `public/site-config.js` and `public/site.js`, then replace the Retell iframe URL in `public/index.html` and both Retell URLs in `public/demo/index.html`. Also change the `?v=` values on the `site-config.js` and `site.js` script tags so returning browsers do not reuse the previous demo configuration.
+- Confirm `Call Demo Agent` still uses `tel:+19842075346`
 
 Local-only testing override:
 

@@ -37,12 +37,10 @@ if (nextUrl.includes("api.retellai.com") || nextUrl.includes("dashboard.retellai
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(scriptDir, "..", "public");
 const configPath = path.join(publicDir, "site-config.js");
-const siteJsPath = path.join(publicDir, "site.js");
 const indexPath = path.join(publicDir, "index.html");
 const demoIndexPath = path.join(publicDir, "demo", "index.html");
 const escapedUrl = nextUrl.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 const orbUrlPattern = /AI_DEMO_ORB_URL:\s*"[^"]*"/;
-const htmlOrbUrlPattern = /https:\/\/agent\.retellai\.com\/orb\/[^"\s<]+/g;
 const cacheTag = `demo-${createHash("sha256").update(nextUrl).digest("hex").slice(0, 12)}`;
 
 async function updateFile(filePath, updater) {
@@ -65,25 +63,17 @@ if (await updateFile(configPath, (content) => {
   changedFiles.push("public/site-config.js");
 }
 
-if (await updateFile(siteJsPath, (content) => {
-  if (!orbUrlPattern.test(content)) {
-    fail("Could not find AI_DEMO_ORB_URL in public/site.js.");
-  }
-  return content.replace(orbUrlPattern, `AI_DEMO_ORB_URL: "${escapedUrl}"`);
-})) {
-  changedFiles.push("public/site.js");
-}
-
 if (await updateFile(indexPath, (content) => {
-  const withOrbUrl = content.replace(htmlOrbUrlPattern, nextUrl);
-  return withOrbUrl
+  return content
     .replace(/\/site-config\.js(?:\?v=[^"]*)?/g, `/site-config.js?v=${cacheTag}`)
     .replace(/\/site\.js(?:\?v=[^"]*)?/g, `/site.js?v=${cacheTag}`);
 })) {
   changedFiles.push("public/index.html");
 }
 
-if (await updateFile(demoIndexPath, (content) => content.replace(htmlOrbUrlPattern, nextUrl))) {
+if (await updateFile(demoIndexPath, (content) => content
+  .replace(/\/site-config\.js(?:\?v=[^"]*)?/g, `/site-config.js?v=${cacheTag}`)
+  .replace(/\/site\.js(?:\?v=[^"]*)?/g, `/site.js?v=${cacheTag}`))) {
   changedFiles.push("public/demo/index.html");
 }
 

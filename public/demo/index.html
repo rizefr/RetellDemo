@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
-    <title>AI Receptionist Demo | Elixis Agency</title>
+    <meta name="description" content="Try an AI front desk demo that answers service calls, captures details, routes urgent requests, and helps customers start booking." />
+    <title>AI Front Desk Demo for Service Businesses | Elixis Agency</title>
+    <link rel="canonical" href="https://elixis.agency/demo/" />
     <link rel="icon" href="/images/elixis-phoenix.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,14 +18,6 @@
         width: min(100% - 32px, 1120px);
         margin: 0 auto;
         padding: 20px 0 34px;
-      }
-
-      .demo-page-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        min-height: 64px;
       }
 
       .demo-page-heading {
@@ -127,48 +120,68 @@
       }
     </style>
   </head>
-  <body class="page-shell">
-    <main class="demo-page-shell">
-      <header class="demo-page-header">
-        <a class="brand-link" href="/" aria-label="Return to Elixis Agency">
-          <img src="/images/elixis-phoenix.png" class="brand-mark" alt="" width="240" height="216" />
-          <span>Elixis Agency</span>
-        </a>
-        <a class="nav-link" href="/">Back to main site</a>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <nav class="section-wrap nav-shell" aria-label="Primary navigation">
+          <a href="/" class="brand-link" aria-label="Elixis Agency home">
+            <img src="/images/elixis-phoenix.png" class="brand-mark" alt="" />
+            <span>Elixis Agency</span>
+          </a>
+          <div class="nav-links">
+            <a class="nav-link" href="/">Home</a>
+            <a class="nav-link" href="/collections/">AI Payment Follow-Up</a>
+            <a class="nav-link" href="/demo/" aria-current="page">AI Front Desk</a>
+            <a class="nav-link" href="/ai-seo/">AI Visibility</a>
+            <a class="nav-link" href="/booking/">Book</a>
+          </div>
+          <a href="/booking/" class="button button-primary nav-cta">Book an AI Audit</a>
+          <button data-menu-button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+          </button>
+        </nav>
+        <div data-mobile-menu class="section-wrap mobile-menu hidden">
+          <a class="nav-link" href="/">Home</a>
+          <a class="nav-link" href="/collections/">AI Payment Follow-Up</a>
+          <a class="nav-link" href="/demo/" aria-current="page">AI Front Desk</a>
+          <a class="nav-link" href="/ai-seo/">AI Visibility</a>
+          <a href="/booking/" class="button button-primary">Book an AI Audit</a>
+        </div>
       </header>
 
-      <section class="demo-page-heading" aria-labelledby="demo-title">
-        <div>
-          <h1 id="demo-title">Listen to an AI Receptionist Handle a Service Call</h1>
-        </div>
-        <p>This demo uses a pest-control scenario because the current voice agent is trained for that example. The same receptionist structure can be adapted for other service and appointment-based businesses.</p>
-      </section>
-
-      <section class="demo-demo-layout" aria-label="AI receptionist voice demo">
-        <div class="orb-frame">
-          <iframe
-            title="Elixis Agency AI receptionist demo"
-            src="https://agent.retellai.com/orb/agent_16b324c0e55f21c0a5f914c169?token=8bd2ed080efb297166fc150f79726f9d"
-            data-config-src="AI_DEMO_ORB_URL"
-            allow="microphone; autoplay"
-            referrerpolicy="strict-origin-when-cross-origin"
-          ></iframe>
-        </div>
-        <aside class="demo-side-card">
-          <h2>What to listen for</h2>
-          <p>The goal is a receptionist-style call path: answer clearly, capture the issue, keep the caller moving, and hand your team a useful summary.</p>
-          <ul>
-            <li>Captures pest issue and contact details</li>
-            <li>Routes urgent situations using approved rules</li>
-            <li>Helps customers start the booking process</li>
-            <li>Uses safe language instead of making unsupported promises</li>
-          </ul>
-          <div class="demo-side-actions">
-            <a href="/booking/" class="button button-primary">Book an AI Audit</a>
-            <a href="tel:+19842075346" class="button button-tertiary" data-config-href="AI_DEMO_PHONE" aria-label="Call demo agent at +1 (984) 207-5346">Call Demo Agent</a>
+      <main class="demo-page-shell">
+        <section class="demo-page-heading" aria-labelledby="demo-title">
+          <div>
+            <h1 id="demo-title">See an AI Front Desk Handle a Service Call</h1>
           </div>
-        </aside>
-      </section>
-    </main>
+          <p>This demo uses a pest-control scenario because the current voice agent is trained for that example. The same receptionist structure can be adapted for other service and appointment-based businesses.</p>
+        </section>
+
+        <section class="demo-demo-layout" aria-label="AI front desk voice demo">
+          <div class="orb-frame">
+            <iframe
+              title="Elixis Agency AI front desk demo"
+              data-config-src="AI_DEMO_ORB_URL"
+              allow="microphone; autoplay"
+              referrerpolicy="strict-origin-when-cross-origin"
+            ></iframe>
+          </div>
+          <aside class="demo-side-card">
+            <h2>What this example shows</h2>
+            <p>The goal is a front-desk call path: answer clearly, capture the issue, route urgency, and hand your team a useful next step.</p>
+            <ul>
+              <li>Captures pest issue and contact details</li>
+              <li>Routes urgent situations using approved rules</li>
+              <li>Helps customers start the booking process</li>
+              <li>Uses safe language instead of making unsupported promises</li>
+            </ul>
+            <div class="demo-side-actions">
+              <a href="/booking/" class="button button-primary">Start with an AI Audit</a>
+              <a href="tel:+19842075346" class="button button-tertiary" data-config-href="AI_DEMO_PHONE" aria-label="Call demo agent at +1 (984) 207-5346">Call Demo Agent</a>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
   </body>
 </html>
