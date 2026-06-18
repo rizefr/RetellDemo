@@ -23,6 +23,8 @@ The published flow uses one tool-capable Subagent Node. The smaller design prove
 
 - `start_speaker` is `agent`; the agent gives the complete Elixis introduction first.
 - If the person says hello or interrupts the opening, the agent repeats the complete introduction once.
+- If the person gives a neutral closing such as "okay, thank you" without agreeing to a payment link, the agent logs `manual_review`, does not offer the link again, and ends cleanly.
+- Every final closing sentence is followed immediately by the native `end_call` tool in the same turn; the agent never waits for another reply or restarts the introduction after logging an outcome.
 - Invoice service, date, and balance are stated only after first-name confirmation.
 - Every terminal objection calls `log_outcome` before the native `end_call` tool.
 - The native transfer tool is used only after `request_human_transfer` confirms a configured destination.

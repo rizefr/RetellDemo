@@ -25,11 +25,12 @@ The business using it is responsible for establishing its right to contact each 
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
 - Stripe sandbox Checkout Session creation is working from the admin/API path for the demo invoice. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel.
 - Retell outbound agent and Conversation Flow were hardened and published:
-  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `3`
-  - Conversation Flow: `conversation_flow_bebdceabc801`, version `3`
+  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `6`
+  - Conversation Flow: `conversation_flow_bebdceabc801`, version `6`
   - the flow now uses one tool-capable Subagent Node with five custom tools using `args_at_root: true`
   - the agent speaks first, repeats the complete introduction after an early hello/interruption, names Elixis Elevator Systems, and states the invoice service/date/amount after first-name confirmation
   - voicemail handling is configured to `hangup`
+- Retell native simulation `Opening and invoice clarity` passes on version 6. It verifies the proactive/repeated introduction, first-name-only confirmation, AI disclosure, service/date/amount clarity, secure-link language, neutral-close outcome logging, and immediate `end_call`.
 - The earlier Retell tool failures were HTTP 404 responses caused by a website deployment that omitted the uncommitted outbound routes. The merged Express/Vercel deployment restored those routes. A signed production `create_payment_link` tool smoke test using trusted call metadata now returns 200 and creates an exact-amount Stripe test Checkout Session.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
@@ -249,7 +250,7 @@ Vercel/Express raw-body routes are mounted before global JSON parsing for Stripe
 
 Do not call until the migration, deployed environment, Stripe webhook, Retell flow, Retell number outbound capability, AI/recording disclosure, and contact-right review are complete.
 
-1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` on published version `3` and flow `conversation_flow_bebdceabc801` on version `3`.
+1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` on published version `6` and flow `conversation_flow_bebdceabc801` on version `6`.
 2. Confirm the current `+19842075346` assignment remains intentional. Do not change it from code; use explicit dashboard approval for any phone binding correction.
 3. Open `https://elixis.agency/outbound` and confirm the setup panel is ready, test mode is enabled, the allowlist has one number, and SMS is disabled/manual.
 4. Confirm invoice `ELV-TEST-OWN-NUMBER` is assigned to `+13475850249`, is not paused, and remains `unpaid` or `payment_link_sent`.

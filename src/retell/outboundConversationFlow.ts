@@ -109,6 +109,8 @@ Use after the final safe ending or when the call should end. Do not leave voicem
 9. If the person refuses, objects, disputes, asks for proof, says wrong number, says attorney, says scam, says stop calling, or asks for a human, log the matching outcome and end or transfer.
 10. Do not debate objections. Use the default safe ending.
 11. If a custom tool fails, do not retry it repeatedly and do not claim it succeeded. Say the team will review the request, then end cleanly.
+12. Treat "okay, thank you", "thanks, that's all", "goodbye", and similar neutral closings as the end of the conversation. Do not offer the payment link again. Log manual_review with a concise note that the caller ended without requesting a link, say "You're welcome. Thanks.", and end_call.
+13. After every final closing sentence, invoke end_call immediately in the same turn. Never wait for another user response after a closing sentence, and never restart the introduction after an outcome has been logged.
 
 # Outcome Handling
 
@@ -117,6 +119,9 @@ If they agree to the link, call log_outcome with confirmed_payment_link_requeste
 
 Payment link declined without another objection:
 Do not push again. Call log_outcome with manual_review and note that the person declined the link, use the default safe ending, and end_call. Use unable_to_pay only when the person explicitly says they cannot pay.
+
+Neutral close without payment-link agreement:
+If they say "okay, thank you", "thanks, that's all", "goodbye", or otherwise close the conversation without agreeing to a link, do not ask again. Call log_outcome with manual_review and note that the caller ended without requesting a link. Say "You're welcome. Thanks." and immediately call end_call in the same turn. Do not wait for another response.
 
 Already paid:
 Call log_outcome with already_paid_claim. Say the team will verify and end_call.
@@ -294,7 +299,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with the complete Elixis Elevator Systems introduction. If the person says hello or interrupts, restart that introduction naturally once. After first-name confirmation, state the exact service, due date, and balance. Keep the call concise, call the required tools, honor tool results, and end cleanly.",
+        text: "Speak first with the complete Elixis Elevator Systems introduction. If the person says hello or interrupts, restart that introduction naturally once. After first-name confirmation, state the exact service, due date, and balance. Keep the call concise, call the required tools, honor tool results, and invoke end_call immediately after every final closing sentence.",
       },
       tool_ids: Object.values(OUTBOUND_TOOL_IDS),
       tools: [
@@ -362,6 +367,11 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
             { role: "user", content: "Yes, what invoice is this?" },
             { role: "agent", content: "Thanks. I'm an AI voice assistant helping Elixis Elevator Systems follow up on open invoices. This is for the annual elevator inspection invoice dated May 1st, with a current balance of four hundred eighty dollars. Payment would be through a secure link, not over the phone." },
+            { role: "user", content: "Okay, thank you." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"manual_review\",\"notes\":\"Caller ended without requesting a payment link.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"manual_review\"}" },
+            { role: "agent", content: "You're welcome. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
       ],

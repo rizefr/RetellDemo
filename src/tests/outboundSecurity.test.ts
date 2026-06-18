@@ -97,6 +97,9 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("This is for the {{service_description}} invoice dated {{original_due_date}}");
     expect(serialized).toContain("The team will follow up with the secure link");
+    expect(serialized).toContain("Neutral close without payment-link agreement");
+    expect(serialized).toContain("do not ask again");
+    expect(serialized).toContain("invoke end_call immediately in the same turn");
     expect(serialized).not.toContain("Demo Elevator Inspections");
     expect(serialized).toContain("tool_call_invocation");
     expect(serialized).not.toContain("phoneNumber.update");
