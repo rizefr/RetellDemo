@@ -1,0 +1,81 @@
+{
+  "model_choice": {
+    "type": "cascading",
+    "model": "gpt-4.1"
+  },
+  "model_temperature": 0.2,
+  "tool_call_strict_mode": true,
+  "start_speaker": "agent",
+  "start_node_id": "outbound_collections_agent",
+  "global_prompt": "Speak first for Elixis Elevator Systems, repeat the complete introduction if the person says hello, confirm first name only, then state service, due date, and amount. Use a secure link only; never collect card details verbally, negotiate, threaten, leave voicemail, or claim disabled SMS was sent. Log every terminal outcome.",
+  "default_dynamic_variables": {
+    "business_name": "Elixis Elevator Systems",
+    "customer_first_name": "",
+    "customer_last_name": "",
+    "amount_due": "",
+    "original_due_date": "",
+    "service_description": "",
+    "invoice_id": "",
+    "payment_link": "",
+    "attempt_number": "1",
+    "business_callback_number": "",
+    "human_transfer_number": "",
+    "timezone": "America/New_York"
+  },
+  "tools": [
+    {
+      "tool_id": "outbound_log_outcome",
+      "type": "custom",
+      "name": "log_outcome",
+      "url": "https://elixis.agency/api/outbound/retell/log-outcome",
+      "method": "POST",
+      "args_at_root": true
+    },
+    {
+      "tool_id": "outbound_create_payment_link",
+      "type": "custom",
+      "name": "create_payment_link",
+      "url": "https://elixis.agency/api/outbound/retell/create-payment-link",
+      "method": "POST",
+      "args_at_root": true
+    },
+    {
+      "tool_id": "outbound_send_payment_sms",
+      "type": "custom",
+      "name": "send_payment_sms",
+      "url": "https://elixis.agency/api/outbound/retell/send-payment-sms",
+      "method": "POST",
+      "args_at_root": true
+    },
+    {
+      "tool_id": "outbound_request_human_transfer",
+      "type": "custom",
+      "name": "request_human_transfer",
+      "url": "https://elixis.agency/api/outbound/retell/request-human-transfer",
+      "method": "POST",
+      "args_at_root": true
+    },
+    {
+      "tool_id": "outbound_schedule_followup",
+      "type": "custom",
+      "name": "schedule_followup",
+      "url": "https://elixis.agency/api/outbound/retell/schedule-followup",
+      "method": "POST",
+      "args_at_root": true
+    }
+  ],
+  "nodes": [
+    {
+      "id": "outbound_collections_agent",
+      "type": "subagent",
+      "name": "Outbound collections conversation",
+      "tool_ids": [
+        "outbound_log_outcome",
+        "outbound_create_payment_link",
+        "outbound_send_payment_sms",
+        "outbound_request_human_transfer",
+        "outbound_schedule_followup"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Outbound Collections Login</title>
+    <link rel="stylesheet" href="/outbound-assets/outbound.css" />
+  </head>
+  <body class="login-page">
+    <main class="login-card">
+      <p class="eyebrow">Internal demo</p>
+      <h1>Outbound collections</h1>
+      <p>Enter the server-configured admin token. It is exchanged for an HttpOnly cookie and is not stored by the page.</p>
+      <form id="login-form">
+        <label for="token">Admin token</label>
+        <input id="token" name="token" type="password" autocomplete="current-password" required />
+        <button type="submit">Sign in</button>
+        <p id="login-error" class="error" role="alert"></p>
+      </form>
+    </main>
+    <script>
+      document.getElementById("login-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const token = document.getElementById("token").value;
+        const response = await fetch("/api/outbound/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        document.getElementById("token").value = "";
+        if (response.ok) location.reload();
+        else document.getElementById("login-error").textContent = "Authentication failed.";
+      });
+    </script>
+  </body>
+</html>

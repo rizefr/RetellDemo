@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Outbound Collections Demo</title>
+    <link rel="stylesheet" href="/outbound-assets/outbound.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">B2B first-party demo</p>
+        <h1>Outbound collections</h1>
+      </div>
+      <div class="header-actions">
+        <span class="safety-badge">No automatic task execution</span>
+        <button id="logout" class="secondary">Sign out</button>
+      </div>
+    </header>
+    <main>
+      <section class="panel setup-panel" aria-labelledby="setup-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="setup-heading">Setup readiness</h2>
+            <p>Server-side configuration checks only. Secret values are never returned to this page.</p>
+          </div>
+          <button id="refresh-setup" class="secondary">Refresh setup status</button>
+        </div>
+        <div id="setup-summary" class="setup-summary" role="status">Checking deployment readiness...</div>
+        <div class="readiness-grid">
+          <article class="readiness-card">
+            <h3>App and deployment</h3>
+            <ul id="setup-app" class="check-list"></ul>
+          </article>
+          <article class="readiness-card">
+            <h3>Supabase</h3>
+            <ul id="setup-supabase" class="check-list"></ul>
+          </article>
+          <article class="readiness-card">
+            <h3>Stripe</h3>
+            <ul id="setup-stripe" class="check-list"></ul>
+          </article>
+          <article class="readiness-card">
+            <h3>Retell</h3>
+            <ul id="setup-retell" class="check-list"></ul>
+          </article>
+          <article class="readiness-card">
+            <h3>Call safety</h3>
+            <ul id="setup-safety" class="check-list"></ul>
+          </article>
+        </div>
+        <details class="endpoint-details">
+          <summary>Webhook and Retell function URLs</summary>
+          <div id="setup-endpoints" class="endpoint-list"></div>
+        </details>
+      </section>
+      <section class="panel workflow-panel" aria-labelledby="workflow-heading">
+        <div>
+          <h2 id="workflow-heading">First safe test call</h2>
+          <p>Complete these steps in order. This page never binds a phone number or starts a real batch.</p>
+        </div>
+        <ol class="workflow-steps">
+          <li>Confirm setup readiness and the outbound migration.</li>
+          <li>Validate and import the demo CSV.</li>
+          <li>Edit one customer phone to your own E.164 number and save.</li>
+          <li>Confirm that exact number is in the server-side test allowlist.</li>
+          <li>Run “Check call gates” during the recipient-local calling window.</li>
+          <li>Start one test call only after every gate passes.</li>
+        </ol>
+        <p id="selected-call-status" class="selected-call-status">No customer call gates checked yet.</p>
+      </section>
+      <section class="panel import-panel">
+        <div>
+          <h2>Import demo CSV</h2>
+          <p>Dry run validates first. Imports never unpause customers or reopen paid invoices.</p>
+        </div>
+        <input id="csv-file" type="file" accept=".csv,text/csv" />
+        <button id="dry-run-import">Validate CSV</button>
+        <button id="commit-import" class="danger-muted" disabled>Import validated CSV</button>
+        <output id="import-result"></output>
+      </section>
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Customers and invoices</h2>
+            <p>Single-call actions still enforce local calling windows, status, pause, and test allowlist gates.</p>
+          </div>
+          <div class="table-actions">
+            <button id="batch-dry-run" class="secondary" disabled>Batch dry run (0)</button>
+            <button id="refresh" class="secondary">Refresh invoices</button>
+          </div>
+        </div>
+        <p class="batch-note">Batch controls on this page are dry-run only and never place calls.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Select</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Timezone</th>
+                <th>Invoice</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th>Call gates</th>
+                <th>Last call</th>
+                <th>Next follow-up</th>
+                <th>Notes</th>
+                <th>Outreach</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoice-rows"></tbody>
+          </table>
+        </div>
+        <p id="page-status" role="status"></p>
+      </section>
+    </main>
+    <template id="invoice-row-template">
+      <tr>
+        <td><input data-action="batch-select" type="checkbox" /></td>
+        <td data-field="customer"></td>
+        <td><input data-action="phone" type="tel" inputmode="tel" aria-label="Customer phone number" /></td>
+        <td data-field="timezone"></td>
+        <td data-field="invoice"></td>
+        <td data-field="amount"></td>
+        <td><select data-action="status"></select></td>
+        <td data-field="payment"></td>
+        <td class="gate-cell">
+          <span data-field="gate" class="gate-status">Not checked</span>
+          <button data-action="preflight" class="secondary">Check call gates</button>
+        </td>
+        <td data-field="last-call"></td>
+        <td data-field="next-followup"></td>
+        <td><textarea data-action="notes" rows="3"></textarea></td>
+        <td data-field="paused"></td>
+        <td class="row-actions">
+          <button data-action="save" class="secondary">Save</button>
+          <button data-action="payment">Payment link</button>
+          <button data-action="call" class="danger-muted" disabled>Start test call</button>
+          <button data-action="pause" class="secondary"></button>
+        </td>
+      </tr>
+    </template>
+    <script src="/outbound-assets/outbound.js" defer></script>
+  </body>
+</html>

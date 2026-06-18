@@ -8,5 +8,8 @@ export default defineConfig({
     globals: true,
     restoreMocks: true,
     clearMocks: true,
+    pool: "threads",
+    maxWorkers: 1,
+    fileParallelism: false,
   },
 });
