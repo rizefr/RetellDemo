@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content="Book an Elixis AI Audit to identify the business workflow most worth improving first." />
     <title>Book an AI Audit | Elixis Agency</title>
     <link rel="icon" href="/images/elixis-phoenix.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,8 +14,8 @@
       rel="stylesheet"
     />
     <link href="/styles.css" rel="stylesheet" />
-    <script src="/site-config.js?v=booking-page-20260606" defer></script>
-    <script src="/site.js?v=booking-page-20260606" defer></script>
+    <script src="/site-config.js?v=elixis-services-20260618" defer></script>
+    <script src="/site.js?v=elixis-services-20260618" defer></script>
     <style>
       body {
         min-height: 100dvh;
@@ -61,6 +62,17 @@
 
       .booking-page-back:hover {
         color: var(--gold-400);
+      }
+
+      .booking-page-nav {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+
+      .booking-page-nav .services-popover {
+        right: 0;
+        left: auto;
       }
 
       .booking-page-heading {
@@ -118,6 +130,19 @@
           min-height: 56px;
         }
 
+        .booking-page-nav {
+          gap: 12px;
+        }
+
+        .booking-page-nav .services-popover {
+          position: fixed;
+          top: 70px;
+          right: 10px;
+          left: 10px;
+          width: auto;
+          transform: none;
+        }
+
         .booking-page-heading {
           margin-top: 26px;
         }
@@ -151,12 +176,23 @@
             <img src="/images/elixis-phoenix.png" alt="" width="240" height="216" />
             <span>Elixis Agency</span>
           </a>
-          <a class="booking-page-back" href="/">Back to main site</a>
+          <div class="booking-page-nav">
+            <details class="services-menu booking-services-menu">
+              <summary class="booking-page-back service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+              <div class="services-popover" aria-label="Elixis AI services">
+                <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
+                <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
+                <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
+                <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+              </div>
+            </details>
+            <a class="booking-page-back" href="/">Home</a>
+          </div>
         </header>
 
         <section class="booking-page-heading" aria-labelledby="booking-page-title">
           <h1 id="booking-page-title">Book an AI Audit</h1>
-          <p>We’ll identify whether payment follow-up, front-desk coverage, or visibility is the best first workflow for your business.</p>
+          <p>We’ll identify whether Elixis Collect, Intake, Visibility, or a custom Elixis System is the best first move for your business.</p>
         </section>
 
         <section class="booking-page-panel" aria-label="Elixis Agency booking calendar">

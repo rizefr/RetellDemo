@@ -6,18 +6,18 @@
     <script>document.documentElement.classList.add("js");</script>
     <meta
       name="description"
-      content="Elixis Agency builds AI payment follow-up and front-desk systems, with optional search visibility support for growing businesses."
+      content="Elixis AI builds payment follow-up, call intake, visibility, and custom workflow systems that support your team without requiring a full rebuild."
     />
-    <title>AI Payment Follow-Up and Front Desk Systems | Elixis Agency</title>
+    <title>Elixis AI Business Systems | Collect, Intake & Visibility</title>
     <link rel="canonical" href="https://elixis.agency/" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="AI Payment Follow-Up and Front Desk Systems | Elixis Agency" />
-    <meta property="og:description" content="Practical AI workflows for unpaid invoices, customer calls, and optional search visibility support." />
+    <meta property="og:title" content="Elixis AI Business Systems | Collect, Intake & Visibility" />
+    <meta property="og:description" content="Practical systems for payment follow-up, customer intake, visibility, and custom business workflows." />
     <meta property="og:url" content="https://elixis.agency/" />
     <meta property="og:image" content="https://elixis.agency/images/elixis-logo.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AI Payment Follow-Up and Front Desk Systems | Elixis Agency" />
-    <meta name="twitter:description" content="AI systems that help businesses follow up on invoices, answer customers, and reduce repetitive work." />
+    <meta name="twitter:title" content="Elixis AI Business Systems | Collect, Intake & Visibility" />
+    <meta name="twitter:description" content="Business systems for unpaid invoices, customer calls, search visibility, and repetitive workflows." />
     <link rel="icon" href="/images/elixis-phoenix.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,8 +27,8 @@
     />
     <link href="/styles.css" rel="stylesheet" />
     <link href="/polish.css" rel="stylesheet" />
-    <script src="/site-config.js?v=agency-general-20260616" defer></script>
-    <script src="/site.js?v=agency-general-20260616" defer></script>
+    <script src="/site-config.js?v=elixis-services-20260618" defer></script>
+    <script src="/site.js?v=elixis-services-20260618" defer></script>
   </head>
   <body>
     <svg class="hidden" aria-hidden="true">
@@ -49,11 +49,16 @@
             <span>Elixis Agency</span>
           </a>
           <div class="nav-links">
-            <a class="nav-link" href="/collections/">AI Payment Follow-Up</a>
-            <a class="nav-link" href="/demo/">AI Front Desk</a>
-            <a class="nav-link" href="/ai-seo/">AI Visibility</a>
-            <a class="nav-link" href="#process">Process</a>
-            <a class="nav-link" href="/booking/">Book</a>
+            <details class="services-menu">
+              <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+              <div class="services-popover" aria-label="Elixis AI services">
+                <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
+                <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
+                <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
+                <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+              </div>
+            </details>
+            <a class="nav-link" href="#custom-workflows">Approach</a>
           </div>
           <a href="/booking/" class="button button-primary nav-cta">Book an AI Audit</a>
           <button data-menu-button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
@@ -61,10 +66,16 @@
           </button>
         </nav>
         <div data-mobile-menu class="section-wrap mobile-menu hidden">
-          <a class="nav-link" href="/collections/">AI Payment Follow-Up</a>
-          <a class="nav-link" href="/demo/">AI Front Desk</a>
-          <a class="nav-link" href="/ai-seo/">AI Visibility</a>
-          <a class="nav-link" href="#process">Process</a>
+          <details class="services-menu services-menu-mobile">
+            <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+            <div class="services-popover" aria-label="Elixis AI services">
+              <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
+              <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
+              <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
+              <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+            </div>
+          </details>
+          <a class="nav-link" href="#custom-workflows">Approach</a>
           <a href="/booking/" class="button button-primary">Book an AI Audit</a>
         </div>
       </header>
@@ -74,8 +85,9 @@
           <div class="mesh-field" aria-hidden="true"></div>
           <div class="section-wrap agency-hero-grid">
             <div class="hero-copy agency-hero-copy reveal">
-              <h1>AI Systems That Help Your Business Collect, Respond, and Grow</h1>
-              <p class="hero-subhead">Elixis builds practical AI workflows that follow up on unpaid invoices, answer customers, and reduce repetitive work without replacing your team.</p>
+              <p class="kicker">Elixis AI business systems</p>
+              <h1>Put Repetitive Business Work on a Better System</h1>
+              <p class="hero-subhead">Elixis builds focused systems for unpaid-invoice follow-up, customer intake, search visibility, and custom workflows without replacing your team or rebuilding everything.</p>
               <div class="hero-actions">
                 <a href="/booking/" class="button button-primary"><svg class="icon"><use href="#i-calendar" /></svg>Book an AI Audit</a>
                 <a href="#services" class="button button-secondary" data-scroll-target="services">Explore Services</a>
@@ -89,23 +101,23 @@
 
             <div class="agency-console reveal" aria-label="Elixis AI systems overview">
               <div class="agency-console-top">
-                <span>Elixis operating layer</span>
-                <span>Payments · Calls · Visibility</span>
+                <span>Elixis AI operating layer</span>
+                <span>Collect · Intake · Visibility</span>
               </div>
               <div class="workflow-lanes">
                 <article>
                   <span class="lane-dot gold"></span>
-                  <h2>Payment follow-up</h2>
+                  <h2>Elixis Collect</h2>
                   <p>Follow up on unpaid B2B invoices with approved scripts and timing.</p>
                 </article>
                 <article>
                   <span class="lane-dot"></span>
-                  <h2>Front desk</h2>
+                  <h2>Elixis Intake</h2>
                   <p>Answer customers, capture details, route urgent issues, and start booking.</p>
                 </article>
                 <article>
                   <span class="lane-dot blue"></span>
-                  <h2>Visibility add-on</h2>
+                  <h2>Elixis Visibility</h2>
                   <p>Find website, Google, review, and content gaps that limit discovery.</p>
                 </article>
               </div>
@@ -128,63 +140,70 @@
           <div class="section-wrap">
             <div class="section-heading reveal">
               <h2>Start with the workflow creating the most drag.</h2>
-              <p>Most teams start with unpaid invoices or customer calls. Elixis maps one workflow, tests it with approved guardrails, and expands only when it earns the next step.</p>
+              <p>Most teams start with unpaid invoices or customer calls. Choose a focused Elixis AI system, test it with approved guardrails, and expand only when it earns the next step.</p>
             </div>
             <div class="primary-service-grid reveal">
               <article class="service-card service-card-featured service-card-primary">
-                <span class="service-card-label">Primary service</span>
-                <h3>AI Payment Follow-Up</h3>
-                <p>Run structured, professional follow-up on unpaid B2B invoices without burying staff in reminders.</p>
+                <span class="service-card-label">Primary · Priority</span>
+                <h3>Elixis Collect</h3>
+                <p>Keep unpaid B2B invoices from sitting without consistent follow-up or consuming hours of staff time.</p>
                 <ul>
                   <li>Client-approved scripts</li>
                   <li>Call, email, SMS, and mail concepts</li>
                   <li>Outcome logging and escalation rules</li>
                 </ul>
-                <a href="/collections/" class="text-link">Explore AI Payment Follow-Up <svg class="icon"><use href="#i-arrow" /></svg></a>
+                <a href="/collections/" class="text-link">Explore Elixis Collect <svg class="icon"><use href="#i-arrow" /></svg></a>
               </article>
               <article class="service-card service-card-primary">
                 <span class="service-card-label">Primary service</span>
-                <h3>AI Front Desk</h3>
-                <p>Answer customer calls when your team is busy, capture details, and route urgent issues.</p>
+                <h3>Elixis Intake</h3>
+                <p>Cover inbound calls, capture the right details, route urgency, and support booking when your team is busy.</p>
                 <ul>
                   <li>Inbound call handling</li>
                   <li>Lead capture and useful summaries</li>
                   <li>Urgent routing rules</li>
                 </ul>
-                <a href="/demo/" class="text-link">View the AI Front Desk Demo <svg class="icon"><use href="#i-arrow" /></svg></a>
+                <a href="/demo/" class="text-link">View the Elixis Intake Demo <svg class="icon"><use href="#i-arrow" /></svg></a>
               </article>
             </div>
             <div class="support-service-grid reveal">
               <article class="support-service-card">
                 <span class="service-card-label service-card-label-optional">Optional add-on</span>
-                <h3>AI Visibility</h3>
+                <h3>Elixis Visibility</h3>
                 <p>Review the website, Google presence, reviews, and content gaps that make competitors easier to discover.</p>
-                <a href="/ai-seo/" class="text-link">Explore AI Visibility <svg class="icon"><use href="#i-arrow" /></svg></a>
+                <a href="/ai-seo/" class="text-link">Explore Elixis Visibility <svg class="icon"><use href="#i-arrow" /></svg></a>
               </article>
-              <article class="audit-entry-card">
-                <span class="service-card-label">Start here</span>
-                <div>
-                  <h3>AI Audit</h3>
-                  <p>We’ll identify which workflow is most worth automating first, without requiring a full rebuild.</p>
-                </div>
-                <a href="/booking/" class="button button-primary">Start with an AI Audit</a>
+              <article class="support-service-card support-service-card-systems">
+                <span class="service-card-label">Custom system</span>
+                <h3>Elixis Systems</h3>
+                <p>For businesses with a specific repetitive workflow, we map it and build a tailored automation plan.</p>
+                <a href="#custom-workflows" class="text-link" data-scroll-target="custom-workflows">Explore Elixis Systems <svg class="icon"><use href="#i-arrow" /></svg></a>
               </article>
             </div>
+            <article class="audit-entry-card audit-entry-wide reveal">
+              <span class="service-card-label">First step</span>
+              <div>
+                <h3>Start with an AI Audit</h3>
+                <p>We’ll identify which workflow is most worth automating first, without requiring a full rebuild.</p>
+              </div>
+              <a href="/booking/" class="button button-primary">Book an AI Audit</a>
+            </article>
           </div>
         </section>
 
-        <section id="process" class="section-block">
+        <section id="custom-workflows" class="section-block">
           <div class="section-wrap process-grid">
             <div class="section-copy reveal">
-              <h2>Start with one workflow, not a full rebuild.</h2>
-              <p>AI works best when it is mapped to a specific business process: the call that needs answering, the invoice that needs follow-up, or the search gap that keeps leads from finding you.</p>
-              <p>Elixis designs around your current calls, customers, scripts, policies, and handoffs so the system supports the team you already have.</p>
+              <p class="kicker">Elixis Systems</p>
+              <h2>Custom systems for the workflow that does not fit a template.</h2>
+              <p>For businesses with a specific repetitive workflow, Elixis can map the process and build a custom automation plan around the tools, policies, and handoffs already in place.</p>
+              <p>This is a tailored option for valuable operational work, not a low-cost default package or a full rebuild.</p>
             </div>
             <div class="process-steps reveal">
               <article><span>01</span><h3>Map the current process</h3><p>Calls, leads, invoices, service details, handoffs, and follow-up rules.</p></article>
-              <article><span>02</span><h3>Build a guarded workflow</h3><p>Scripts, routing rules, timing, escalation, and human handoff are approved first.</p></article>
+              <article><span>02</span><h3>Design the right system</h3><p>Define the automation, scripts, routing, timing, integrations, and human handoff.</p></article>
               <article><span>03</span><h3>Test before going live</h3><p>Run the workflow against realistic scenarios before customers experience it.</p></article>
-              <article><span>04</span><h3>Review and expand</h3><p>Use the first workflow to decide what should be automated next.</p></article>
+              <article><span>04</span><h3>Review before expanding</h3><p>Use evidence from the first workflow to decide whether broader automation is worth it.</p></article>
             </div>
           </div>
         </section>
@@ -199,7 +218,7 @@
               <article><strong>Team support</strong><span>This does not replace your staff. It gives them better coverage, cleaner handoffs, and fewer repetitive tasks.</span></article>
               <article><strong>Process fit</strong><span>The workflow is built around your current scripts, policies, customers, and tools.</span></article>
               <article><strong>Testable first</strong><span>Scripts, scenarios, and edge cases are reviewed before expanding automation across the business.</span></article>
-              <article><strong>Business utility</strong><span>Calls, collections, follow-up, and visibility are treated as connected operations, not separate projects.</span></article>
+              <article><strong>Business utility</strong><span>Collect, Intake, Visibility, and custom systems are treated as connected operations, not isolated AI projects.</span></article>
             </div>
           </div>
         </section>
@@ -225,9 +244,9 @@
         <div class="section-wrap footer-grid">
           <div>
             <a href="/" class="brand-link"><img src="/images/elixis-phoenix.png" class="brand-mark" alt="" /><span>Elixis Agency</span></a>
-            <p>AI payment follow-up and front-desk systems, with visibility support when it fits the workflow.</p>
+            <p>Elixis AI systems for payment follow-up, customer intake, visibility, and custom business workflows.</p>
           </div>
-          <div><h3>Services</h3><a href="/collections/">AI Payment Follow-Up</a><a href="/demo/">AI Front Desk</a><a href="/ai-seo/">AI Visibility</a><a href="/booking/">Start with an AI Audit</a></div>
+          <div><h3>Services</h3><a href="/collections/">Elixis Collect</a><a href="/demo/">Elixis Intake</a><a href="/ai-seo/">Elixis Visibility</a><a href="/#custom-workflows">Elixis Systems</a><a href="/booking/">Start with an AI Audit</a></div>
           <div class="footer-contact">
             <h3>Contact</h3>
             <span>Contact phone</span>

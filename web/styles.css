@@ -112,6 +112,106 @@ button {
   gap: clamp(16px, 2vw, 28px);
 }
 
+.services-menu {
+  position: relative;
+}
+
+.services-menu summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.services-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.service-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.service-menu-trigger > span {
+  color: var(--gold-400);
+  font-size: 0.9rem;
+  transition: transform 180ms ease;
+}
+
+.services-menu[open] > .service-menu-trigger > span {
+  transform: rotate(180deg);
+}
+
+.services-menu.has-current-service > .service-menu-trigger,
+.services-menu[open] > .service-menu-trigger {
+  color: var(--ivory-100);
+}
+
+.services-menu.has-current-service > .service-menu-trigger::after,
+.services-menu[open] > .service-menu-trigger::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.services-popover {
+  position: absolute;
+  top: calc(100% + 18px);
+  left: 50%;
+  z-index: 80;
+  display: grid;
+  width: min(360px, calc(100vw - 32px));
+  gap: 4px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 20px;
+  padding: 9px;
+  background:
+    linear-gradient(150deg, rgba(8, 27, 49, 0.98), rgba(2, 9, 20, 0.99)),
+    radial-gradient(circle at 86% 10%, rgba(58, 125, 255, 0.16), transparent 16rem);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(22px);
+}
+
+.services-popover a {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 12px;
+  color: var(--ivory-100);
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.services-popover a:hover,
+.services-popover a[aria-current="page"] {
+  border-color: rgba(222, 182, 117, 0.25);
+  background: rgba(199, 156, 90, 0.09);
+  transform: translateX(2px);
+}
+
+.services-popover a > span {
+  color: var(--gold-400);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.services-popover strong {
+  display: grid;
+  gap: 2px;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.services-popover small {
+  color: rgba(184, 195, 208, 0.78);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
 .nav-link {
   position: relative;
   color: rgba(248, 244, 235, 0.68);
@@ -173,6 +273,23 @@ button {
 .mobile-menu {
   @apply grid gap-4 border-t py-5 lg:hidden;
   border-color: var(--line);
+}
+
+.services-menu-mobile {
+  width: 100%;
+}
+
+.services-menu-mobile > .service-menu-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.services-menu-mobile .services-popover {
+  position: static;
+  width: 100%;
+  margin-top: 14px;
+  transform: none;
+  box-shadow: none;
 }
 
 .button {
@@ -784,6 +901,12 @@ button {
   align-items: center;
 }
 
+.process-grid,
+.proof-grid {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: clamp(40px, 5vw, 64px);
+}
+
 .service-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -801,7 +924,7 @@ button {
 }
 
 .support-service-grid {
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 18px;
 }
 
@@ -864,8 +987,14 @@ button {
 
 .support-service-card {
   display: flex;
-  min-height: 236px;
+  min-height: 248px;
   flex-direction: column;
+}
+
+.support-service-card-systems {
+  background:
+    linear-gradient(145deg, rgba(58, 125, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    radial-gradient(circle at 90% 10%, rgba(199, 156, 90, 0.1), transparent 16rem);
 }
 
 .support-service-card h3,
@@ -897,6 +1026,10 @@ button {
   background:
     linear-gradient(145deg, rgba(199, 156, 90, 0.1), rgba(255, 255, 255, 0.035)),
     radial-gradient(circle at 90% 10%, rgba(58, 125, 255, 0.12), transparent 16rem);
+}
+
+.audit-entry-wide {
+  margin-top: 18px;
 }
 
 .audit-entry-card .service-card-label {
@@ -1109,7 +1242,7 @@ button {
   font-weight: 600;
 }
 
-.collections-timeline {
+.timeline.collections-timeline {
   grid-template-columns: repeat(3, 1fr);
   grid-auto-rows: 1fr;
   align-items: stretch;

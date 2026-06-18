@@ -3,16 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Try an AI front desk demo that answers service calls, captures details, routes urgent requests, and helps customers start booking." />
-    <title>AI Front Desk Demo for Service Businesses | Elixis Agency</title>
+    <meta name="description" content="Try Elixis Intake, an AI receptionist demo for service businesses that captures caller details, routes urgent requests, and supports booking before launch." />
+    <title>Elixis Intake | AI Receptionist Demo for Service Businesses</title>
     <link rel="canonical" href="https://elixis.agency/demo/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Elixis Intake | AI Receptionist Demo" />
+    <meta property="og:description" content="See an adaptable AI call-intake workflow handle a service-business conversation." />
+    <meta property="og:url" content="https://elixis.agency/demo/" />
+    <meta property="og:image" content="https://elixis.agency/images/elixis-logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Elixis Intake | AI Receptionist Demo" />
+    <meta name="twitter:description" content="A practical call-intake demo for service and appointment-based businesses." />
     <link rel="icon" href="/images/elixis-phoenix.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link href="/styles.css" rel="stylesheet" />
-    <script src="/site-config.js?v=agency-general-20260616" defer></script>
-    <script src="/site.js?v=agency-general-20260616" defer></script>
+    <script src="/site-config.js?v=elixis-services-20260618" defer></script>
+    <script src="/site.js?v=elixis-services-20260618" defer></script>
     <style>
       .demo-page-shell {
         width: min(100% - 32px, 1120px);
@@ -130,10 +138,16 @@
           </a>
           <div class="nav-links">
             <a class="nav-link" href="/">Home</a>
-            <a class="nav-link" href="/collections/">AI Payment Follow-Up</a>
-            <a class="nav-link" href="/demo/" aria-current="page">AI Front Desk</a>
-            <a class="nav-link" href="/ai-seo/">AI Visibility</a>
-            <a class="nav-link" href="/booking/">Book</a>
+            <details class="services-menu has-current-service">
+              <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+              <div class="services-popover" aria-label="Elixis AI services">
+                <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
+                <a href="/demo/" aria-current="page"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
+                <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
+                <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+              </div>
+            </details>
+            <a class="nav-link" href="/#custom-workflows">Approach</a>
           </div>
           <a href="/booking/" class="button button-primary nav-cta">Book an AI Audit</a>
           <button data-menu-button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
@@ -142,9 +156,16 @@
         </nav>
         <div data-mobile-menu class="section-wrap mobile-menu hidden">
           <a class="nav-link" href="/">Home</a>
-          <a class="nav-link" href="/collections/">AI Payment Follow-Up</a>
-          <a class="nav-link" href="/demo/" aria-current="page">AI Front Desk</a>
-          <a class="nav-link" href="/ai-seo/">AI Visibility</a>
+          <details class="services-menu services-menu-mobile has-current-service">
+            <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+            <div class="services-popover" aria-label="Elixis AI services">
+              <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
+              <a href="/demo/" aria-current="page"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
+              <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
+              <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+            </div>
+          </details>
+          <a class="nav-link" href="/#custom-workflows">Approach</a>
           <a href="/booking/" class="button button-primary">Book an AI Audit</a>
         </div>
       </header>
@@ -152,9 +173,10 @@
       <main class="demo-page-shell">
         <section class="demo-page-heading" aria-labelledby="demo-title">
           <div>
-            <h1 id="demo-title">See an AI Front Desk Handle a Service Call</h1>
+            <p class="kicker">Elixis AI · Intake</p>
+            <h1 id="demo-title">See Elixis Intake Handle a Service Call</h1>
           </div>
-          <p>This demo uses a pest-control scenario because the current voice agent is trained for that example. The same receptionist structure can be adapted for other service and appointment-based businesses.</p>
+          <p>This demo uses pest control as one concrete example. Elixis Intake can be adapted to other service and appointment-based businesses using their own questions, routing rules, and booking process.</p>
         </section>
 
         <section class="demo-demo-layout" aria-label="AI front desk voice demo">
@@ -168,7 +190,7 @@
           </div>
           <aside class="demo-side-card">
             <h2>What this example shows</h2>
-            <p>The goal is a front-desk call path: answer clearly, capture the issue, route urgency, and hand your team a useful next step.</p>
+            <p>The goal is an intake path that supports your team: answer clearly, capture the issue, route urgency, and create a useful next step.</p>
             <ul>
               <li>Captures pest issue and contact details</li>
               <li>Routes urgent situations using approved rules</li>

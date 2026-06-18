@@ -1,5 +1,6 @@
 const menuButton = document.querySelector("[data-menu-button]");
 const mobileMenu = document.querySelector("[data-mobile-menu]");
+const serviceMenus = document.querySelectorAll(".services-menu");
 const retellModal = document.querySelector("[data-retell-modal]");
 const retellOpeners = document.querySelectorAll("[data-open-retell]");
 const retellClosers = document.querySelectorAll("[data-close-retell]");
@@ -198,10 +199,28 @@ menuButton?.addEventListener("click", () => {
   mobileMenu?.classList.toggle("hidden", isOpen);
 });
 
+serviceMenus.forEach((menu) => {
+  menu.addEventListener("toggle", () => {
+    if (!menu.open) return;
+    serviceMenus.forEach((otherMenu) => {
+      if (otherMenu !== menu) otherMenu.open = false;
+    });
+  });
+});
+
+document.addEventListener("click", (event) => {
+  serviceMenus.forEach((menu) => {
+    if (!menu.contains(event.target)) menu.open = false;
+  });
+});
+
 document.querySelectorAll("[data-mobile-menu] a").forEach((link) => {
   link.addEventListener("click", () => {
     menuButton?.setAttribute("aria-expanded", "false");
     mobileMenu?.classList.add("hidden");
+    serviceMenus.forEach((menu) => {
+      menu.open = false;
+    });
   });
 });
 
@@ -242,7 +261,11 @@ retellOpeners.forEach((button) => button.addEventListener("click", openRetellMod
 retellClosers.forEach((button) => button.addEventListener("click", closeRetellModal));
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeRetellModal();
+  if (event.key !== "Escape") return;
+  closeRetellModal();
+  serviceMenus.forEach((menu) => {
+    menu.open = false;
+  });
 });
 
 const revealObserver = new IntersectionObserver(
