@@ -16,13 +16,75 @@ type SetupReport = {
 
 const OUTBOUND_VOICE_SETTINGS = {
   voice_model: "eleven_flash_v2_5" as const,
-  voice_speed: 1.12,
+  voice_speed: 1.02,
   voice_temperature: 1.2,
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,
   enable_backchannel: true,
   begin_message_delay_ms: 250,
 };
+
+const OUTBOUND_POST_CALL_ANALYSIS = [
+  {
+    type: "boolean" as const,
+    name: "identity_confirmed",
+    description: "Whether the person explicitly confirmed the requested first name.",
+    required: false,
+  },
+  {
+    type: "boolean" as const,
+    name: "payment_link_requested",
+    description: "Whether the person explicitly requested or agreed to receive the secure payment link.",
+    required: false,
+  },
+  {
+    type: "enum" as const,
+    name: "delivery_preference",
+    description: "The explicitly requested payment-link delivery method.",
+    choices: ["text", "email", "none"],
+    required: false,
+  },
+  {
+    type: "boolean" as const,
+    name: "human_requested",
+    description: "Whether the person explicitly asked to speak with a human.",
+    required: false,
+  },
+  {
+    type: "enum" as const,
+    name: "objection_type",
+    description: "The clearest explicit objection, or none.",
+    choices: [
+      "none",
+      "already_paid",
+      "wrong_number",
+      "unable_to_pay",
+      "callback",
+      "do_not_contact",
+      "proof_requested",
+      "dispute",
+      "attorney_represented",
+      "scam_concern",
+      "payment_link_issue",
+    ],
+    required: false,
+  },
+  {
+    type: "enum" as const,
+    name: "next_action",
+    description: "The safest next operational action supported by the call.",
+    choices: [
+      "none",
+      "prepare_payment_link",
+      "deliver_payment_link",
+      "verify_payment",
+      "scheduled_followup",
+      "manual_review",
+      "outreach_stopped_manual_review",
+    ],
+    required: false,
+  },
+];
 
 async function findExistingOutboundAgent() {
   const client = getRetellClient();
@@ -85,6 +147,7 @@ async function updateExistingOutboundAgent(
     data_storage_setting: "everything_except_pii",
     data_storage_retention_days: 30,
     analysis_summary_prompt: "Summarize the first-party B2B invoice follow-up outcome without adding sensitive identifiers.",
+    post_call_analysis_data: OUTBOUND_POST_CALL_ANALYSIS,
   });
   await publishAgentVersion(updatedAgent.agent_id, updatedAgent.version);
 
@@ -186,6 +249,7 @@ async function main() {
     data_storage_setting: "everything_except_pii",
     data_storage_retention_days: 30,
     analysis_summary_prompt: "Summarize the B2B invoice follow-up outcome without adding sensitive identifiers.",
+    post_call_analysis_data: OUTBOUND_POST_CALL_ANALYSIS,
   });
   await publishAgentVersion(agent.agent_id, agent.version);
   const readback = await client.agent.retrieve(agent.agent_id);

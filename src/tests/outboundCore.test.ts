@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AFTER_HOURS_TEST_CONFIRMATION,
+  evaluateAfterHoursTestOverride,
   evaluateOutboundCallEligibility,
   isWithinOutboundCallingWindow,
   validateBatchMode,
@@ -49,6 +51,27 @@ describe("outbound calling safety", () => {
     expect(
       validateBatchMode({ mode: "real", testMode: false, confirmation: "START_REAL_OUTBOUND_BATCH" }).allowed,
     ).toBe(true);
+  });
+
+  it("keeps after-hours calls blocked unless every self-test override gate passes", () => {
+    const base = {
+      overrideConfigured: true,
+      testMode: true,
+      maxBatchSize: 1,
+      phoneNumber: "+13475850249",
+      allowlist: ["+13475850249"],
+      acknowledged: true,
+      confirmation: AFTER_HOURS_TEST_CONFIRMATION,
+      reason: "self_test",
+    };
+
+    expect(evaluateAfterHoursTestOverride(base)).toEqual({ allowed: true, reason: "after_hours_self_test" });
+    expect(evaluateAfterHoursTestOverride({ ...base, overrideConfigured: false }).allowed).toBe(false);
+    expect(evaluateAfterHoursTestOverride({ ...base, testMode: false }).allowed).toBe(false);
+    expect(evaluateAfterHoursTestOverride({ ...base, maxBatchSize: 2 }).allowed).toBe(false);
+    expect(evaluateAfterHoursTestOverride({ ...base, allowlist: [] }).reason).toBe("test_number_not_allowlisted");
+    expect(evaluateAfterHoursTestOverride({ ...base, acknowledged: false }).allowed).toBe(false);
+    expect(evaluateAfterHoursTestOverride({ ...base, confirmation: "wrong" }).allowed).toBe(false);
   });
 });
 
@@ -116,6 +139,10 @@ describe("Stripe metadata and outcome policies", () => {
     expect(OUTBOUND_OUTCOMES).toContain("confirmed_payment_link_requested");
     expect(OUTBOUND_OUTCOMES).toContain("attorney_represented");
     expect(OUTBOUND_OUTCOMES).toContain("sms_pending_manual");
+    expect(OUTBOUND_OUTCOMES).toContain("email_requested");
+    expect(OUTBOUND_OUTCOMES).toContain("email_sent");
+    expect(OUTBOUND_OUTCOMES).toContain("email_pending_manual");
+    expect(OUTBOUND_OUTCOMES).toContain("email_failed");
     for (const outcome of OUTBOUND_OUTCOMES) {
       expect(applyOutcomePolicy(outcome)).toBeDefined();
     }

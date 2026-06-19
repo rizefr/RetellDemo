@@ -16,6 +16,10 @@ export const OUTBOUND_OUTCOMES = [
   "payment_link_issue",
   "sms_failed",
   "sms_pending_manual",
+  "email_requested",
+  "email_sent",
+  "email_pending_manual",
+  "email_failed",
   "manual_review",
   "unknown",
 ] as const;

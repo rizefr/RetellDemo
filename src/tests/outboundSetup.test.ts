@@ -32,9 +32,14 @@ describe("outbound setup summary", () => {
         outboundRetellFlowConfigured: true,
         outboundRetellWebhookSecretConfigured: true,
         outboundSmsEnabled: false,
+        emailProvider: "none",
+        emailProviderKeyConfigured: false,
+        outboundPaymentEmailFromConfigured: false,
+        outboundPaymentEmailEnabled: false,
         testMode: true,
         allowlistCount: 1,
         maxBatchSize: 3,
+        afterHoursOverrideEnabled: false,
       },
     });
 
@@ -71,9 +76,14 @@ describe("outbound setup summary", () => {
         outboundRetellFlowConfigured: true,
         outboundRetellWebhookSecretConfigured: true,
         outboundSmsEnabled: false,
+        emailProvider: "none",
+        emailProviderKeyConfigured: false,
+        outboundPaymentEmailFromConfigured: false,
+        outboundPaymentEmailEnabled: false,
         testMode: true,
         allowlistCount: 1,
         maxBatchSize: 3,
+        afterHoursOverrideEnabled: false,
       },
     });
     const serialized = JSON.stringify(summary);
@@ -129,13 +139,19 @@ describe("outbound setup route and page", () => {
     const script = fs.readFileSync(path.resolve(process.cwd(), "public/outbound/outbound.js"), "utf8");
 
     expect(html).toContain("Setup readiness");
-    expect(html).toContain("First safe test call");
+    expect(html).toContain("Single test call controls");
     expect(html).toContain("Batch dry run");
+    expect(html).toContain("Call history");
+    expect(html).toContain("Payment links");
+    expect(html).toContain("Events and debugging");
+    expect(html).toContain("After-hours self-test override");
     expect(html).toContain('data-action="phone"');
     expect(html).toContain('data-action="call"');
     expect(html).toMatch(/data-action="call"[^>]*disabled/);
     expect(script).toContain("/api/outbound/setup/status");
+    expect(script).toContain("/api/outbound/dashboard");
     expect(script).toContain("/api/outbound/calls/dry-run");
+    expect(script).toContain("I UNDERSTAND THIS IS AN AFTER-HOURS TEST");
     expect(script).toContain('mode: "dry_run"');
   });
 });

@@ -37,9 +37,14 @@ export type OutboundSetupConfiguration = {
   outboundRetellFlowConfigured: boolean;
   outboundRetellWebhookSecretConfigured: boolean;
   outboundSmsEnabled: boolean;
+  emailProvider: "none" | "resend";
+  emailProviderKeyConfigured: boolean;
+  outboundPaymentEmailFromConfigured: boolean;
+  outboundPaymentEmailEnabled: boolean;
   testMode: boolean;
   allowlistCount: number;
   maxBatchSize: number;
+  afterHoursOverrideEnabled: boolean;
 };
 
 function emptyTableStatus(): Record<OutboundTableName, boolean> {
@@ -181,11 +186,25 @@ export function buildOutboundSetupSummary(input: {
         "log-outcome",
         "create-payment-link",
         "send-payment-sms",
+        "send-payment-email",
         "request-human-transfer",
         "schedule-followup",
       ].map((name) => `${operationalBaseUrl}/api/outbound/retell/${name}`),
       sms_mode: input.configuration.outboundSmsEnabled ? "enabled_requires_provider_verification" : "disabled_manual",
       latest_event: input.database.latestRetellEvent,
+    },
+    email: {
+      provider: input.configuration.emailProvider,
+      provider_key_configured: input.configuration.emailProviderKeyConfigured,
+      from_address_configured: input.configuration.outboundPaymentEmailFromConfigured,
+      sending_enabled: input.configuration.outboundPaymentEmailEnabled,
+      mode:
+        input.configuration.outboundPaymentEmailEnabled &&
+        input.configuration.emailProvider !== "none" &&
+        input.configuration.emailProviderKeyConfigured &&
+        input.configuration.outboundPaymentEmailFromConfigured
+          ? "enabled"
+          : "disabled_manual",
     },
     call_safety: {
       test_mode: input.configuration.testMode,
@@ -194,6 +213,7 @@ export function buildOutboundSetupSummary(input: {
       max_batch_size: input.configuration.maxBatchSize,
       calling_window: "Monday-Friday, 10:00-16:00 recipient local time",
       real_batch_available_in_ui: false,
+      after_hours_test_override_enabled: input.configuration.afterHoursOverrideEnabled,
     },
     ready_for_browser_setup: Boolean(
       configuredBaseUrl &&
@@ -236,9 +256,14 @@ export async function getOutboundSetupStatus(detectedBaseUrl: string) {
       outboundRetellFlowConfigured: Boolean(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID),
       outboundRetellWebhookSecretConfigured: Boolean(env.OUTBOUND_RETELL_WEBHOOK_SECRET),
       outboundSmsEnabled: env.OUTBOUND_RETELL_SMS_ENABLED,
+      emailProvider: env.EMAIL_PROVIDER,
+      emailProviderKeyConfigured: Boolean(env.EMAIL_PROVIDER_API_KEY),
+      outboundPaymentEmailFromConfigured: Boolean(env.OUTBOUND_PAYMENT_EMAIL_FROM),
+      outboundPaymentEmailEnabled: env.OUTBOUND_PAYMENT_EMAIL_ENABLED,
       testMode: env.OUTBOUND_TEST_MODE,
       allowlistCount: env.OUTBOUND_TEST_PHONE_ALLOWLIST.split(",").filter((value) => value.trim()).length,
       maxBatchSize: env.OUTBOUND_MAX_BATCH_SIZE,
+      afterHoursOverrideEnabled: env.OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE,
     },
   });
 }

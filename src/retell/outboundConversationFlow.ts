@@ -4,6 +4,7 @@ const OUTBOUND_TOOL_IDS = {
   logOutcome: "outbound_log_outcome",
   createPaymentLink: "outbound_create_payment_link",
   sendPaymentSms: "outbound_send_payment_sms",
+  sendPaymentEmail: "outbound_send_payment_email",
   requestHumanTransfer: "outbound_request_human_transfer",
   scheduleFollowup: "outbound_schedule_followup",
 } as const;
@@ -26,6 +27,10 @@ const OUTBOUND_OUTCOME_VALUES = [
   "payment_link_issue",
   "sms_failed",
   "sms_pending_manual",
+  "email_requested",
+  "email_sent",
+  "email_pending_manual",
+  "email_failed",
   "manual_review",
   "unknown",
 ] as const;
@@ -84,6 +89,9 @@ Use only after the callee clearly agrees to receive or use the secure payment li
 send_payment_sms:
 Use only after create_payment_link and only after the callee agreed to receive a text. SMS is disabled/manual in this demo. Read the result carefully. If sent is false or status is sms_pending_manual, do not say a text was sent.
 
+send_payment_email:
+Use only after create_payment_link when the callee explicitly prefers email and confirms that the email on file is still the best address. Read the result carefully. If sent is false, do not claim an email was sent. Do not ask the caller to dictate a new email address; log the manual follow-up instead.
+
 schedule_followup:
 Use after callback_requested, confirmed_payment_link_requested, or sms_pending_manual when follow-up should be stored. It stores tasks only; it does not execute outreach.
 
@@ -106,6 +114,7 @@ Use after the final safe ending or when the call should end. Do not leave voicem
 6. Never leave voicemail. If voicemail is detected by the platform, the configured action is hangup.
 7. Only offer the exact full-amount secure payment link.
 8. Do not claim SMS was sent unless send_payment_sms returns sent true. In this demo, expect sent false and explain the team will follow up.
+8a. Do not claim email was sent unless send_payment_email returns sent true. If email is unavailable or disabled, say the team will follow up with the secure link.
 9. If the person refuses, objects, disputes, asks for proof, says wrong number, says attorney, says scam, says stop calling, or asks for a human, log the matching outcome and end or transfer.
 10. Do not debate objections. Use the default safe ending.
 11. If a custom tool fails, do not retry it repeatedly and do not claim it succeeded. Say the team will review the request, then end cleanly.
@@ -115,7 +124,10 @@ Use after the final safe ending or when the call should end. Do not leave voicem
 # Outcome Handling
 
 Payment accepted:
-If they agree to the link, call log_outcome with confirmed_payment_link_requested, then call create_payment_link. Do not read the URL aloud. If they ask for a text, call send_payment_sms. If SMS is pending/manual or failed, say: "I can note that you'd like the payment link sent. The team will follow up with the secure link." Then call schedule_followup with reason payment_link_requested and end_call.
+If they agree to the link, call log_outcome with confirmed_payment_link_requested, then call create_payment_link. Do not read the URL aloud. Say: "I can prepare a secure payment link. Text is usually easiest, but if you prefer email I can note that instead."
+If they ask for text, call send_payment_sms. If SMS is pending/manual or failed, say: "I can note that you'd like the secure link by text. The team will follow up with it."
+If they ask for email, ask: "Is the email on file still the best one?" If yes, call send_payment_email. If sent is true, say: "Thanks. I've sent the secure payment link to the email on file." If sent is false, say: "I'll note that you prefer email and have the team follow up with the secure link." Do not collect a new email address by voice.
+After either delivery path, call schedule_followup with reason payment_link_requested and end_call.
 
 Payment link declined without another objection:
 Do not push again. Call log_outcome with manual_review and note that the person declined the link, use the default safe ending, and end_call. Use unable_to_pay only when the person explicitly says they cannot pay.
@@ -207,7 +219,6 @@ function functionTool(
     description,
     url: `${baseUrl}${path}`,
     method: "POST",
-    args_at_root: true,
     timeout_ms: 15000,
     speak_during_execution: false,
     speak_after_execution: true,
@@ -259,6 +270,18 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       {
         sms_sent: "$.sent",
         sms_status: "$.status",
+      },
+    ),
+    functionTool(
+      baseUrl,
+      "send_payment_email",
+      "/api/outbound/retell/send-payment-email",
+      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false.",
+      {},
+      [],
+      {
+        email_sent: "$.sent",
+        email_status: "$.status",
       },
     ),
     functionTool(
@@ -347,6 +370,23 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_4", arguments: "{\"reason\":\"payment_link_requested\"}" },
             { role: "tool_call_result", tool_call_id: "tool_4", content: "{\"scheduled\":true,\"task_count\":4}" },
             { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_5", arguments: "{}" },
+          ],
+        },
+        {
+          id: "payment_email_manual_example",
+          transcript: [
+            { role: "agent", content: "I can prepare a secure payment link. Text is usually easiest, but if you prefer email I can note that instead." },
+            { role: "user", content: "Email is better." },
+            { role: "agent", content: "Is the email on file still the best one?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller requested the secure payment link by email.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
+            { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
           ],
         },
         {

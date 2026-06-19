@@ -28,40 +28,42 @@
       "type": "custom",
       "name": "log_outcome",
       "url": "https://elixis.agency/api/outbound/retell/log-outcome",
-      "method": "POST",
-      "args_at_root": true
+      "method": "POST"
     },
     {
       "tool_id": "outbound_create_payment_link",
       "type": "custom",
       "name": "create_payment_link",
       "url": "https://elixis.agency/api/outbound/retell/create-payment-link",
-      "method": "POST",
-      "args_at_root": true
+      "method": "POST"
     },
     {
       "tool_id": "outbound_send_payment_sms",
       "type": "custom",
       "name": "send_payment_sms",
       "url": "https://elixis.agency/api/outbound/retell/send-payment-sms",
-      "method": "POST",
-      "args_at_root": true
+      "method": "POST"
+    },
+    {
+      "tool_id": "outbound_send_payment_email",
+      "type": "custom",
+      "name": "send_payment_email",
+      "url": "https://elixis.agency/api/outbound/retell/send-payment-email",
+      "method": "POST"
     },
     {
       "tool_id": "outbound_request_human_transfer",
       "type": "custom",
       "name": "request_human_transfer",
       "url": "https://elixis.agency/api/outbound/retell/request-human-transfer",
-      "method": "POST",
-      "args_at_root": true
+      "method": "POST"
     },
     {
       "tool_id": "outbound_schedule_followup",
       "type": "custom",
       "name": "schedule_followup",
       "url": "https://elixis.agency/api/outbound/retell/schedule-followup",
-      "method": "POST",
-      "args_at_root": true
+      "method": "POST"
     }
   ],
   "nodes": [
@@ -73,6 +75,7 @@
         "outbound_log_outcome",
         "outbound_create_payment_link",
         "outbound_send_payment_sms",
+        "outbound_send_payment_email",
         "outbound_request_human_transfer",
         "outbound_schedule_followup"
       ]

@@ -1,4 +1,5 @@
 import express from "express";
+import { buildOutboundCallAttemptPatch } from "../services/outboundCallAnalysis";
 import { buildBaselineFollowups } from "../services/outboundFollowups";
 import { applyOutcomePolicy, type OutboundOutcome } from "../services/outboundOutcomes";
 import {
@@ -28,8 +29,17 @@ outboundRetellWebhookRouter.post("/", async (req, res) => {
   }
 
   try {
-    const payload = JSON.parse(raw) as { event?: string; call?: Record<string, unknown> };
-    const call = payload.call ?? {};
+    const payload = JSON.parse(raw) as {
+      event?: string;
+      call?: Record<string, unknown>;
+      transcript_with_tool_calls?: unknown[];
+    };
+    const call: Record<string, unknown> = {
+      ...(payload.call ?? {}),
+      ...(Array.isArray(payload.transcript_with_tool_calls)
+        ? { transcript_with_tool_calls: payload.transcript_with_tool_calls }
+        : {}),
+    };
     const callId = typeof call.call_id === "string" ? call.call_id : "";
     const metadata = trustedRetellMetadata(call);
     if (!metadata || !callId) {
@@ -38,19 +48,12 @@ outboundRetellWebhookRouter.post("/", async (req, res) => {
     }
     const attempt = await findOutboundCallAttempt(callId);
     if (attempt) {
-      const analysis = (call.call_analysis as Record<string, unknown> | undefined) ?? {};
-      await updateOutboundCallAttempt(String(attempt.id), {
-        status: String(call.call_status ?? attempt.status),
-        transcript: typeof call.transcript === "string" ? call.transcript : null,
-        recording_url: typeof call.recording_url === "string" ? call.recording_url : null,
-        summary:
-          typeof analysis.call_summary === "string"
-            ? analysis.call_summary
-            : typeof analysis.summary === "string"
-              ? analysis.summary
-              : null,
-        ended_at: call.end_timestamp ? new Date(Number(call.end_timestamp)).toISOString() : null,
+      const context = await getOutboundInvoiceContext(metadata.invoiceId);
+      const patch = buildOutboundCallAttemptPatch(call, {
+        serviceDescription: String(context.invoice.service_description),
+        invoiceNumber: String(context.invoice.invoice_id),
       });
+      if (Object.keys(patch).length) await updateOutboundCallAttempt(String(attempt.id), patch);
     }
     await insertOutboundEvent({
       business_id: metadata.businessId,

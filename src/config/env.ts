@@ -38,6 +38,7 @@ const envSchema = z.object({
   OUTBOUND_TEST_MODE: booleanFromString.default(true),
   OUTBOUND_TEST_PHONE_ALLOWLIST: z.string().optional().default(""),
   OUTBOUND_MAX_BATCH_SIZE: z.coerce.number().int().positive().max(25).default(3),
+  OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE: booleanFromString.default(false),
   OUTBOUND_RETELL_AGENT_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_CONVERSATION_FLOW_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_PHONE_NUMBER_ID: z.string().optional().default(""),
@@ -54,6 +55,9 @@ const envSchema = z.object({
   HUMAN_TRANSFER_NUMBER: z.string().optional().default(""),
   BUSINESS_CALLBACK_NUMBER: z.string().optional().default(""),
   EMAIL_PROVIDER_API_KEY: z.string().optional().default(""),
+  EMAIL_PROVIDER: z.enum(["none", "resend"]).default("none"),
+  OUTBOUND_PAYMENT_EMAIL_FROM: z.string().optional().default(""),
+  OUTBOUND_PAYMENT_EMAIL_ENABLED: booleanFromString.default(false),
 
   PUBLIC_BASE_URL: z.string().optional().default(""),
   RETELL_WEBHOOK_URL: z.string().optional().default(""),

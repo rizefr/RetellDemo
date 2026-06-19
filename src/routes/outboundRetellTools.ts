@@ -16,6 +16,7 @@ import {
 } from "../services/outboundRepository";
 import { trustedRetellMetadata, verifyOutboundRetellSignature } from "../services/outboundRetell";
 import { createOutboundCheckoutSession } from "../services/outboundStripe";
+import { sendOutboundPaymentEmailForInvoice } from "../services/outboundEmail";
 
 export const outboundRetellToolsRouter = express.Router();
 
@@ -34,6 +35,9 @@ async function trustedEnvelope(req: express.Request) {
     throw Object.assign(new Error("Invalid Retell signature"), { status: 401 });
   }
   const parsedBody = JSON.parse(raw) as Record<string, unknown>;
+  if (!parsedBody.call || typeof parsedBody.call !== "object" || Array.isArray(parsedBody.call)) {
+    throw Object.assign(new Error("Missing trusted Retell call metadata"), { status: 422 });
+  }
   const envelope = retellToolEnvelopeSchema.parse({ ...parsedBody, args: argsFromToolBody(parsedBody) });
   const metadata = trustedRetellMetadata(envelope.call);
   if (!metadata) throw Object.assign(new Error("Missing trusted Retell call metadata"), { status: 422 });
@@ -113,6 +117,14 @@ outboundRetellToolsRouter.post(
       status: "sms_pending_manual",
       message_for_agent: "The text was not sent. Say the team will follow up; do not claim SMS success.",
     };
+  }),
+);
+
+outboundRetellToolsRouter.post(
+  "/send-payment-email",
+  tool(async (req) => {
+    const { metadata } = await trustedEnvelope(req);
+    return sendOutboundPaymentEmailForInvoice(metadata.invoiceId);
   }),
 );
 

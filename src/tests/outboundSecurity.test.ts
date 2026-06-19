@@ -82,16 +82,18 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Do not leave voicemail");
     expect(serialized).toContain("Do not accept card details verbally");
     expect(serialized).toContain("Never collect card details verbally");
-    expect(serialized).toContain('"args_at_root":true');
+    expect(serialized).not.toContain('"args_at_root":true');
     expect(serialized).toContain('"type":"end_call"');
     expect(serialized).toContain('"type":"transfer_call"');
     expect(serialized).toContain('"tool_id":"outbound_log_outcome"');
     expect(serialized).toContain('"tool_id":"outbound_create_payment_link"');
     expect(serialized).toContain('"tool_id":"outbound_send_payment_sms"');
+    expect(serialized).toContain('"tool_id":"outbound_send_payment_email"');
     expect(serialized).toContain('"tool_id":"outbound_request_human_transfer"');
     expect(serialized).toContain('"tool_id":"outbound_schedule_followup"');
     expect(serialized).toContain("confirmed_payment_link_requested");
     expect(serialized).toContain("sms_pending_manual");
+    expect(serialized).toContain("email_pending_manual");
     expect(serialized).toContain("Elixis Elevator Systems");
     expect(serialized).toContain("about an open invoice");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
@@ -105,6 +107,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).not.toContain("phoneNumber.update");
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
+    expect(setupScript).toContain("voice_speed: 1.02");
     expect(setupScript).toContain("begin_message_delay_ms: 250");
   });
 });

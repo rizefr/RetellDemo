@@ -36,12 +36,24 @@ export const importCsvSchema = z.object({
   dry_run: z.boolean().default(true),
 });
 
-export const startCallSchema = z.object({ invoice_id: uuidSchema });
+export const afterHoursOverrideSchema = z
+  .object({
+    acknowledged: z.literal(true),
+    confirmation: z.string().max(100),
+    reason: z.literal("self_test"),
+  })
+  .strict();
+export const startCallSchema = z
+  .object({
+    invoice_id: uuidSchema,
+    after_hours_override: afterHoursOverrideSchema.optional(),
+  })
+  .strict();
 export const startBatchSchema = z.object({
   mode: z.enum(["dry_run", "test", "real"]).default("dry_run"),
   invoice_ids: z.array(uuidSchema).min(1).max(25),
   confirmation: z.string().optional().default(""),
-});
+}).strict();
 
 export const retellToolEnvelopeSchema = z.object({
   name: z.string().optional(),

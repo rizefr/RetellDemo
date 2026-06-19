@@ -2,6 +2,7 @@ import { env } from "../config/env";
 import { DateTime } from "luxon";
 import { getRetellClient } from "../retell/retellClient";
 import {
+  evaluateAfterHoursTestOverride,
   evaluateOutboundCallEligibility,
   isWithinOutboundCallingWindow,
   normalizeOutboundTimezone,
@@ -10,8 +11,15 @@ import {
   createOutboundCallAttempt,
   getOutboundInvoiceContext,
   nextOutboundAttemptNumber,
+  insertOutboundEvent,
   updateOutboundCallAttempt,
 } from "./outboundRepository";
+
+export type AfterHoursOverrideRequest = {
+  acknowledged: true;
+  confirmation: string;
+  reason: "self_test";
+};
 
 export function outboundAllowlist(): string[] {
   return env.OUTBOUND_TEST_PHONE_ALLOWLIST.split(",")
@@ -25,7 +33,11 @@ function money(amountCents: number, currency: string): string {
   );
 }
 
-export async function inspectOutboundCallEligibility(invoiceId: string, now = new Date()) {
+export async function inspectOutboundCallEligibility(
+  invoiceId: string,
+  now = new Date(),
+  afterHoursOverride?: AfterHoursOverrideRequest,
+) {
   const context = await getOutboundInvoiceContext(invoiceId);
   const result = evaluateOutboundCallEligibility({
     now,
@@ -37,11 +49,37 @@ export async function inspectOutboundCallEligibility(invoiceId: string, now = ne
     testMode: env.OUTBOUND_TEST_MODE,
     allowlist: outboundAllowlist(),
   });
-  return { context, ...result };
+  if (!result.eligible && result.reason === "outside_calling_window" && afterHoursOverride) {
+    const phoneNumber = String(context.customer.phone_number);
+    const override = evaluateAfterHoursTestOverride({
+      overrideConfigured: env.OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE,
+      testMode: env.OUTBOUND_TEST_MODE,
+      maxBatchSize: env.OUTBOUND_MAX_BATCH_SIZE,
+      phoneNumber,
+      allowlist: outboundAllowlist(),
+      acknowledged: afterHoursOverride.acknowledged,
+      confirmation: afterHoursOverride.confirmation,
+      reason: afterHoursOverride.reason,
+    });
+    if (override.allowed) {
+      return {
+        context,
+        eligible: true as const,
+        reason: "after_hours_self_test" as const,
+        override_used: true,
+      };
+    }
+    return { context, ...result, override_used: false, override_block_reason: override.reason };
+  }
+  return { context, ...result, override_used: false };
 }
 
-export async function describeOutboundCallPreflight(invoiceId: string, now = new Date()) {
-  const eligibility = await inspectOutboundCallEligibility(invoiceId, now);
+export async function describeOutboundCallPreflight(
+  invoiceId: string,
+  now = new Date(),
+  afterHoursOverride?: AfterHoursOverrideRequest,
+) {
+  const eligibility = await inspectOutboundCallEligibility(invoiceId, now, afterHoursOverride);
   const timezone = normalizeOutboundTimezone(
     String(eligibility.context.customer.timezone || eligibility.context.business.default_timezone || ""),
   );
@@ -60,16 +98,40 @@ export async function describeOutboundCallPreflight(invoiceId: string, now = new
     invoice_status: String(eligibility.context.invoice.status),
     active_call: Boolean(eligibility.context.activeCall),
     calling_window: "Monday-Friday, 10:00-16:00 recipient local time",
+    after_hours_override_enabled: env.OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE,
+    after_hours_override_used: eligibility.override_used,
+    after_hours_override_block_reason:
+      "override_block_reason" in eligibility ? eligibility.override_block_reason : null,
   };
 }
 
-export async function startOutboundCall(invoiceId: string) {
+export async function startOutboundCall(
+  invoiceId: string,
+  afterHoursOverride?: AfterHoursOverrideRequest,
+  now = new Date(),
+) {
   if (!env.OUTBOUND_RETELL_AGENT_ID) throw new Error("OUTBOUND_RETELL_AGENT_ID is required");
   if (!env.RETELL_FROM_NUMBER) throw new Error("RETELL_FROM_NUMBER is required");
-  const eligibility = await inspectOutboundCallEligibility(invoiceId);
+  const eligibility = await inspectOutboundCallEligibility(invoiceId, now, afterHoursOverride);
   if (!eligibility.eligible) throw new Error(`Outbound call blocked: ${eligibility.reason}`);
 
   const { context } = eligibility;
+  if (eligibility.override_used && afterHoursOverride) {
+    await insertOutboundEvent({
+      business_id: String(context.business.id),
+      customer_id: String(context.customer.id),
+      invoice_id: String(context.invoice.id),
+      event_type: "after_hours_test_override_authorized",
+      source: "admin",
+      payload: {
+        phone_number: String(context.customer.phone_number),
+        reason: afterHoursOverride.reason,
+        confirmation: afterHoursOverride.confirmation,
+        authorized_at: new Date().toISOString(),
+        test_mode: env.OUTBOUND_TEST_MODE,
+      },
+    });
+  }
   const attemptNumber = await nextOutboundAttemptNumber(invoiceId);
   const attempt = await createOutboundCallAttempt({
     customer_id: context.customer.id,
@@ -116,7 +178,12 @@ export async function startOutboundCall(invoiceId: string) {
       retell_call_id: call.call_id,
       status: call.call_status,
     });
-    return { call_id: call.call_id, status: call.call_status, attempt_id: attempt.id };
+    return {
+      call_id: call.call_id,
+      status: call.call_status,
+      attempt_id: attempt.id,
+      after_hours_override_used: eligibility.override_used,
+    };
   } catch (error) {
     await updateOutboundCallAttempt(String(attempt.id), {
       status: "error",

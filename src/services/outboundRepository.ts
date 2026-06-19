@@ -35,9 +35,45 @@ export async function listOutboundInvoices() {
   return unwrap(
     await db()
       .from("outbound_invoices")
-      .select("*, outbound_customers(id,first_name,last_name,phone_number,timezone,outreach_paused,notes), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(url,status,expires_at,created_at), outbound_call_attempts(status,outcome,created_at), outbound_followup_tasks(task_type,scheduled_for,status)")
+      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,notes), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(task_type,scheduled_for,status,reason)")
       .order("created_at", { ascending: false }),
   );
+}
+
+export async function listOutboundDashboardData(limit = 100) {
+  const client = db();
+  const boundedLimit = Math.max(1, Math.min(limit, 200));
+  const [invoiceResult, callResult, paymentResult, eventResult] = await Promise.all([
+    client
+      .from("outbound_invoices")
+      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,pause_reason,notes), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(id,task_type,scheduled_for,status,reason)")
+      .order("created_at", { ascending: false }),
+    client
+      .from("outbound_call_attempts")
+      .select("*, outbound_customers(id,first_name,last_name), outbound_invoices(id,invoice_id,service_description,amount_due_cents,currency,status)")
+      .order("created_at", { ascending: false })
+      .limit(boundedLimit),
+    client
+      .from("outbound_payment_links")
+      .select("*, outbound_invoices(id,invoice_id,service_description,status), outbound_customers(id,first_name,last_name)")
+      .order("created_at", { ascending: false })
+      .limit(boundedLimit),
+    client
+      .from("outbound_events")
+      .select("*, outbound_invoices(id,invoice_id), outbound_customers(id,first_name,last_name)")
+      .order("created_at", { ascending: false })
+      .limit(boundedLimit),
+  ]);
+  if (invoiceResult.error) throw new OutboundDatabaseError(invoiceResult.error.message);
+  if (callResult.error) throw new OutboundDatabaseError(callResult.error.message);
+  if (paymentResult.error) throw new OutboundDatabaseError(paymentResult.error.message);
+  if (eventResult.error) throw new OutboundDatabaseError(eventResult.error.message);
+  return {
+    invoices: invoiceResult.data ?? [],
+    calls: callResult.data ?? [],
+    payment_links: paymentResult.data ?? [],
+    events: eventResult.data ?? [],
+  };
 }
 
 export async function getOutboundInvoiceContext(invoiceId: string) {
@@ -97,11 +133,26 @@ export async function setOutboundPause(id: string, paused: boolean, reason: stri
 }
 
 export async function importOutboundRows(rows: OutboundCsvRow[], dryRun: boolean) {
-  if (dryRun) return { dry_run: true, rows_valid: rows.length, businesses: 0, customers: 0, invoices: 0 };
+  if (dryRun) {
+    return {
+      dry_run: true,
+      rows_valid: rows.length,
+      businesses: 0,
+      customers: 0,
+      invoices: 0,
+      businesses_created: 0,
+      customers_created: 0,
+      customers_updated: 0,
+      invoices_created: 0,
+      invoices_updated: 0,
+    };
+  }
   const client = db();
   let businesses = 0;
   let customers = 0;
   let invoices = 0;
+  let customersUpdated = 0;
+  let invoicesUpdated = 0;
 
   for (const row of rows) {
     let business = (
@@ -147,6 +198,7 @@ export async function importOutboundRows(rows: OutboundCsvRow[], dryRun: boolean
         .single(),
     ) as Record<string, unknown>;
     if (!existingCustomer) customers += 1;
+    else customersUpdated += 1;
 
     const existingInvoice = (
       await client
@@ -179,9 +231,21 @@ export async function importOutboundRows(rows: OutboundCsvRow[], dryRun: boolean
         .single(),
     );
     if (!existingInvoice) invoices += 1;
+    else invoicesUpdated += 1;
   }
 
-  return { dry_run: false, rows_valid: rows.length, businesses, customers, invoices };
+  return {
+    dry_run: false,
+    rows_valid: rows.length,
+    businesses,
+    customers,
+    invoices,
+    businesses_created: businesses,
+    customers_created: customers,
+    customers_updated: customersUpdated,
+    invoices_created: invoices,
+    invoices_updated: invoicesUpdated,
+  };
 }
 
 export async function insertOutboundEvent(input: {
@@ -213,6 +277,27 @@ export async function findOutboundCallAttempt(retellCallId: string) {
   return (
     await db().from("outbound_call_attempts").select("*").eq("retell_call_id", retellCallId).maybeSingle()
   ).data as Record<string, unknown> | null;
+}
+
+export async function getOutboundCallAttempt(id: string) {
+  return unwrap(
+    await db().from("outbound_call_attempts").select("*").eq("id", id).maybeSingle(),
+    true,
+  ) as Record<string, unknown>;
+}
+
+export async function findOutboundCallAnalysisEvent(retellCallId: string) {
+  const result = await db()
+    .from("outbound_events")
+    .select("payload")
+    .eq("source", "retell")
+    .eq("event_type", "call_analyzed")
+    .contains("payload", { call: { call_id: retellCallId } })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (result.error) throw new OutboundDatabaseError(result.error.message);
+  return (result.data?.payload ?? null) as Record<string, unknown> | null;
 }
 
 export async function hasOutboundPaymentLinkAgreement(invoiceId: string): Promise<boolean> {
@@ -331,6 +416,16 @@ export async function updateOutboundPaymentLinkRecord(id: string, patch: Record<
     await db().from("outbound_payment_links").update(patch).eq("id", id).select("*").maybeSingle(),
     true,
   ) as Record<string, unknown>;
+}
+
+export async function markOutboundPaymentLinkDelivered(
+  id: string,
+  sentVia: "email" | "sms" | "manual",
+) {
+  return updateOutboundPaymentLinkRecord(id, {
+    sent_via: sentVia,
+    sent_at: new Date().toISOString(),
+  });
 }
 
 export async function getOutboundInvoiceForPayment(id: string) {

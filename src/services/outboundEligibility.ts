@@ -49,6 +49,34 @@ export function evaluateOutboundCallEligibility(
 
 export type OutboundBatchMode = "dry_run" | "test" | "real";
 
+export const AFTER_HOURS_TEST_CONFIRMATION = "I UNDERSTAND THIS IS AN AFTER-HOURS TEST";
+
+export type AfterHoursTestOverrideInput = {
+  overrideConfigured: boolean;
+  testMode: boolean;
+  maxBatchSize: number;
+  phoneNumber: string;
+  allowlist: string[];
+  acknowledged: boolean;
+  confirmation: string;
+  reason: string;
+};
+
+export function evaluateAfterHoursTestOverride(
+  input: AfterHoursTestOverrideInput,
+): { allowed: boolean; reason: string } {
+  if (!input.overrideConfigured) return { allowed: false, reason: "after_hours_override_disabled" };
+  if (!input.testMode) return { allowed: false, reason: "after_hours_override_requires_test_mode" };
+  if (input.maxBatchSize !== 1) return { allowed: false, reason: "after_hours_override_requires_batch_size_one" };
+  if (!input.allowlist.includes(input.phoneNumber)) return { allowed: false, reason: "test_number_not_allowlisted" };
+  if (!input.acknowledged) return { allowed: false, reason: "after_hours_warning_not_acknowledged" };
+  if (input.confirmation !== AFTER_HOURS_TEST_CONFIRMATION) {
+    return { allowed: false, reason: "after_hours_confirmation_mismatch" };
+  }
+  if (input.reason !== "self_test") return { allowed: false, reason: "after_hours_reason_invalid" };
+  return { allowed: true, reason: "after_hours_self_test" };
+}
+
 export function validateBatchMode(input: {
   mode: OutboundBatchMode;
   testMode: boolean;

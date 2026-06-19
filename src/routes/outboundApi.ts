@@ -21,11 +21,14 @@ import {
   startOutboundCall,
 } from "../services/outboundCalls";
 import { parseOutboundCsv } from "../services/outboundCsv";
+import { redactOutboundEventPayload } from "../services/outboundCallAnalysis";
+import { rebuildOutboundCallAnalysis } from "../services/outboundCallRepair";
 import { validateBatchMode } from "../services/outboundEligibility";
 import {
   importOutboundRows,
   insertOutboundEvent,
   listOutboundCustomers,
+  listOutboundDashboardData,
   listOutboundInvoices,
   setOutboundPause,
   updateOutboundCustomer,
@@ -74,6 +77,22 @@ outboundApiRouter.get("/customers", async (_req, res) => {
 outboundApiRouter.get("/invoices", async (_req, res) => {
   try {
     res.json({ invoices: await listOutboundInvoices() });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.get("/dashboard", async (_req, res) => {
+  try {
+    const dashboard = await listOutboundDashboardData();
+    res.json({
+      refreshed_at: new Date().toISOString(),
+      ...dashboard,
+      events: dashboard.events.map((event) => ({
+        ...event,
+        payload: redactOutboundEventPayload(event.payload),
+      })),
+    });
   } catch (error) {
     sendError(res, error);
   }
@@ -152,7 +171,16 @@ outboundApiRouter.post("/invoices/:id/create-checkout-session", async (req, res)
 outboundApiRouter.post("/calls/start", async (req, res) => {
   try {
     const input = startCallSchema.parse(req.body);
-    res.status(201).json(await startOutboundCall(input.invoice_id));
+    res.status(201).json(await startOutboundCall(input.invoice_id, input.after_hours_override));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/calls/:id/rebuild-analysis", async (req, res) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    res.json({ call: await rebuildOutboundCallAnalysis(id) });
   } catch (error) {
     sendError(res, error);
   }
@@ -161,7 +189,7 @@ outboundApiRouter.post("/calls/start", async (req, res) => {
 outboundApiRouter.post("/calls/dry-run", async (req, res) => {
   try {
     const input = startCallSchema.parse(req.body);
-    res.json(await describeOutboundCallPreflight(input.invoice_id));
+    res.json(await describeOutboundCallPreflight(input.invoice_id, new Date(), input.after_hours_override));
   } catch (error) {
     sendError(res, error);
   }

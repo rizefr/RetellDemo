@@ -45,6 +45,41 @@ describe("outbound admin routes", () => {
     const response = await request(createApp()).get("/api/outbound/invoices");
     expect(response.status).toBe(401);
   });
+
+  it("returns a dashboard payload with secret-like event fields redacted", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.OUTBOUND_ADMIN_TOKEN = "route-test-admin";
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        listOutboundDashboardData: vi.fn().mockResolvedValue({
+          invoices: [],
+          calls: [],
+          payment_links: [],
+          events: [
+            {
+              id: "event-1",
+              event_type: "call_analyzed",
+              payload: { call: { call_id: "call-1", access_token: "private" }, signature: "private" },
+            },
+          ],
+        }),
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const response = await request(createApp())
+      .get("/api/outbound/dashboard")
+      .set("Authorization", "Bearer route-test-admin");
+
+    expect(response.status).toBe(200);
+    expect(response.body.events[0].payload.call.access_token).toBe("[REDACTED]");
+    expect(response.body.events[0].payload.signature).toBe("[REDACTED]");
+    expect(JSON.stringify(response.body)).not.toContain("private");
+  });
 });
 
 describe("outbound webhook contracts", () => {
@@ -58,6 +93,14 @@ describe("outbound webhook contracts", () => {
     expect(migration).toContain("outbound_mark_invoice_paid");
     expect(migration.match(/^create table if not exists public\.outbound_/gm)).toHaveLength(7);
     expect(migration).not.toMatch(/^create policy/gm);
+    const hardeningMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260619_outbound_demo_hardening.sql"),
+      "utf8",
+    );
+    expect(hardeningMigration).toContain("add column if not exists duration_ms");
+    expect(hardeningMigration).toContain("add column if not exists analysis jsonb");
+    expect(hardeningMigration).toContain("email_pending_manual");
+    expect(hardeningMigration).not.toMatch(/^create policy/gm);
   });
 
   it("accepts a signed Retell webhook and rejects an invalid signature", async () => {
@@ -101,7 +144,7 @@ describe("outbound webhook contracts", () => {
     expect(rejected.status).toBe(401);
   });
 
-  it("accepts signed Retell tool requests with root-level args and trusted metadata", async () => {
+  it("accepts signed Retell tool requests with wrapped args and trusted metadata", async () => {
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "retell-tool-api-key";
     const recordOutboundOutcome = vi.fn().mockResolvedValue({});
@@ -127,8 +170,10 @@ describe("outbound webhook contracts", () => {
     const { createApp } = await import("../app");
     const payload = JSON.stringify({
       name: "log_outcome",
-      outcome: "wrong_number",
-      notes: "Caller said this is a wrong number.",
+      args: {
+        outcome: "wrong_number",
+        notes: "Caller said this is a wrong number.",
+      },
       call: {
         call_id: "call_tool_test",
         metadata: {
@@ -156,6 +201,25 @@ describe("outbound webhook contracts", () => {
         outcome: "wrong_number",
       }),
     );
+  });
+
+  it("rejects signed root-only Retell tool args because trusted call metadata is absent", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-tool-api-key";
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      outcome: "wrong_number",
+      notes: "Untrusted root-only request.",
+    });
+    const signature = await sign(payload, "retell-tool-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(422);
   });
 
   it("accepts a signed Stripe completion event with exact trusted metadata", async () => {

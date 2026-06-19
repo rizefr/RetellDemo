@@ -28,7 +28,8 @@ The published flow uses one tool-capable Subagent Node. The smaller design prove
 - Invoice service, date, and balance are stated only after first-name confirmation.
 - Every terminal objection calls `log_outcome` before the native `end_call` tool.
 - The native transfer tool is used only after `request_human_transfer` confirms a configured destination.
-- Custom tools use `args_at_root: true`; the backend accepts both root arguments and the documented `args` wrapper while retaining the signed `call` object.
+- Custom tools use Retell's documented wrapped `{name,args,call}` request body. `args_at_root` is intentionally disabled so signed `call.metadata` remains available for trusted invoice lookup.
+- Text remains disabled/manual. Email is supported through the email tool but remains disabled/manual until a verified provider and sender are configured.
 
 ## Function URLs
 
@@ -37,6 +38,7 @@ Configure the functions with wrapped Retell request bodies so the backend receiv
 - `POST {{APP_BASE_URL}}/api/outbound/retell/log-outcome`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/create-payment-link`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/send-payment-sms`
+- `POST {{APP_BASE_URL}}/api/outbound/retell/send-payment-email`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/request-human-transfer`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/schedule-followup`
 
