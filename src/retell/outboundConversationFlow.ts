@@ -354,6 +354,23 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       ],
       finetune_conversation_examples: [
         {
+          id: "same_turn_payment_request_example",
+          transcript: [
+            { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
+            { role: "user", content: "Yes, this is Taylor. I want to pay now and email is better than text." },
+            { role: "agent", content: "Thanks. I'm an AI voice assistant helping Elixis Elevator Systems follow up on open invoices. I'm calling about the annual elevator inspection invoice from May 1st with a current balance of four hundred eighty dollars. Payment is through a secure link, not over the phone. Is the email on file still the best one?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to pay and confirmed email delivery.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
+            { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
+          ],
+        },
+        {
           id: "payment_sms_manual_example",
           transcript: [
             { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
