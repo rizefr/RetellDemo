@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Outbound Collections Demo</title>
+    <link rel="stylesheet" href="/outbound-assets/outbound.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">B2B first-party demo</p>
+        <h1>Outbound collections</h1>
+        <p class="header-subtitle">Elixis Elevator Systems</p>
+      </div>
+      <div class="header-actions">
+        <span class="safety-badge">No automatic task execution</span>
+        <button id="logout" class="secondary">Sign out</button>
+      </div>
+    </header>
+    <main>
+      <section class="panel toolbar-panel" aria-label="Dashboard controls">
+        <div>
+          <strong>Operational dashboard</strong>
+          <p id="last-refreshed">Not refreshed yet</p>
+        </div>
+        <button id="refresh-all" class="secondary">Refresh all data</button>
+      </section>
+
+      <section class="panel setup-panel" aria-labelledby="setup-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="setup-heading">Setup readiness</h2>
+            <p>Server-side status only. Secret values are never returned to this page.</p>
+          </div>
+          <button id="refresh-setup" class="secondary">Refresh setup status</button>
+        </div>
+        <div id="setup-summary" class="setup-summary" role="status">Checking deployment readiness...</div>
+        <div class="readiness-grid">
+          <article class="readiness-card"><h3>App and deployment</h3><ul id="setup-app" class="check-list"></ul></article>
+          <article class="readiness-card"><h3>Supabase</h3><ul id="setup-supabase" class="check-list"></ul></article>
+          <article class="readiness-card"><h3>Stripe</h3><ul id="setup-stripe" class="check-list"></ul></article>
+          <article class="readiness-card"><h3>Retell</h3><ul id="setup-retell" class="check-list"></ul></article>
+          <article class="readiness-card"><h3>Email</h3><ul id="setup-email" class="check-list"></ul></article>
+          <article class="readiness-card"><h3>Call safety</h3><ul id="setup-safety" class="check-list"></ul></article>
+        </div>
+        <details class="endpoint-details">
+          <summary>Webhook and Retell function URLs</summary>
+          <div id="setup-endpoints" class="endpoint-list"></div>
+        </details>
+      </section>
+
+      <section class="panel workflow-panel" aria-labelledby="workflow-heading">
+        <div>
+          <h2 id="workflow-heading">Single test call controls</h2>
+          <p>Normal recipient-local calling hours remain Monday-Friday, 10:00-16:00.</p>
+        </div>
+        <ol class="workflow-steps">
+          <li>Select one allowlisted demo invoice.</li>
+          <li>Run the dry-run gate check.</li>
+          <li>Start one call only after every server gate passes and authorization is explicit.</li>
+        </ol>
+        <details id="after-hours-panel" class="warning-box">
+          <summary>After-hours self-test override</summary>
+          <p><strong>Self-testing only.</strong> Use only a number you control or have explicit permission to call. This does not weaken normal calling hours and every use is logged.</p>
+          <label class="check-control"><input id="after-hours-ack" type="checkbox" /> I understand this is an allowlisted after-hours self-test.</label>
+          <label for="after-hours-confirmation">Type the exact confirmation phrase</label>
+          <input id="after-hours-confirmation" type="text" autocomplete="off" placeholder="I UNDERSTAND THIS IS AN AFTER-HOURS TEST" />
+          <p id="after-hours-status" class="muted">Checking whether the server allows this override...</p>
+        </details>
+        <p id="selected-call-status" class="selected-call-status">No customer call gates checked yet.</p>
+      </section>
+
+      <section class="panel import-panel">
+        <div>
+          <h2>Import demo CSV</h2>
+          <p>Validate first. Imports preserve history, paid invoices, paused outreach, and nonblank notes.</p>
+        </div>
+        <input id="csv-file" type="file" accept=".csv,text/csv" />
+        <button id="dry-run-import">Validate CSV</button>
+        <button id="commit-import" class="danger-muted" disabled>Import validated CSV</button>
+        <output id="import-result"></output>
+      </section>
+
+      <section class="panel" aria-labelledby="invoice-heading">
+        <div class="section-heading">
+          <div><h2 id="invoice-heading">Customers and invoices</h2><p>Human-readable operating view; internal IDs stay collapsed.</p></div>
+          <div class="filter-row">
+            <label>Filter <select id="invoice-filter"><option value="all">All statuses</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option><option value="disputed">Disputed</option><option value="manual_review">Needs review</option><option value="paused">Paused</option></select></label>
+            <label>Search <input id="invoice-search" type="search" placeholder="Customer or invoice" /></label>
+            <button id="batch-dry-run" class="secondary" disabled>Batch dry run (0)</button>
+          </div>
+        </div>
+        <p class="batch-note">Batch controls here are dry-run only and place zero calls.</p>
+        <div class="table-wrap"><table class="compact-table"><thead><tr><th>Select</th><th>Customer</th><th>Invoice</th><th>Service / amount</th><th>Status</th><th>Latest activity</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="invoice-rows"></tbody></table></div>
+        <div id="invoice-empty" class="empty-state" hidden>No invoices match the current filter.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="calls-heading">
+        <div class="section-heading"><div><h2 id="calls-heading">Call history</h2><p>Summaries, outcomes, tools, and next actions from Retell.</p></div><span id="call-count" class="count-badge">0 calls</span></div>
+        <div class="table-wrap"><table class="compact-table"><thead><tr><th>Date</th><th>Customer / invoice</th><th>Outcome</th><th>Summary</th><th>Duration</th><th>Next action</th><th>Details</th></tr></thead><tbody id="call-rows"></tbody></table></div>
+        <div id="call-empty" class="empty-state" hidden>No call attempts recorded.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="payments-heading">
+        <div class="section-heading"><div><h2 id="payments-heading">Payment links</h2><p>Stripe test-mode Checkout Sessions and delivery state.</p></div><span id="payment-count" class="count-badge">0 links</span></div>
+        <div class="table-wrap"><table class="compact-table"><thead><tr><th>Created</th><th>Customer / invoice</th><th>Amount</th><th>Session status</th><th>Delivery</th><th>Paid / expires</th><th>Actions</th></tr></thead><tbody id="payment-rows"></tbody></table></div>
+        <div id="payment-empty" class="empty-state" hidden>No payment links recorded.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="events-heading">
+        <div class="section-heading"><div><h2 id="events-heading">Events and debugging</h2><p>Latest 100 provider/admin events. Sensitive fields are redacted server-side.</p></div><span id="event-count" class="count-badge">0 events</span></div>
+        <div class="filter-row"><label>Source <select id="event-filter"><option value="all">All sources</option><option value="retell">Retell</option><option value="stripe">Stripe</option><option value="admin">Admin</option><option value="system">System</option><option value="retell_function">Retell function</option></select></label></div>
+        <div class="table-wrap"><table class="compact-table"><thead><tr><th>Time</th><th>Source</th><th>Event</th><th>Invoice</th><th>Message</th><th>Payload</th></tr></thead><tbody id="event-rows"></tbody></table></div>
+        <div id="event-empty" class="empty-state" hidden>No events match the current filter.</div>
+      </section>
+
+      <p id="page-status" role="status"></p>
+    </main>
+
+    <template id="invoice-row-template">
+      <tr>
+        <td><input data-action="batch-select" type="checkbox" /></td>
+        <td><strong data-field="customer"></strong><span data-field="business" class="subtext"></span><label class="inline-field">Phone <input data-action="phone" type="tel" inputmode="tel" /></label><label class="inline-field">Email <input data-action="email" type="email" /></label></td>
+        <td><strong data-field="invoice"></strong><details><summary>Internal details</summary><code data-field="ids"></code></details></td>
+        <td><span data-field="service"></span><strong data-field="amount" class="subtext"></strong></td>
+        <td><select data-action="status"></select><span data-field="payment" class="subtext"></span><span data-field="paused" class="subtext"></span></td>
+        <td><span data-field="last-call"></span><span data-field="next-followup" class="subtext"></span><span data-field="gate" class="gate-status">Not checked</span></td>
+        <td><textarea data-action="notes" rows="3" aria-label="Invoice notes"></textarea></td>
+        <td class="row-actions"><button data-action="save" class="secondary">Save</button><button data-action="payment">Payment link</button><button data-action="preflight" class="secondary">Check call gates</button><button data-action="call" class="danger-muted" disabled>Start test call</button><button data-action="pause" class="secondary"></button></td>
+      </tr>
+    </template>
+
+    <script src="/outbound-assets/outbound.js" defer></script>
+  </body>
+</html>

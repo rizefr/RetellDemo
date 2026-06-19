@@ -1,0 +1,4 @@
+customer_id,first_name,last_name,phone_number,email,mailing_address,timezone,amount_due,original_due_date,service_description,invoice_id,business_name,status,outreach_paused,notes
+DEMO-001,Jordan,Lee,+12125550101,jordan.lee@example.test,"100 Demo Plaza, New York, NY 10001",America/New_York,825.00,2026-05-01,Annual elevator safety inspection,ELV-2026-001,Elixis Elevator Systems,unpaid,false,Fake demo customer
+DEMO-002,Sam,Rivera,+13125550102,sam.rivera@example.test,"200 Sample Street, Chicago, IL 60601",America/Chicago,1240.50,2026-04-15,Five-year elevator inspection,ELV-2026-002,Elixis Elevator Systems,unpaid,true,Paused fake customer for safety testing
+REPLACE-WITH-MY-NUMBER,Test,Owner,+12025550199,test.owner@example.test,"300 Test Avenue, Boston, MA 02108",America/New_York,150.00,2026-05-20,annual elevator inspection,ELV-TEST-OWN-NUMBER,Elixis Elevator Systems,unpaid,false,Replace phone_number with your own E.164 number before the first test call
