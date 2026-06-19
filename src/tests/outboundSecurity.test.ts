@@ -94,6 +94,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("confirmed_payment_link_requested");
     expect(serialized).toContain("sms_pending_manual");
     expect(serialized).toContain("email_pending_manual");
+    expect(serialized).toContain("email_missing");
     expect(serialized).toContain("Elixis Elevator Systems");
     expect(serialized).toContain("about an open invoice");
     expect(serialized).toContain("If the person says \\\"hello\\\"");

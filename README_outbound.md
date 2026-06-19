@@ -4,7 +4,7 @@
 
 This is a Phase 1 foundation for first-party B2B unpaid invoice follow-up, initially for elevator inspection companies. It imports fake/demo customers and invoices, provides an internal status page, creates invoice-specific exact-amount Stripe Checkout Sessions, exposes gated Retell outbound-call and function endpoints, records provider events, pauses outreach, and creates follow-up tasks.
 
-It does not execute follow-up tasks automatically. It is not a consumer debt collector, third-party collector, medical debt workflow, financial debt workflow, payment-plan system, negotiation system, email sender, or production campaign engine.
+It does not execute follow-up tasks automatically. It is not a consumer debt collector, third-party collector, medical debt workflow, financial debt workflow, payment-plan system, negotiation system, or production campaign engine. SMS and email delivery remain disabled/manual by default.
 
 The business using it is responsible for establishing its right to contact each business customer and for legal review of calling, AI disclosure, recording, messaging, and retention requirements.
 
@@ -17,24 +17,26 @@ The business using it is responsible for establishing its right to contact each 
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
 
-## Current setup status (June 18, 2026)
+## Current setup status (June 19, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
-- The outbound migration has been applied. All seven `public.outbound_*` tables exist, RLS is enabled, no `anon` or `authenticated` policies/grants are present, and `outbound_mark_invoice_paid` is detected from the deployed service-role path.
+- The outbound migrations have been applied. All seven `public.outbound_*` tables exist, RLS is enabled, no `anon` or `authenticated` policies/grants are present, and `outbound_mark_invoice_paid` is detected from the deployed service-role path. Call attempts now store duration and structured analysis; the paid-invoice RPC uses qualified table references.
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
-- Stripe sandbox Checkout Session creation is working from the admin/API path for the demo invoice. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel.
+- Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event; `ELV-TEST-OWN-NUMBER` remains unpaid and callable.
 - Retell outbound agent and Conversation Flow were hardened and published:
-  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `6`
-  - Conversation Flow: `conversation_flow_bebdceabc801`, version `6`
-  - the flow now uses one tool-capable Subagent Node with five custom tools using `args_at_root: true`
+  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `9`
+  - Conversation Flow: `conversation_flow_bebdceabc801`, version `9`
+  - the flow uses one tool-capable Subagent Node with six custom tools using Retell's signed `{name,args,call}` envelope; `args_at_root` is disabled
+  - voice speed is `1.02`; GPT-4.1, Cimo/ElevenLabs Flash v2.5, agent-first opening, interruption handling, and voicemail hangup are preserved
   - the agent speaks first, repeats the complete introduction after an early hello/interruption, names Elixis Elevator Systems, and states the invoice service/date/amount after first-name confirmation
   - voicemail handling is configured to `hangup`
-- Retell native simulation `Opening and invoice clarity` passes on version 6. It verifies the proactive/repeated introduction, first-name-only confirmation, AI disclosure, service/date/amount clarity, secure-link language, neutral-close outcome logging, and immediate `end_call`.
-- The earlier Retell tool failures were HTTP 404 responses caused by a website deployment that omitted the uncommitted outbound routes. The merged Express/Vercel deployment restored those routes. A signed production `create_payment_link` tool smoke test using trusted call metadata now returns 200 and creates an exact-amount Stripe test Checkout Session.
+- Retell native simulations pass on version 9 for opening/invoice clarity and the same-turn payment/email branch. The latter verifies service/date/amount disclosure before `log_outcome`, `create_payment_link`, and the disabled/manual email response.
+- The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
-- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number.
+- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Vercel Production has the Resend provider, API key, and `Elixis Elevator Systems <billing@elixis.agency>` sender configured, but `OUTBOUND_PAYMENT_EMAIL_ENABLED=false` remains in force until the Resend domain status is verified authoritatively. The available send-only key cannot read the domain API (`401`), so no test email was sent.
+- The after-hours self-test override is enabled in Vercel but remains unavailable unless test mode, one-item max batch, allowlisting, admin authentication, the warning checkbox, and the exact confirmation phrase all pass. Batch endpoints never accept the override.
 - The browser CSV upload validates all three demo rows, and a deployed batch dry run reports zero calls placed. The single-call button remains gated by recipient-local weekday 10:00-16:00 eligibility and explicit approval.
 - No call, SMS, real batch, real charge, phone binding change, or receptionist code/data mutation was performed by the setup pass.
 
@@ -70,6 +72,7 @@ OUTBOUND_ADMIN_TOKEN=long-random-server-secret
 OUTBOUND_TEST_MODE=true
 OUTBOUND_TEST_PHONE_ALLOWLIST=+1YOURNUMBER
 OUTBOUND_MAX_BATCH_SIZE=3
+OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE=false
 
 RETELL_API_KEY=...
 OUTBOUND_RETELL_AGENT_ID=
@@ -82,6 +85,11 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
+
+EMAIL_PROVIDER=none
+EMAIL_PROVIDER_API_KEY=
+OUTBOUND_PAYMENT_EMAIL_FROM=
+OUTBOUND_PAYMENT_EMAIL_ENABLED=false
 ```
 
 For local development, set `APP_BASE_URL=http://localhost:3000`. Cookies are HttpOnly and SameSite Strict. They are Secure only in production, so local HTTP login works without weakening production cookies.
@@ -108,7 +116,7 @@ The admin page can also read a local CSV file in the browser and submit its text
 
 Open `/outbound`, enter `OUTBOUND_ADMIN_TOKEN`, and the backend exchanges it for an HttpOnly cookie. The token is not placed in a URL, local storage, frontend bundle, or application log.
 
-The page lists customer, phone, invoice, amount, invoice/payment status, last call, next follow-up, notes, pause state, and actions for:
+The page provides joined customers/invoices, call history, payment sessions, and redacted event/debug tables. It shows summaries, duration, tools/errors, next actions, expandable transcripts/internal IDs, filters, last refresh time, and actions for:
 
 - setup readiness across app, Supabase, Stripe, Retell, and call safety
 - validation-first CSV upload/import
@@ -116,6 +124,7 @@ The page lists customer, phone, invoice, amount, invoice/payment status, last ca
 - invoice status and notes update
 - exact-amount Checkout Session creation
 - read-only call-gate preflight and one gated test call
+- explicit after-hours self-test confirmation when the server flag is enabled
 - selected-invoice batch dry run with no call placement
 - pause/resume
 
@@ -182,6 +191,7 @@ Review `retell/outbound_collections_flow_spec.md` and `retell/outbound_collectio
 - `POST {{APP_BASE_URL}}/api/outbound/retell/log-outcome`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/create-payment-link`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/send-payment-sms`
+- `POST {{APP_BASE_URL}}/api/outbound/retell/send-payment-email`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/request-human-transfer`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/schedule-followup`
 
@@ -201,7 +211,7 @@ Dynamic variables:
 
 Set `HUMAN_TRANSFER_NUMBER` only after verifying ownership and live transfer behavior. If absent, the tool logs `human_requested` and the agent must end with a team-follow-up message.
 
-Outbound SMS remains disabled/manual. The endpoint requires a prior `confirmed_payment_link_requested` outcome, returns `sent:false`, and logs `sms_pending_manual`. Do not enable live SMS until the number is SMS-capable and an outbound chat agent is verified.
+Outbound SMS remains disabled/manual. The endpoint requires a prior `confirmed_payment_link_requested` outcome, returns `sent:false`, and logs `sms_pending_manual`. Email is also disabled/manual unless a verified Resend sender and explicit enable flag are configured; the endpoint only uses the existing customer email and otherwise logs `email_missing` or `email_pending_manual`. Do not enable either delivery channel casually.
 
 ## Calling gates
 
@@ -217,6 +227,8 @@ Every call requires:
 - `RETELL_FROM_NUMBER=+19842075346`
 
 With `OUTBOUND_TEST_MODE=true`, only `OUTBOUND_TEST_PHONE_ALLOWLIST` destinations are eligible.
+
+Normal hours remain mandatory unless the single-call request supplies the exact after-hours acknowledgement and `OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE=true`. The override only works in test mode for one allowlisted destination with `OUTBOUND_MAX_BATCH_SIZE=1`, is audit logged before the provider call, and is never accepted by batch routes. The required phrase is `I UNDERSTAND THIS IS AN AFTER-HOURS TEST`.
 
 Batch request modes:
 
@@ -250,7 +262,7 @@ Vercel/Express raw-body routes are mounted before global JSON parsing for Stripe
 
 Do not call until the migration, deployed environment, Stripe webhook, Retell flow, Retell number outbound capability, AI/recording disclosure, and contact-right review are complete.
 
-1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` on published version `6` and flow `conversation_flow_bebdceabc801` on version `6`.
+1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` and flow `conversation_flow_bebdceabc801` on published version `9`.
 2. Confirm the current `+19842075346` assignment remains intentional. Do not change it from code; use explicit dashboard approval for any phone binding correction.
 3. Open `https://elixis.agency/outbound` and confirm the setup panel is ready, test mode is enabled, the allowlist has one number, and SMS is disabled/manual.
 4. Confirm invoice `ELV-TEST-OWN-NUMBER` is assigned to `+13475850249`, is not paused, and remains `unpaid` or `payment_link_sent`.

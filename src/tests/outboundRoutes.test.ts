@@ -101,6 +101,20 @@ describe("outbound webhook contracts", () => {
     expect(hardeningMigration).toContain("add column if not exists analysis jsonb");
     expect(hardeningMigration).toContain("email_pending_manual");
     expect(hardeningMigration).not.toMatch(/^create policy/gm);
+    const rpcFixMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260619_outbound_mark_paid_rpc_fix.sql"),
+      "utf8",
+    );
+    expect(rpcFixMigration).toContain("where payment_link.invoice_id = v_invoice.id");
+    expect(rpcFixMigration).toContain("where followup.invoice_id = v_invoice.id");
+    expect(rpcFixMigration).toContain("where event.source = 'stripe'");
+    expect(rpcFixMigration).not.toMatch(/^create policy/gm);
+    const emailMissingMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260619_outbound_email_missing_outcome.sql"),
+      "utf8",
+    );
+    expect(emailMissingMigration).toContain("'email_missing'");
+    expect(emailMissingMigration).not.toMatch(/^create policy/gm);
   });
 
   it("accepts a signed Retell webhook and rejects an invalid signature", async () => {
@@ -220,6 +234,86 @@ describe("outbound webhook contracts", () => {
       .send(payload);
 
     expect(response.status).toBe(422);
+    const emailPayload = JSON.stringify({ name: "send_payment_email", args: {} });
+    const emailSignature = await sign(emailPayload, "retell-tool-api-key");
+    const emailResponse = await request(createApp())
+      .post("/api/outbound/retell/send-payment-email")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", emailSignature)
+      .send(emailPayload);
+    expect(emailResponse.status).toBe(422);
+  });
+
+  it("does not create or send a payment email when the trusted customer has no email", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-email-api-key";
+    process.env.EMAIL_PROVIDER = "resend";
+    process.env.EMAIL_PROVIDER_API_KEY = "resend-test-key";
+    process.env.OUTBOUND_PAYMENT_EMAIL_FROM = "Elixis Elevator Systems <billing@elixis.agency>";
+    process.env.OUTBOUND_PAYMENT_EMAIL_ENABLED = "true";
+    const insertOutboundEvent = vi.fn().mockResolvedValue({});
+    const createOutboundCheckoutSession = vi.fn();
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: {
+            id: "00000000-0000-4000-8000-000000000003",
+            invoice_id: "ELV-NO-EMAIL",
+            status: "unpaid",
+            service_description: "annual elevator inspection",
+            amount_due_cents: 15000,
+            currency: "usd",
+          },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            email: "",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: {
+            id: "00000000-0000-4000-8000-000000000001",
+            business_name: "Elixis Elevator Systems",
+            callback_number: "+19842075346",
+          },
+        }),
+        hasOutboundPaymentLinkAgreement: vi.fn().mockResolvedValue(true),
+        insertOutboundEvent,
+      };
+    });
+    vi.doMock("../services/outboundStripe", () => ({ createOutboundCheckoutSession }));
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "send_payment_email",
+      args: {},
+      call: {
+        call_id: "call_email_missing",
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-email-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/send-payment-email")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ sent: false, status: "email_missing" });
+    expect(createOutboundCheckoutSession).not.toHaveBeenCalled();
+    expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: "email_missing" }));
+    vi.doUnmock("../services/outboundRepository");
+    vi.doUnmock("../services/outboundStripe");
+    vi.resetModules();
   });
 
   it("accepts a signed Stripe completion event with exact trusted metadata", async () => {

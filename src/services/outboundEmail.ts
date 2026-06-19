@@ -110,13 +110,13 @@ export async function sendOutboundPaymentEmailForInvoice(invoiceId: string) {
   if (!recipient) {
     await insertOutboundEvent({
       ...ids,
-      event_type: "email_pending_manual",
+      event_type: "email_missing",
       source: "retell_function",
       payload: { reason: "customer_email_missing" },
     });
     return {
       sent: false,
-      status: "email_pending_manual" as const,
+      status: "email_missing" as const,
       message_for_agent: "The email was not sent. Say the team will follow up with the secure link.",
     };
   }

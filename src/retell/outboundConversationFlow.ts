@@ -31,6 +31,7 @@ const OUTBOUND_OUTCOME_VALUES = [
   "email_sent",
   "email_pending_manual",
   "email_failed",
+  "email_missing",
   "manual_review",
   "unknown",
 ] as const;
@@ -90,7 +91,7 @@ send_payment_sms:
 Use only after create_payment_link and only after the callee agreed to receive a text. SMS is disabled/manual in this demo. Read the result carefully. If sent is false or status is sms_pending_manual, do not say a text was sent.
 
 send_payment_email:
-Use only after create_payment_link when the callee explicitly prefers email and confirms that the email on file is still the best address. Read the result carefully. If sent is false, do not claim an email was sent. Do not ask the caller to dictate a new email address; log the manual follow-up instead.
+Use only after create_payment_link when the callee explicitly prefers email and confirms that the email on file is still the best address. Read the result carefully. If sent is false or status is email_missing, do not claim an email was sent. Do not ask the caller to dictate a new email address; log the manual follow-up instead.
 
 schedule_followup:
 Use after callback_requested, confirmed_payment_link_requested, or sms_pending_manual when follow-up should be stored. It stores tasks only; it does not execute outreach.
