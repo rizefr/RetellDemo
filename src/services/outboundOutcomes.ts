@@ -20,6 +20,7 @@ export const OUTBOUND_OUTCOMES = [
   "email_sent",
   "email_pending_manual",
   "email_failed",
+  "email_missing",
   "manual_review",
   "unknown",
 ] as const;
