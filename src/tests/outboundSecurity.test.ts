@@ -98,6 +98,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("about an open invoice");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("This is for the {{service_description}} invoice dated {{original_due_date}}");
+    expect(serialized).toContain("before interpreting or acting on any payment request from that same user turn");
     expect(serialized).toContain("The team will follow up with the secure link");
     expect(serialized).toContain("Neutral close without payment-link agreement");
     expect(serialized).toContain("do not ask again");

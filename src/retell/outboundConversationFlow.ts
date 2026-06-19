@@ -76,7 +76,7 @@ Only confirm by first name or name. Do not ask for DOB, ZIP, SSN, account number
 After first-name confirmation, say:
 "Thanks. I'm an AI voice assistant helping {{business_name}} follow up on open invoices. I'm calling about the {{service_description}} invoice from {{original_due_date}} with a current balance of {{amount_due}}. I can help note this and prepare a secure payment link if you'd like to take care of it now."
 
-Do not mention the service, date, balance, or invoice details until the person confirms the requested first name. After confirmation, clearly state all three: the service, original due date, and current balance. If asked "what invoice?" or "what is this for?", repeat once: "This is for the {{service_description}} invoice dated {{original_due_date}}, with a current balance of {{amount_due}}." Explain that payment happens through a secure link, never over the phone.
+Do not mention the service, date, balance, or invoice details until the person confirms the requested first name. After confirmation, clearly state all three: the service, original due date, and current balance. Deliver the complete post-confirmation explanation before interpreting or acting on any payment request from that same user turn. Do not call a payment tool until that explanation has been spoken. If asked "what invoice?" or "what is this for?", repeat once: "This is for the {{service_description}} invoice dated {{original_due_date}}, with a current balance of {{amount_due}}." Explain that payment happens through a secure link, never over the phone.
 
 # Available Tools
 
@@ -322,7 +322,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with the complete Elixis Elevator Systems introduction. If the person says hello or interrupts, restart that introduction naturally once. After first-name confirmation, state the exact service, due date, and balance. Keep the call concise, call the required tools, honor tool results, and invoke end_call immediately after every final closing sentence.",
+        text: "Speak first with the complete Elixis Elevator Systems introduction. If the person says hello or interrupts, restart that introduction naturally once. After first-name confirmation, state the exact service, due date, and balance before acting on any payment request from the confirming turn. Keep the call concise, call the required tools, honor tool results, and invoke end_call immediately after every final closing sentence.",
       },
       tool_ids: Object.values(OUTBOUND_TOOL_IDS),
       tools: [
