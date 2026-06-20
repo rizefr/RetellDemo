@@ -76,7 +76,7 @@ describe("outbound flow guardrails", () => {
     );
     const flow = buildOutboundConversationFlow("https://example.com");
     expect(flow.start_node_id).toBe("outbound_collections_agent");
-    expect(flow.nodes).toHaveLength(4);
+    expect(flow.nodes).toHaveLength(2);
     expect(serialized).toContain('"type":"subagent"');
     expect(serialized).toContain('"tool_ids"');
     expect(serialized).toContain("Do not leave voicemail");
@@ -110,12 +110,10 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"callback_propose_then_confirm_example"');
     expect(serialized).toContain('"id":"mail_check_missing_instructions_example"');
     expect(serialized).toContain('"id":"do_not_contact_terminal_example"');
+    expect(serialized).toContain('"id":"email_sent_terminal_example"');
     expect(serialized).toContain('"id":"human_unavailable_terminal_example"');
     expect(serialized).toContain("your next action must be the schedule_callback tool");
     expect(serialized).toContain('"id":"outbound_terminal_end"');
-    expect(serialized).toContain('"id":"outbound_send_email_function"');
-    expect(serialized).toContain('"id":"outbound_email_end"');
-    expect(serialized).toContain('"type":"function"');
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
     expect(serialized).toContain("When sent is true, confirm delivery once and immediately invoke end_call");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
