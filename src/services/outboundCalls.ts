@@ -16,7 +16,13 @@ import {
   getOutboundFollowupTask,
   updateOutboundFollowupTask,
 } from "./outboundRepository";
-import { formatOutboundDate } from "./outboundFormatting";
+import {
+  formatOutboundDate,
+  formatOutboundDateTime,
+  formatOutboundInvoiceCountSpoken,
+  formatOutboundInvoiceIdSpoken,
+  formatOutboundMoneySpoken,
+} from "./outboundFormatting";
 import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
 
 export type AfterHoursOverrideRequest = {
@@ -44,7 +50,7 @@ export function outboundAiDisclosureInstruction(policy: unknown): string {
   if (policy === "on_request") {
     return "Do not mention or volunteer AI status unless the person explicitly asks whether you are AI, automated, or a robot. If asked, answer honestly.";
   }
-  return "After confirming identity, disclose naturally that you are an AI voice assistant before discussing payment.";
+  return "After confirming identity and after the elevator operation check, say only once that you are an AI assistant helping Elixis Elevator Systems follow up on service accounts. Then continue naturally into the service and invoice details.";
 }
 
 export async function inspectOutboundCallEligibility(
@@ -202,10 +208,15 @@ export async function startOutboundCall(
     customer_first_name: String(context.customer.first_name),
     customer_last_name: String(context.customer.last_name),
     amount_due: money(Number(context.invoice.amount_due_cents), String(context.invoice.currency)),
+    amount_due_spoken: formatOutboundMoneySpoken(
+      Number(context.invoice.amount_due_cents),
+      String(context.invoice.currency),
+    ),
     original_due_date: String(context.invoice.original_due_date),
     original_due_date_spoken: formatOutboundDate(String(context.invoice.original_due_date)),
     service_description: String(context.invoice.service_description),
     invoice_id: String(context.invoice.invoice_id),
+    invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.invoice_id)),
     payment_link: String(context.paymentLink?.url ?? ""),
     attempt_number: String(attemptNumber),
     business_callback_number: String(context.business.callback_number || env.BUSINESS_CALLBACK_NUMBER || ""),
@@ -215,7 +226,20 @@ export async function startOutboundCall(
     ai_disclosure_policy: String(context.business.ai_disclosure_policy || "after_identity"),
     ai_disclosure_instruction: outboundAiDisclosureInstruction(context.business.ai_disclosure_policy),
     open_invoice_count: String(account.openInvoiceCount),
+    open_invoice_count_spoken: formatOutboundInvoiceCountSpoken(Number(account.openInvoiceCount)),
     total_amount_due: money(Number(account.totalAmountDueCents), String(context.invoice.currency)),
+    total_amount_due_spoken: formatOutboundMoneySpoken(
+      Number(account.totalAmountDueCents),
+      String(context.invoice.currency),
+    ),
+    call_purpose: followupTask ? "callback_followup" : "initial_invoice_followup",
+    callback_scheduled_for_spoken: followupTask
+      ? formatOutboundDateTime(
+          String(followupTask.scheduled_for || ""),
+          String(followupTask.callback_timezone || context.customer.timezone || context.business.default_timezone),
+          "the requested time",
+        )
+      : "",
     oldest_invoice_date_spoken: formatOutboundDate(String(account.oldestInvoiceDate || ""), ""),
     most_recent_invoice_date_spoken: formatOutboundDate(String(account.mostRecentInvoiceDate || ""), ""),
     selected_invoice_is_most_recent: String(account.selectedInvoiceIsMostRecent),

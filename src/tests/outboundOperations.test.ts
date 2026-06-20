@@ -198,7 +198,12 @@ describe("outbound browser operation safety", () => {
         retell_llm_dynamic_variables: expect.objectContaining({
           agent_display_name: "Paul",
           original_due_date_spoken: "May 20, 2026",
+          amount_due_spoken: "one hundred fifty dollars",
+          invoice_id_spoken: "invoice E-L-V, test",
           open_invoice_count: "1",
+          open_invoice_count_spoken: "one open invoice",
+          total_amount_due_spoken: "one hundred fifty dollars",
+          call_purpose: "initial_invoice_followup",
           ai_disclosure_instruction: expect.stringContaining("Do not mention or volunteer AI status"),
         }),
       }),

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   formatOutboundDate,
+  formatOutboundInvoiceCountSpoken,
+  formatOutboundInvoiceIdSpoken,
+  formatOutboundMoneySpoken,
   normalizeOutboundDate,
 } from "../services/outboundFormatting";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
@@ -28,11 +31,34 @@ describe("outbound natural date formatting", () => {
   });
 });
 
+describe("outbound speech-safe invoice formatting", () => {
+  it("spells dollar and cent amounts without exposing symbols or cents storage", () => {
+    expect(formatOutboundMoneySpoken(15000, "usd")).toBe("one hundred fifty dollars");
+    expect(formatOutboundMoneySpoken(15025, "usd")).toBe("one hundred fifty dollars and twenty-five cents");
+    expect(formatOutboundMoneySpoken(124050, "usd")).toBe(
+      "one thousand two hundred forty dollars and fifty cents",
+    );
+  });
+
+  it("separates invoice identifiers from payment amounts", () => {
+    expect(formatOutboundInvoiceIdSpoken("ELV-2026-002")).toBe("invoice E-L-V, two zero two six, zero zero two");
+    expect(formatOutboundInvoiceIdSpoken("ELV-TEST-OWN-NUMBER")).toBe(
+      "invoice E-L-V, test, own, number",
+    );
+  });
+
+  it("uses natural singular and plural open-invoice counts", () => {
+    expect(formatOutboundInvoiceCountSpoken(1)).toBe("one open invoice");
+    expect(formatOutboundInvoiceCountSpoken(3)).toBe("three open invoices");
+  });
+});
+
 describe("outbound AI disclosure instruction", () => {
   it("turns each configured policy into one unambiguous per-call instruction", () => {
     expect(outboundAiDisclosureInstruction("on_request")).toContain("Do not mention or volunteer AI status");
     expect(outboundAiDisclosureInstruction("opening")).toContain("near the opening");
-    expect(outboundAiDisclosureInstruction("after_identity")).toContain("After confirming identity");
+    expect(outboundAiDisclosureInstruction("after_identity")).toContain("after the elevator operation check");
+    expect(outboundAiDisclosureInstruction("after_identity")).toContain("only once");
   });
 });
 

@@ -145,6 +145,41 @@ The setup panel calls protected `GET /api/outbound/setup/status`. It returns boo
 
 Normal demo operation no longer requires the CSV import CLI: upload the file, validate it, then import it from `/outbound`. Keep the CLI for recovery and repeatable setup.
 
+### Operator guide
+
+1. Open `https://elixis.agency/outbound` and enter the server-side `OUTBOUND_ADMIN_TOKEN`. Login exchanges the token for an HttpOnly cookie; do not put the token in a URL or browser storage.
+2. Review **Setup and readiness** before changing data. Green checks mean the server can reach Supabase and has the relevant provider configuration. A configured secret is not proof that a provider account, sender, or webhook is valid; verify provider status before a real test.
+3. Use **Customers and invoices** to select one invoice, review the customer phone/email, service, natural due date, balance, invoice status, paused state, last call, and next task. Internal UUIDs stay collapsed unless troubleshooting.
+4. Invoice states mean: `unpaid` is eligible subject to all call gates; `payment_link_sent` remains outstanding; `paid` stops follow-up; `disputed` and `manual_review` require a person; `cancelled` is inactive. Return a demo invoice to `unpaid` only after intentionally reviewing why it entered manual review.
+5. Use **Call history** for the transcript, provider summary, outcome, duration, tool invocations/errors, recording link, next action, and Retell call ID. Rebuild analysis only when a completed call has a transcript but missing analysis.
+6. Use **Payment sessions** to create or reuse the invoice-specific exact-amount Stripe Checkout Session. `open` can be reused until expiry, `paid` is complete, and an expired session can be replaced. Account totals never become generic payment links.
+7. Use **Events and debug** to inspect redacted Retell webhooks, Stripe events, admin actions, callback scheduling, and email results. Raw provider payloads are expandable but secrets are never returned.
+8. Use **Callbacks and follow-ups** to review the requested local time, timezone, reason, confirmation, and status. Edit or complete a task manually. A callback task never auto-dials.
+9. Use **Settings** for the business/agent names, disclosure policy, timezone, callback/transfer numbers, mailing instructions, test mode, phone allowlist, batch limit, after-hours test switch, and requested email/SMS states. Provider secrets remain in Vercel and appear only as present/missing readiness checks.
+
+#### One-call and callback workflow
+
+The browser never decides call eligibility. Select one invoice or pending callback task, run **Preflight**, review the backend result, satisfy the normal window or the tightly gated after-hours self-test confirmation, then use the single-call action. The page calls the protected `/api/outbound/calls/preflight` and `/api/outbound/calls/start` routes and refreshes calls, events, customers, and callbacks after the result.
+
+For a callback task, Paul receives `call_purpose=callback_followup` and the trusted requested time from the stored task. He opens with the requested-time follow-up script instead of the initial service-check script. The same test-mode, allowlist, calling-window, after-hours, admin, and one-item gates still apply. The system does not ask customers to call the office or rely on inbound callbacks.
+
+#### CSV uploads
+
+- **Customer invoice CSV** defines who to contact and the invoice/account context. Download it from **Customer template**. Required columns are `customer_id,first_name,last_name,phone_number,email,mailing_address,timezone,amount_due,original_due_date,service_description,invoice_id,business_name,status,outreach_paused,notes`.
+- Optional customer columns are `last_payment_date,open_invoice_count,total_amount_due,payment_contact_preference,callback_preferred_time,payment_mailing_instructions`. Count/total values are validation hints; database-derived invoice totals remain authoritative.
+- **Business setup CSV** defines how Paul behaves. Download it from **Business template**. It covers business identity, timezone, callback/transfer numbers, disclosure policy, mailing instructions, sender, and requested delivery states.
+- Phones must be E.164. Dates may be `YYYY-MM-DD` or `YYYYMMDD`; the UI and Paul present them naturally. Dollar values store as cents. Validate/dry-run before import. Blank notes do not erase notes, paid invoices do not reopen, and stable business/customer/invoice IDs update rather than duplicate history.
+
+#### Controlled email test
+
+1. In Resend, confirm the workspace containing the production API key shows `elixis.agency` as verified and accepts `Elixis Elevator Systems <billing@elixis.agency>`.
+2. Confirm Vercel reports the provider, API key, sender, and server capability as configured.
+3. In business settings, enable requested email delivery and add only the controlled recipient to the test recipient allowlist.
+4. Put that same address on the selected fake/test customer. The Retell email tool uses only the trusted customer and invoice from signed call metadata and the on-file address.
+5. After explicit payment-link agreement, send one test through the normal email tool, confirm the `email_sent` event in **Events and debug**, then confirm delivery in the controlled inbox.
+
+If any check fails, leave the allowlist empty. The endpoint returns `email_pending_manual`, and Paul must not claim delivery. SMS remains disabled/manual until a separate Retell SMS-capability rollout; `sms_pending_manual` is expected and the CSV/business settings already preserve the future preference.
+
 ## Stripe setup
 
 1. Use Stripe test-mode keys first.

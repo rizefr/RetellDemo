@@ -16,12 +16,12 @@ type SetupReport = {
 
 const OUTBOUND_VOICE_SETTINGS = {
   voice_model: "eleven_flash_v2_5" as const,
-  voice_speed: 0.98,
+  voice_speed: 0.94,
   voice_temperature: 1.2,
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,
   enable_backchannel: true,
-  begin_message_delay_ms: 250,
+  begin_message_delay_ms: 650,
 };
 
 const OUTBOUND_POST_CALL_ANALYSIS = [
