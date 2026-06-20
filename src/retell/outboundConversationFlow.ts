@@ -251,14 +251,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       },
       edges: [
         {
-          id: "outbound_email_delivery_edge",
-          destination_node_id: "outbound_send_email_function",
-          transition_condition: {
-            type: "prompt",
-            prompt: "The caller explicitly chose email, confirmed the trusted email on file, log_outcome completed, and create_payment_link completed. Transition now so the dedicated function node sends or records the email request.",
-          },
-        },
-        {
           id: "outbound_terminal_edge",
           destination_node_id: "outbound_terminal_end",
           transition_condition: {
@@ -267,7 +259,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           },
         },
       ],
-      tool_ids: Object.values(OUTBOUND_TOOL_IDS).filter((toolId) => toolId !== OUTBOUND_TOOL_IDS.sendPaymentEmail),
+      tool_ids: Object.values(OUTBOUND_TOOL_IDS),
       tools: [
         {
           type: "transfer_call",
@@ -309,6 +301,10 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
             { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
+            { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
           ],
         },
         {
@@ -330,6 +326,32 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_4", arguments: "{\"reason\":\"payment_link_requested\"}" },
             { role: "tool_call_result", tool_call_id: "tool_4", content: "{\"scheduled\":true,\"task_count\":4}" },
             { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_5", arguments: "{}" },
+          ],
+        },
+        {
+          id: "payment_email_manual_example",
+          transcript: [
+            { role: "agent", content: "I can prepare a secure payment link. Text is usually easiest, but if you prefer email I can note that instead." },
+            { role: "user", content: "Email is better." },
+            { role: "agent", content: "Is the email on file still the best one?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller requested the secure payment link by email.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
+            { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
+          ],
+        },
+        {
+          id: "email_sent_terminal_example",
+          transcript: [
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_1", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"sent\":true,\"status\":\"email_sent\",\"message_for_agent\":\"The secure payment link was sent to the email on file.\"}" },
+            { role: "agent", content: "Thanks. The secure payment link was sent to the email on file." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
         {
@@ -428,32 +450,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "End completed outbound call",
       speak_during_execution: false,
       display_position: { x: 620, y: 120 },
-    },
-    {
-      id: "outbound_send_email_function",
-      type: "function",
-      name: "Send trusted payment email",
-      tool_id: OUTBOUND_TOOL_IDS.sendPaymentEmail,
-      tool_type: "local",
-      wait_for_result: true,
-      speak_during_execution: false,
-      display_position: { x: 620, y: 300 },
-      else_edge: {
-        id: "outbound_email_result_edge",
-        destination_node_id: "outbound_email_end",
-        transition_condition: { type: "prompt", prompt: "Else" },
-      },
-    },
-    {
-      id: "outbound_email_end",
-      type: "end",
-      name: "Confirm email result and end",
-      speak_during_execution: true,
-      instruction: {
-        type: "prompt",
-        text: "If email_sent is true, say: Thanks. The secure payment link was sent to the email on file. Otherwise say: I'll note that you prefer email and have the team follow up with the secure link. Thanks.",
-      },
-      display_position: { x: 900, y: 300 },
     },
   ];
 
