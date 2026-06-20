@@ -76,7 +76,7 @@ describe("outbound flow guardrails", () => {
     );
     const flow = buildOutboundConversationFlow("https://example.com");
     expect(flow.start_node_id).toBe("outbound_collections_agent");
-    expect(flow.nodes).toHaveLength(1);
+    expect(flow.nodes).toHaveLength(2);
     expect(serialized).toContain('"type":"subagent"');
     expect(serialized).toContain('"tool_ids"');
     expect(serialized).toContain("Do not leave voicemail");
@@ -113,6 +113,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"email_sent_terminal_example"');
     expect(serialized).toContain('"id":"human_unavailable_terminal_example"');
     expect(serialized).toContain("your next action must be the schedule_callback tool");
+    expect(serialized).toContain('"id":"outbound_terminal_end"');
+    expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("State the service, natural due date, and selected balance before any payment tool");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
