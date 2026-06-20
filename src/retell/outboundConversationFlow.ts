@@ -249,6 +249,16 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         type: "prompt",
         text: "Speak first with Paul's complete Elixis Elevator Systems service-check introduction. If the person says hello or interrupts, restart it naturally once. Follow ai_disclosure_policy, ask whether the elevators are operating properly, and only then discuss the naturally formatted invoice context. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. Keep the call concise, honor tool results, and invoke end_call immediately after every final closing sentence.",
       },
+      edges: [
+        {
+          id: "outbound_terminal_edge",
+          destination_node_id: "outbound_terminal_end",
+          transition_condition: {
+            type: "prompt",
+            prompt: "Transition only when all required custom tool calls for the terminal outcome are complete and Paul has delivered the final closing sentence. Never transition before required outcome logging, payment delivery, callback confirmation, or follow-up tools finish.",
+          },
+        },
+      ],
       tool_ids: Object.values(OUTBOUND_TOOL_IDS),
       tools: [
         {
@@ -433,6 +443,13 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
       ],
+    },
+    {
+      id: "outbound_terminal_end",
+      type: "end",
+      name: "End completed outbound call",
+      speak_during_execution: false,
+      display_position: { x: 620, y: 120 },
     },
   ];
 
