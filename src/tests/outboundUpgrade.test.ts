@@ -12,6 +12,7 @@ import {
 import { parseOutboundCsv } from "../services/outboundCsv";
 import { businessCsvTemplate, customerCsvTemplate } from "../services/outboundTemplates";
 import { parseOutboundBusinessCsv } from "../services/outboundBusinessCsv";
+import { outboundAiDisclosureInstruction } from "../services/outboundCalls";
 
 describe("outbound natural date formatting", () => {
   it("normalizes compact and ISO dates without changing the calendar day", () => {
@@ -24,6 +25,14 @@ describe("outbound natural date formatting", () => {
   it("returns an explicit fallback for invalid dates", () => {
     expect(normalizeOutboundDate("20261340")).toBeNull();
     expect(formatOutboundDate("not-a-date")).toBe("Date unavailable");
+  });
+});
+
+describe("outbound AI disclosure instruction", () => {
+  it("turns each configured policy into one unambiguous per-call instruction", () => {
+    expect(outboundAiDisclosureInstruction("on_request")).toContain("Do not mention or volunteer AI status");
+    expect(outboundAiDisclosureInstruction("opening")).toContain("near the opening");
+    expect(outboundAiDisclosureInstruction("after_identity")).toContain("After confirming identity");
   });
 });
 
