@@ -280,9 +280,11 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "same_turn_payment_request_example",
           transcript: [
-            { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
+            { role: "agent", content: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this Taylor?" },
             { role: "user", content: "Yes, this is Taylor. I want to pay now and email is better than text." },
-            { role: "agent", content: "Thanks. I'm an AI voice assistant helping Elixis Elevator Systems follow up on open invoices. I'm calling about the annual elevator inspection invoice from May 1st with a current balance of four hundred eighty dollars. Payment is through a secure link, not over the phone. Is the email on file still the best one?" },
+            { role: "agent", content: "Thanks, Taylor. Before we get to that, are the elevators operating properly?" },
+            { role: "user", content: "Yes, everything is working." },
+            { role: "agent", content: "That's good to hear. There's an open invoice for the annual elevator inspection from May 1, 2026, with a balance of four hundred eighty dollars. Payment is through a secure link, not over the phone. Is the email on file still the best one?" },
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to pay and confirmed email delivery.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -297,9 +299,11 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "payment_sms_manual_example",
           transcript: [
-            { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
+            { role: "agent", content: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this Taylor?" },
             { role: "user", content: "Yes." },
-            { role: "agent", content: "Thanks. I'm an AI voice assistant helping Elixis Elevator Systems follow up on open invoices. I'm calling about the annual elevator inspection invoice from May 1st with a current balance of four hundred eighty dollars. I can help note this and prepare a secure payment link if you'd like to take care of it now." },
+            { role: "agent", content: "Thanks. Are the elevators operating properly?" },
+            { role: "user", content: "Yes, they are." },
+            { role: "agent", content: "That's good to hear. There's an open invoice for the annual elevator inspection from May 1, 2026, with a balance of four hundred eighty dollars. Would you like to take care of it now through a secure link?" },
             { role: "user", content: "Okay, text it to me." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to receive secure payment link by text.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -333,7 +337,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "wrong_number_example",
           transcript: [
-            { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
+            { role: "agent", content: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this Taylor?" },
             { role: "user", content: "No, wrong number." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"wrong_number\",\"notes\":\"Person stated this is a wrong number.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"wrong_number\",\"outreach_paused\":true}" },
@@ -345,9 +349,11 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           id: "hello_recovery_example",
           transcript: [
             { role: "user", content: "Hello?" },
-            { role: "agent", content: "Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice. Am I speaking with Taylor?" },
+            { role: "agent", content: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this Taylor?" },
             { role: "user", content: "Yes, what invoice is this?" },
-            { role: "agent", content: "Thanks. I'm an AI voice assistant helping Elixis Elevator Systems follow up on open invoices. This is for the annual elevator inspection invoice dated May 1st, with a current balance of four hundred eighty dollars. Payment would be through a secure link, not over the phone." },
+            { role: "agent", content: "Thanks. First, are the elevators operating properly?" },
+            { role: "user", content: "Yes." },
+            { role: "agent", content: "Good to hear. This is for the annual elevator inspection invoice dated May 1, 2026, with a current balance of four hundred eighty dollars. Payment would be through a secure link, not over the phone." },
             { role: "user", content: "Okay, thank you." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"manual_review\",\"notes\":\"Caller ended without requesting a payment link.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"manual_review\"}" },
