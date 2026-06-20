@@ -386,6 +386,16 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
         {
+          id: "do_not_contact_terminal_example",
+          transcript: [
+            { role: "user", content: "Stop calling me." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"do_not_contact\",\"notes\":\"Caller requested that outreach stop.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"do_not_contact\",\"outreach_paused\":true}" },
+            { role: "agent", content: "Understood. We'll stop calling this number. Thanks for letting us know." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
+          ],
+        },
+        {
           id: "hello_recovery_example",
           transcript: [
             { role: "user", content: "Hello?" },

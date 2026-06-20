@@ -109,6 +109,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"service_issue_logging_example"');
     expect(serialized).toContain('"id":"callback_propose_then_confirm_example"');
     expect(serialized).toContain('"id":"mail_check_missing_instructions_example"');
+    expect(serialized).toContain('"id":"do_not_contact_terminal_example"');
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("State the service, natural due date, and selected balance before any payment tool");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
