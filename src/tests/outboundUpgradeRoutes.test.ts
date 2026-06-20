@@ -143,3 +143,38 @@ describe("outbound upgrade routes", () => {
     expect(recordOutboundOutcome).toHaveBeenCalledWith(expect.objectContaining({ outcome: "callback_scheduled" }));
   });
 });
+
+describe("callback repository idempotency", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it("returns an existing callback task when Retell retries the confirmed tool", async () => {
+    const existingTask = { id: "callback-task-existing", task_type: "callback" };
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: existingTask, error: null }),
+      insert: vi.fn().mockReturnThis(),
+      single: vi.fn(),
+    };
+    vi.doMock("../services/supabase", () => ({
+      getSupabaseClient: () => ({ from: vi.fn().mockReturnValue(builder) }),
+    }));
+    const { createOutboundCallbackTask } = await import("../services/outboundRepository");
+
+    const result = await createOutboundCallbackTask({
+      businessId: "00000000-0000-4000-8000-000000000001",
+      customerId: "00000000-0000-4000-8000-000000000002",
+      invoiceId: "00000000-0000-4000-8000-000000000003",
+      scheduledFor: "2026-06-23T18:00:00.000Z",
+      timezone: "America/New_York",
+      reason: "customer requested a later call",
+      confirmationText: "Callback Tuesday at 2 PM confirmed.",
+    });
+
+    expect(result).toEqual(existingTask);
+    expect(builder.insert).not.toHaveBeenCalled();
+  });
+});

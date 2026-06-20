@@ -240,8 +240,19 @@ export async function createOutboundCallbackTask(input: {
   sourceCallAttemptId?: string;
   sourceRetellCallId?: string;
 }) {
+  const client = db();
+  const existing = await client
+    .from("outbound_followup_tasks")
+    .select("*")
+    .eq("invoice_id", input.invoiceId)
+    .eq("task_type", "callback")
+    .eq("scheduled_for", input.scheduledFor)
+    .maybeSingle();
+  if (existing.error) throw new OutboundDatabaseError(existing.error.message);
+  if (existing.data) return existing.data as Record<string, unknown>;
+
   return unwrap(
-    await db()
+    await client
       .from("outbound_followup_tasks")
       .insert({
         business_id: input.businessId,
