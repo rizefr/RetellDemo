@@ -181,7 +181,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       baseUrl,
       "send_payment_email",
       "/api/outbound/retell/send-payment-email",
-      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false.",
+      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false. When sent is true, confirm delivery once and immediately invoke end_call; do not wait for another caller turn.",
       {},
       [],
       {

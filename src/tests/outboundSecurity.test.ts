@@ -115,6 +115,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("your next action must be the schedule_callback tool");
     expect(serialized).toContain('"id":"outbound_terminal_end"');
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
+    expect(serialized).toContain("When sent is true, confirm delivery once and immediately invoke end_call");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("State the service, natural due date, and selected balance before any payment tool");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
