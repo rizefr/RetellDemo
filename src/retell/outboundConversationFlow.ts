@@ -222,7 +222,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       baseUrl,
       "schedule_callback",
       "/api/outbound/retell/schedule-callback",
-      "Resolve and store a confirmed callback preference. Call once with confirmed=false to propose the normalized local time, then again with confirmed=true only after the caller confirms it.",
+      "MANDATORY resolver for callback dates and times. When the caller provides a callback day and time, your next action must be the schedule_callback tool with confirmed=false; do not speak, calculate, repeat, or confirm a date first. Call again with confirmed=true only after the caller confirms the tool's normalized time.",
       {
         date_phrase: { type: "string", description: "Requested date, such as tomorrow, Friday, or 2026-06-26." },
         time_phrase: { type: "string", description: "Requested time, such as morning, afternoon, or 11:30 AM." },
@@ -247,7 +247,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with Paul's complete Elixis Elevator Systems service-check introduction. If the person says hello or interrupts, restart it naturally once. Follow ai_disclosure_policy, ask whether the elevators are operating properly, and only then discuss the naturally formatted invoice context. Use the callback tool's propose-then-confirm sequence. Keep the call concise, honor tool results, and invoke end_call immediately after every final closing sentence.",
+        text: "Speak first with Paul's complete Elixis Elevator Systems service-check introduction. If the person says hello or interrupts, restart it naturally once. Follow ai_disclosure_policy, ask whether the elevators are operating properly, and only then discuss the naturally formatted invoice context. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. Keep the call concise, honor tool results, and invoke end_call immediately after every final closing sentence.",
       },
       tool_ids: Object.values(OUTBOUND_TOOL_IDS),
       tools: [
@@ -333,6 +333,27 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
             { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
             { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
+          ],
+        },
+        {
+          id: "email_sent_terminal_example",
+          transcript: [
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_1", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"sent\":true,\"status\":\"email_sent\",\"message_for_agent\":\"The secure payment link was sent to the email on file.\"}" },
+            { role: "agent", content: "Thanks. The secure payment link was sent to the email on file." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
+          ],
+        },
+        {
+          id: "human_unavailable_terminal_example",
+          transcript: [
+            { role: "user", content: "I want to speak with a human." },
+            { role: "tool_call_invocation", name: "request_human_transfer", tool_call_id: "tool_1", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"transfer_available\":false,\"status\":\"human_requested\",\"message_for_agent\":\"A team member will follow up.\"}" },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_2", arguments: "{\"outcome\":\"human_requested\",\"notes\":\"Caller requested a human; transfer unavailable.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"logged\":true,\"outcome\":\"human_requested\"}" },
+            { role: "agent", content: "I'll have a team member follow up with you directly. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_3", arguments: "{}" },
           ],
         },
         {
