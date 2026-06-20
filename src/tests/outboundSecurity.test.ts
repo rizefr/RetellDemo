@@ -99,6 +99,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Elixis Elevator Systems");
     expect(serialized).toContain("Hi, my name is Paul");
     expect(serialized).toContain("make sure your elevators are operating properly");
+    expect(serialized).not.toContain("Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice");
+    expect(serialized).not.toContain("Thanks. I'm an AI voice assistant helping Elixis Elevator Systems");
     expect(serialized).toContain("ai_disclosure_policy");
     expect(serialized).toContain("service_issue_reported");
     expect(serialized).toContain("mail_instructions_requested");
