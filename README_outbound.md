@@ -17,25 +17,25 @@ The business using it is responsible for establishing its right to contact each 
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
 
-## Current setup status (June 19, 2026)
+## Current setup status (June 20, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
 - The outbound migrations have been applied. All seven `public.outbound_*` tables exist, RLS is enabled, no `anon` or `authenticated` policies/grants are present, and `outbound_mark_invoice_paid` is detected from the deployed service-role path. Call attempts now store duration and structured analysis; the paid-invoice RPC uses qualified table references.
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
-- Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event; `ELV-TEST-OWN-NUMBER` remains unpaid and callable.
+- Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event. `ELV-TEST-OWN-NUMBER` remains unpaid but is currently `manual_review`; an admin must deliberately return it to an eligible unpaid status before another call preflight can pass.
 - Retell outbound agent and Conversation Flow were hardened and published:
-  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `9`
-  - Conversation Flow: `conversation_flow_bebdceabc801`, version `9`
-  - the flow uses one tool-capable Subagent Node with six custom tools using Retell's signed `{name,args,call}` envelope; `args_at_root` is disabled
-  - voice speed is `1.02`; GPT-4.1, Cimo/ElevenLabs Flash v2.5, agent-first opening, interruption handling, and voicemail hangup are preserved
-  - the agent speaks first, repeats the complete introduction after an early hello/interruption, names Elixis Elevator Systems, and states the invoice service/date/amount after first-name confirmation
+  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `19`
+  - Conversation Flow: `conversation_flow_bebdceabc801`, version `19`
+  - the flow uses a tool-capable Subagent Node, a terminal End Node, and seven custom tools using Retell's signed `{name,args,call}` envelope; `args_at_root` is disabled
+  - voice is `11labs-Paul` at speed `0.98`; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
+  - Paul speaks first, repeats the complete introduction after an early hello/interruption, follows the per-call disclosure instruction, asks about elevator operation, and states the invoice service/natural date/amount after first-name confirmation
   - voicemail handling is configured to `hangup`
-- Retell native simulations pass on version 9 for opening/invoice clarity and the same-turn payment/email branch. The latter verifies service/date/amount disclosure before `log_outcome`, `create_payment_link`, and the disabled/manual email response.
+- Retell native V19 simulations pass for opening/hello recovery, `on_request` disclosure and AI honesty, service/invoice clarity, service issue, proof, callback resolver ordering, disabled SMS, mail check, already paid, stop calling, and unavailable human transfer. The email tool uses trusted metadata and returns the correct sent/manual wording, but Retell Playground can omit `end_call` after that final email sentence; keep the test-recipient allowlist empty until this terminal behavior is reverified.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
-- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Vercel Production has the Resend provider, API key, and `Elixis Elevator Systems <billing@elixis.agency>` sender configured, but `OUTBOUND_PAYMENT_EMAIL_ENABLED=false` remains in force until the Resend domain status is verified authoritatively. The domain-list API returned `401` with the available key, so no test email was sent.
+- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Vercel Production has the Resend provider, API key, sender, and server capability enabled; the Elixis business requests email delivery. The test-recipient allowlist is intentionally empty, so test-mode email delivery is blocked and no test email was sent.
 - The after-hours self-test override is enabled in Vercel but remains unavailable unless test mode, one-item max batch, allowlisting, admin authentication, the warning checkbox, and the exact confirmation phrase all pass. Batch endpoints never accept the override.
 - The browser CSV upload validates all three demo rows, and a deployed batch dry run reports zero calls placed. The single-call button remains gated by recipient-local weekday 10:00-16:00 eligibility and explicit approval.
 - No call, SMS, real batch, real charge, phone binding change, or receptionist code/data mutation was performed by the setup pass.
@@ -219,13 +219,13 @@ Configure voicemail detection with action `hangup`. The setup payload also reque
 
 Dynamic variables:
 
-`business_name`, `agent_display_name`, `ai_disclosure_policy`, `customer_first_name`, `customer_last_name`, `amount_due`, `original_due_date`, `original_due_date_spoken`, `service_description`, `invoice_id`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `total_amount_due`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
+`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `original_due_date`, `original_due_date_spoken`, `service_description`, `invoice_id`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `total_amount_due`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
 
 The upgraded flow introduces Paul with a service-first opening, natural spoken dates, configurable `after_identity|on_request|opening` AI disclosure, elevator service-issue/manual-review handling, one helpful objection clarification, account-level invoice context, mail-check handling, and a signed `schedule-callback` tool. Callback phrases are normalized in the recipient timezone, confirmed before storage, and never auto-executed.
 
 Set `HUMAN_TRANSFER_NUMBER` only after verifying ownership and live transfer behavior. If absent, the tool logs `human_requested` and the agent must end with a team-follow-up message.
 
-Outbound SMS remains disabled/manual. The endpoint requires a prior `confirmed_payment_link_requested` outcome, returns `sent:false`, and logs `sms_pending_manual`. Email is also disabled/manual unless a verified Resend sender and explicit enable flag are configured; the endpoint only uses the existing customer email and otherwise logs `email_missing` or `email_pending_manual`. Do not enable either delivery channel casually.
+Outbound SMS remains disabled/manual. The endpoint requires a prior `confirmed_payment_link_requested` outcome, returns `sent:false`, and logs `sms_pending_manual`. Email is provider- and business-gated, uses only the existing customer email, and logs `email_missing` or `email_pending_manual` when blocked. In test mode, the recipient must also be in the business email test allowlist. Do not enable either delivery channel casually.
 
 ## Calling gates
 
@@ -278,7 +278,7 @@ Vercel/Express raw-body routes are mounted before global JSON parsing for Stripe
 
 Do not call until the migration, deployed environment, Stripe webhook, Retell flow, Retell number outbound capability, AI/recording disclosure, and contact-right review are complete.
 
-1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` and flow `conversation_flow_bebdceabc801` on published version `9`.
+1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` and flow `conversation_flow_bebdceabc801` on published version `19`.
 2. Confirm the current `+19842075346` assignment remains intentional. Do not change it from code; use explicit dashboard approval for any phone binding correction.
 3. Open `https://elixis.agency/outbound` and confirm the setup panel is ready, test mode is enabled, the allowlist has one number, and SMS is disabled/manual.
 4. Confirm invoice `ELV-TEST-OWN-NUMBER` is assigned to `+13475850249`, is not paused, and remains `unpaid` or `payment_link_sent`.
@@ -291,7 +291,7 @@ A small batch should remain `dry_run` until one single call, signature verificat
 
 ## Compliance notes
 
-- Disclose AI status naturally after identifying the business.
+- Follow the configured disclosure policy and always answer honestly when asked whether the caller is AI or automated.
 - Add recording disclosure where jurisdiction requires it.
 - Enforce recipient-local calling windows.
 - Honor do-not-contact immediately.
