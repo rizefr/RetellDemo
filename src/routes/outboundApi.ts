@@ -7,6 +7,9 @@ import {
   startBatchSchema,
   startCallSchema,
   uuidSchema,
+  businessSettingsPatchSchema,
+  followupPatchSchema,
+  businessImportSchema,
 } from "../schemas/outboundSchemas";
 import {
   clearOutboundAdminCookie,
@@ -33,9 +36,19 @@ import {
   setOutboundPause,
   updateOutboundCustomer,
   updateOutboundInvoice,
+  getOutboundBusinessSettings,
+  updateOutboundBusinessSettings,
+  getOutboundFollowupTask,
+  updateOutboundFollowupTask,
+  importOutboundBusinesses,
 } from "../services/outboundRepository";
 import { createOutboundCheckoutSession } from "../services/outboundStripe";
 import { getOutboundSetupStatus } from "../services/outboundSetup";
+import { validateOutboundBusinessSettingsPatch } from "../services/outboundBusinessSettings";
+import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
+import { customerCsvTemplate, businessCsvTemplate } from "../services/outboundTemplates";
+import { parseOutboundBusinessCsv } from "../services/outboundBusinessCsv";
+import { resolveOutboundCallback } from "../services/outboundCallbacks";
 
 export const outboundApiRouter = express.Router();
 
@@ -108,6 +121,61 @@ outboundApiRouter.get("/setup/status", async (req, res) => {
   }
 });
 
+outboundApiRouter.get("/templates/customers.csv", (_req, res) => {
+  res.type("text/csv").attachment("outbound-customer-invoices-template.csv").send(customerCsvTemplate());
+});
+
+outboundApiRouter.get("/templates/business.csv", (_req, res) => {
+  res.type("text/csv").attachment("outbound-business-setup-template.csv").send(businessCsvTemplate());
+});
+
+outboundApiRouter.get("/businesses/:id/settings", async (req, res) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const settings = await getOutboundBusinessSettings(id);
+    res.json({ settings, readiness: outboundBusinessRuntimeSettings(settings) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.patch("/businesses/:id/settings", async (req, res) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const parsed = businessSettingsPatchSchema.parse(req.body);
+    const { production_mode_confirmation, batch_limit_confirmation, ...requested } = parsed;
+    const patch = validateOutboundBusinessSettingsPatch(requested, {
+      production_mode_confirmation,
+      batch_limit_confirmation,
+    });
+    const before = await getOutboundBusinessSettings(id);
+    const settings = await updateOutboundBusinessSettings(id, patch);
+    await insertOutboundEvent({
+      business_id: id,
+      event_type: "business_settings_updated",
+      source: "admin",
+      payload: { before: Object.fromEntries(Object.keys(patch).map((key) => [key, before[key]])), after: patch },
+    });
+    res.json({ settings, readiness: outboundBusinessRuntimeSettings(settings) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/businesses/import", async (req, res) => {
+  try {
+    const input = businessImportSchema.parse(req.body);
+    const parsed = parseOutboundBusinessCsv(input.csv);
+    if (parsed.errors.length) {
+      res.status(422).json({ imported: false, errors: parsed.errors });
+      return;
+    }
+    res.json({ imported: !input.dry_run, result: await importOutboundBusinesses(parsed.rows, input.dry_run) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 outboundApiRouter.patch("/customers/:id", async (req, res) => {
   try {
     const id = uuidSchema.parse(req.params.id);
@@ -168,11 +236,80 @@ outboundApiRouter.post("/invoices/:id/create-checkout-session", async (req, res)
   }
 });
 
+outboundApiRouter.patch("/followups/:id", async (req, res) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const current = await getOutboundFollowupTask(id);
+    const patch = followupPatchSchema.parse(req.body);
+    let normalizedScheduledFor = patch.scheduled_for;
+    if (patch.scheduled_for_local) {
+      const [datePhrase, timePhrase] = patch.scheduled_for_local.split("T");
+      const resolution = resolveOutboundCallback({
+        datePhrase,
+        timePhrase,
+        timezone: patch.callback_timezone || String(current.callback_timezone || "America/New_York"),
+        referenceTime: new Date(),
+      });
+      if (!resolution.ok) throw new Error(resolution.message);
+      normalizedScheduledFor = resolution.scheduledFor;
+    }
+    const { scheduled_for_local: _scheduledForLocal, ...storedPatch } = patch;
+    const update = {
+      ...storedPatch,
+      ...(normalizedScheduledFor ? { scheduled_for: normalizedScheduledFor } : {}),
+      completed_at: patch.status === "completed" ? new Date().toISOString() : undefined,
+    };
+    const task = await updateOutboundFollowupTask(id, update);
+    await insertOutboundEvent({
+      business_id: String(current.business_id),
+      customer_id: String(current.customer_id),
+      invoice_id: String(current.invoice_id),
+      event_type: "followup_task_updated",
+      source: "admin",
+      payload: { task_id: id, task_type: current.task_type, patch: storedPatch, scheduled_for: normalizedScheduledFor },
+    });
+    res.json({ task });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 outboundApiRouter.post("/calls/start", async (req, res) => {
+  let context: Awaited<ReturnType<typeof inspectOutboundCallEligibility>>["context"] | null = null;
   try {
     const input = startCallSchema.parse(req.body);
-    res.status(201).json(await startOutboundCall(input.invoice_id, input.after_hours_override));
+    const eligibility = await inspectOutboundCallEligibility(input.invoice_id, new Date(), input.after_hours_override);
+    context = eligibility.context;
+    await insertOutboundEvent({
+      business_id: String(context.business.id),
+      customer_id: String(context.customer.id),
+      invoice_id: String(context.invoice.id),
+      event_type: "admin_call_start_requested",
+      source: "admin",
+      payload: { eligible: eligibility.eligible, reason: eligibility.reason, followup_task_id: input.followup_task_id || null },
+    });
+    if (!eligibility.eligible) throw new Error(`Outbound call blocked: ${eligibility.reason}`);
+    const result = await startOutboundCall(input.invoice_id, input.after_hours_override, new Date(), input.followup_task_id);
+    await insertOutboundEvent({
+      business_id: String(context.business.id),
+      customer_id: String(context.customer.id),
+      invoice_id: String(context.invoice.id),
+      event_type: "admin_call_start_submitted",
+      source: "admin",
+      payload: { call_id: result.call_id, attempt_id: result.attempt_id, followup_task_id: input.followup_task_id || null },
+    });
+    res.status(201).json(result);
   } catch (error) {
+    if (context) {
+      await insertOutboundEvent({
+        business_id: String(context.business.id),
+        customer_id: String(context.customer.id),
+        invoice_id: String(context.invoice.id),
+        event_type: "admin_call_start_blocked",
+        source: "admin",
+        payload: { reason: error instanceof Error ? error.message : "Outbound call failed" },
+      }).catch(() => undefined);
+    }
     sendError(res, error);
   }
 });
@@ -189,7 +326,7 @@ outboundApiRouter.post("/calls/:id/rebuild-analysis", async (req, res) => {
 outboundApiRouter.post("/calls/dry-run", async (req, res) => {
   try {
     const input = startCallSchema.parse(req.body);
-    res.json(await describeOutboundCallPreflight(input.invoice_id, new Date(), input.after_hours_override));
+    res.json(await describeOutboundCallPreflight(input.invoice_id, new Date(), input.after_hours_override, input.followup_task_id));
   } catch (error) {
     sendError(res, error);
   }
@@ -198,17 +335,24 @@ outboundApiRouter.post("/calls/dry-run", async (req, res) => {
 outboundApiRouter.post("/calls/start-batch", async (req, res) => {
   try {
     const input = startBatchSchema.parse(req.body);
-    if (input.invoice_ids.length > env.OUTBOUND_MAX_BATCH_SIZE) {
-      res.status(400).json({ error: `Batch exceeds OUTBOUND_MAX_BATCH_SIZE=${env.OUTBOUND_MAX_BATCH_SIZE}` });
+    const batchEligibilities = await Promise.all(input.invoice_ids.map((invoiceId) => inspectOutboundCallEligibility(invoiceId)));
+    const runtimes = batchEligibilities.map((eligibility) => outboundBusinessRuntimeSettings(eligibility.context.business));
+    const businessIds = new Set(batchEligibilities.map((eligibility) => String(eligibility.context.business.id)));
+    if (input.mode !== "dry_run" && businessIds.size !== 1) {
+      res.status(400).json({ error: "A callable batch cannot mix businesses" });
       return;
     }
-    const gate = validateBatchMode({
-      mode: input.mode,
-      testMode: env.OUTBOUND_TEST_MODE,
-      confirmation: input.confirmation,
-    });
-    if (!gate.allowed) {
-      res.status(403).json({ error: gate.reason });
+    const effectiveMaximum = Math.min(...runtimes.map((runtime) => runtime.maxBatchSize));
+    if (input.invoice_ids.length > effectiveMaximum) {
+      res.status(400).json({ error: `Batch exceeds the effective business maximum of ${effectiveMaximum}` });
+      return;
+    }
+    const batchGates = runtimes.map((runtime) => validateBatchMode({
+      mode: input.mode, testMode: runtime.testMode, confirmation: input.confirmation,
+    }));
+    const blockedGate = batchGates.find((gate) => !gate.allowed);
+    if (blockedGate) {
+      res.status(403).json({ error: blockedGate.reason });
       return;
     }
 

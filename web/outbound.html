@@ -27,6 +27,38 @@
         <button id="refresh-all" class="secondary">Refresh all data</button>
       </section>
 
+      <section class="panel settings-panel" aria-labelledby="settings-heading">
+        <div class="section-heading">
+          <div><h2 id="settings-heading">Business and safety settings</h2><p>Operational values are stored server-side. Provider keys remain in Vercel and are shown only as present or missing.</p></div>
+          <button id="save-settings">Save settings</button>
+        </div>
+        <label class="settings-business">Business <select id="settings-business"></select></label>
+        <div class="settings-grid">
+          <label>Business display name <input id="setting-business-name" /></label>
+          <label>Agent display name <input id="setting-agent-name" value="Paul" /></label>
+          <label>Default timezone <input id="setting-timezone" /></label>
+          <label>AI disclosure policy <select id="setting-disclosure"><option value="after_identity">After identity (safer default)</option><option value="on_request">Only when asked (compliance-sensitive)</option><option value="opening">Near the opening</option></select></label>
+          <label>Callback number <input id="setting-callback-number" type="tel" /></label>
+          <label>Human transfer number <input id="setting-transfer-number" type="tel" /></label>
+          <label>Maximum batch size <input id="setting-max-batch" type="number" min="1" max="25" /></label>
+          <label>Test phone allowlist <textarea id="setting-phone-allowlist" rows="3" placeholder="One E.164 number per line"></textarea></label>
+          <label>Email test-recipient allowlist <textarea id="setting-email-allowlist" rows="3" placeholder="One controlled test email per line"></textarea></label>
+          <label>Email sender <input id="setting-email-from" /></label>
+          <label class="wide">Payment mailing instructions <textarea id="setting-mailing" rows="3" placeholder="Leave blank if mailing details are not configured"></textarea></label>
+          <label class="wide">Callback/follow-up rules (JSON) <textarea id="setting-callback-rules" rows="3"></textarea></label>
+          <label class="check-control"><input id="setting-test-mode" type="checkbox" /> Test mode</label>
+          <label class="check-control"><input id="setting-after-hours" type="checkbox" /> Permit gated after-hours self-test</label>
+          <label class="check-control"><input id="setting-email-enabled" type="checkbox" /> Request payment email delivery</label>
+          <label class="check-control"><input id="setting-sms-enabled" type="checkbox" /> Request Retell SMS delivery</label>
+        </div>
+        <div class="warning-box settings-confirmations">
+          <p>Disabling test mode or raising the batch limit requires an exact phrase. These changes are audit logged.</p>
+          <label>Production-mode phrase <input id="setting-production-confirmation" placeholder="ENABLE PRODUCTION OUTBOUND MODE" /></label>
+          <label>Batch-limit phrase <input id="setting-batch-confirmation" placeholder="INCREASE OUTBOUND BATCH LIMIT" /></label>
+        </div>
+        <div id="settings-readiness" class="setup-summary">Load dashboard data to inspect effective provider readiness.</div>
+      </section>
+
       <section class="panel setup-panel" aria-labelledby="setup-heading">
         <div class="section-heading">
           <div>
@@ -71,15 +103,26 @@
         <p id="selected-call-status" class="selected-call-status">No customer call gates checked yet.</p>
       </section>
 
-      <section class="panel import-panel">
-        <div>
-          <h2>Import demo CSV</h2>
-          <p>Validate first. Imports preserve history, paid invoices, paused outreach, and nonblank notes.</p>
+      <section class="panel import-panel upload-panel">
+        <div class="wide">
+          <h2>Customer invoice CSV</h2>
+          <p>Who to call and what they owe. Phone numbers must be E.164. Dates may be YYYY-MM-DD or YYYYMMDD. Amounts are decimal dollars and store as cents.</p>
+          <p>Imports update matching customer/invoice IDs, preserve history and paid invoices, and never erase notes with blanks.</p>
+          <a class="download-link" href="/api/outbound/templates/customers.csv">Download customer invoice template</a>
         </div>
         <input id="csv-file" type="file" accept=".csv,text/csv" />
-        <button id="dry-run-import">Validate CSV</button>
-        <button id="commit-import" class="danger-muted" disabled>Import validated CSV</button>
+        <button id="dry-run-import">Validate customer CSV</button>
+        <button id="commit-import" class="danger-muted" disabled>Import validated customer CSV</button>
         <output id="import-result"></output>
+        <div class="wide business-upload">
+          <h2>Business setup sheet</h2>
+          <p>How the business wants Paul to behave: identity, timezone, transfer/callback details, disclosure policy, mailing instructions, and requested delivery modes.</p>
+          <a class="download-link" href="/api/outbound/templates/business.csv">Download business setup template</a>
+        </div>
+        <input id="business-csv-file" type="file" accept=".csv,text/csv" />
+        <button id="dry-run-business-import">Validate business sheet</button>
+        <button id="commit-business-import" class="danger-muted" disabled>Import validated business sheet</button>
+        <output id="business-import-result"></output>
       </section>
 
       <section class="panel" aria-labelledby="invoice-heading">
@@ -94,6 +137,12 @@
         <p class="batch-note">Batch controls here are dry-run only and place zero calls.</p>
         <div class="table-wrap"><table class="compact-table"><thead><tr><th>Select</th><th>Customer</th><th>Invoice</th><th>Service / amount</th><th>Status</th><th>Latest activity</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="invoice-rows"></tbody></table></div>
         <div id="invoice-empty" class="empty-state" hidden>No invoices match the current filter.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="callbacks-heading">
+        <div class="section-heading"><div><h2 id="callbacks-heading">Callback tasks</h2><p>Stored preferences only. Every callback still requires manual preflight and the protected one-call start route.</p></div><span id="callback-count" class="count-badge">0 callbacks</span></div>
+        <div class="table-wrap"><table class="compact-table callback-table"><thead><tr><th>Customer / invoice</th><th>Requested callback</th><th>Reason / confirmation</th><th>Status</th><th>Actions</th></tr></thead><tbody id="callback-rows"></tbody></table></div>
+        <div id="callback-empty" class="empty-state" hidden>No callback tasks recorded.</div>
       </section>
 
       <section class="panel" aria-labelledby="calls-heading">

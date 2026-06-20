@@ -127,6 +127,17 @@ The page provides joined customers/invoices, call history, payment sessions, and
 - explicit after-hours self-test confirmation when the server flag is enabled
 - selected-invoice batch dry run with no call placement
 - pause/resume
+- business-level safety settings without exposing provider secrets
+- separate customer-invoice and business-setup CSV templates
+- callback task review, editing, completion, preflight, and manual one-call start
+
+### Business and safety settings
+
+`/outbound` stores non-secret operational settings on `outbound_businesses`. This includes test mode, E.164 test allowlist, batch limit, the gated after-hours switch, requested email/SMS delivery, disclosure policy, Paul’s display name, callback/transfer numbers, timezone, mailing instructions, test email recipients, and callback rules.
+
+Provider credentials remain in Vercel. A database toggle cannot make email or SMS effective unless the matching server-side capability is configured. Disabling test mode requires `ENABLE PRODUCTION OUTBOUND MODE`; raising the batch limit above one requires `INCREASE OUTBOUND BATCH LIMIT`. Both changes are audit logged. The after-hours override still requires its separate checkbox and exact per-call phrase.
+
+The customer invoice template is available from `/api/outbound/templates/customers.csv`. The business behavior template is available from `/api/outbound/templates/business.csv`. Both downloads and imports require admin authentication. Customer imports accept `YYYY-MM-DD` or `YYYYMMDD`, preserve paid/history/note state, and report created, updated, unchanged, and warning counts.
 
 Scripts may use `Authorization: Bearer $OUTBOUND_ADMIN_TOKEN`.
 
@@ -194,6 +205,7 @@ Review `retell/outbound_collections_flow_spec.md` and `retell/outbound_collectio
 - `POST {{APP_BASE_URL}}/api/outbound/retell/send-payment-email`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/request-human-transfer`
 - `POST {{APP_BASE_URL}}/api/outbound/retell/schedule-followup`
+- `POST {{APP_BASE_URL}}/api/outbound/retell/schedule-callback`
 
 The backend verifies `X-Retell-Signature` with the installed Retell SDK’s provider-supported verification helper. Current Retell docs sign webhooks/functions with `RETELL_API_KEY`; `OUTBOUND_RETELL_WEBHOOK_SECRET` is kept only as a compatibility fallback/status check. Keep wrapped requests so the signed `call.metadata` remains available. Caller-supplied customer IDs, invoice IDs, and amounts are not trusted.
 
@@ -207,7 +219,9 @@ Configure voicemail detection with action `hangup`. The setup payload also reque
 
 Dynamic variables:
 
-`business_name`, `customer_first_name`, `customer_last_name`, `amount_due`, `original_due_date`, `service_description`, `invoice_id`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`.
+`business_name`, `agent_display_name`, `ai_disclosure_policy`, `customer_first_name`, `customer_last_name`, `amount_due`, `original_due_date`, `original_due_date_spoken`, `service_description`, `invoice_id`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `total_amount_due`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
+
+The upgraded flow introduces Paul with a service-first opening, natural spoken dates, configurable `after_identity|on_request|opening` AI disclosure, elevator service-issue/manual-review handling, one helpful objection clarification, account-level invoice context, mail-check handling, and a signed `schedule-callback` tool. Callback phrases are normalized in the recipient timezone, confirmed before storage, and never auto-executed.
 
 Set `HUMAN_TRANSFER_NUMBER` only after verifying ownership and live transfer behavior. If absent, the tool logs `human_requested` and the agent must end with a team-follow-up message.
 
@@ -247,6 +261,8 @@ All modes enforce `OUTBOUND_MAX_BATCH_SIZE`. No batch endpoint is invoked during
 - Day 14: manual review/mailing-request note.
 
 Weekend dates normalize to the next weekday at 10:00 AM local time. Phase 1 stores tasks but does not execute them. Paid, paused, disputed, do-not-contact, wrong-number, and attorney-represented cases stop or cancel automated follow-up.
+
+Confirmed callback tasks store the requested UTC timestamp, customer timezone, reason, confirmation text, source call attempt/Retell call, related customer/invoice, and status. Starting a callback from `/outbound` uses the same protected preflight and single-call endpoint as every other call. It remains subject to test mode, allowlisting, invoice/customer state, weekday hours, and the separately confirmed self-test override.
 
 ## Vercel
 

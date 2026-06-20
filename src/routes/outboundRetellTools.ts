@@ -4,8 +4,9 @@ import {
   logOutcomeArgsSchema,
   retellToolEnvelopeSchema,
   scheduleFollowupArgsSchema,
+  scheduleCallbackArgsSchema,
 } from "../schemas/outboundSchemas";
-import { buildBaselineFollowups } from "../services/outboundFollowups";
+import { buildBaselineFollowups, nextEligibleOutboundTime } from "../services/outboundFollowups";
 import { applyOutcomePolicy } from "../services/outboundOutcomes";
 import {
   getOutboundInvoiceContext,
@@ -13,10 +14,14 @@ import {
   insertOutboundEvent,
   insertOutboundFollowups,
   recordOutboundOutcome,
+  createOutboundCallbackTask,
+  updateOutboundCustomer,
 } from "../services/outboundRepository";
 import { trustedRetellMetadata, verifyOutboundRetellSignature } from "../services/outboundRetell";
 import { createOutboundCheckoutSession } from "../services/outboundStripe";
 import { sendOutboundPaymentEmailForInvoice } from "../services/outboundEmail";
+import { resolveOutboundCallback } from "../services/outboundCallbacks";
+import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
 
 export const outboundRetellToolsRouter = express.Router();
 
@@ -75,6 +80,19 @@ outboundRetellToolsRouter.post(
       pauseOutreach: policy.pauseOutreach,
       invoiceStatus: policy.invoiceStatus,
     });
+    if (["service_issue_reported", "mail_check_requested", "mail_instructions_requested"].includes(args.outcome)) {
+      const context = await getOutboundInvoiceContext(metadata.invoiceId);
+      await insertOutboundFollowups(
+        { businessId: metadata.businessId, customerId: metadata.customerId, invoiceId: metadata.invoiceId },
+        [{
+          task_type: "manual_review",
+          scheduled_for: nextEligibleOutboundTime(new Date().toISOString(), 1, String(context.customer.timezone)),
+          status: "pending",
+          attempt_number: 1,
+          reason: args.outcome,
+        }],
+      );
+    }
     return { logged: true, outcome: args.outcome, outreach_paused: policy.pauseOutreach };
   }),
 );
@@ -91,7 +109,7 @@ outboundRetellToolsRouter.post(
 outboundRetellToolsRouter.post(
   "/send-payment-sms",
   tool(async (req) => {
-    const { metadata } = await trustedEnvelope(req);
+    const { metadata, context } = await trustedEnvelope(req);
     const agreed = await hasOutboundPaymentLinkAgreement(metadata.invoiceId);
     if (!agreed) {
       return {
@@ -100,6 +118,8 @@ outboundRetellToolsRouter.post(
         message_for_agent: "Do not send or claim a text. The callee has not agreed to receive a payment link.",
       };
     }
+    const runtime = outboundBusinessRuntimeSettings(context.business);
+    await updateOutboundCustomer(metadata.customerId, { payment_contact_preference: "sms" });
     await insertOutboundEvent({
       business_id: metadata.businessId,
       customer_id: metadata.customerId,
@@ -107,15 +127,106 @@ outboundRetellToolsRouter.post(
       event_type: "sms_pending_manual",
       source: "retell_function",
       payload: {
-        reason: env.OUTBOUND_RETELL_SMS_ENABLED
-          ? "SMS provider path is not verified for this outbound number/chat agent"
-          : "OUTBOUND_RETELL_SMS_ENABLED is false",
+        reason: runtime.smsEffective
+          ? "SMS provider path is not implemented for this demo"
+          : runtime.smsProviderReady
+            ? "Business SMS setting is disabled"
+            : "Retell SMS capability is not configured",
       },
     });
     return {
       sent: false,
       status: "sms_pending_manual",
       message_for_agent: "The text was not sent. Say the team will follow up; do not claim SMS success.",
+    };
+  }),
+);
+
+outboundRetellToolsRouter.post(
+  "/schedule-callback",
+  tool(async (req) => {
+    const { envelope, metadata, context } = await trustedEnvelope(req);
+    const args = scheduleCallbackArgsSchema.parse(envelope.args);
+    if (context.invoice.status === "paid" || context.customer.outreach_paused) {
+      return {
+        scheduled: false,
+        needs_confirmation: false,
+        reason: context.invoice.status === "paid" ? "invoice_paid" : "outreach_paused",
+        message_for_agent: "Do not schedule another callback. Say the team will review the account.",
+      };
+    }
+    const started = Number(envelope.call.start_timestamp);
+    const resolution = resolveOutboundCallback({
+      datePhrase: args.date_phrase,
+      timePhrase: args.time_phrase,
+      timezone: String(context.customer.timezone || context.business.default_timezone || "America/New_York"),
+      referenceTime: Number.isFinite(started) && started > 0 ? new Date(started) : new Date(),
+      rules:
+        context.business.callback_rules && typeof context.business.callback_rules === "object"
+          ? (context.business.callback_rules as Record<string, string>)
+          : undefined,
+    });
+    if (!resolution.ok) {
+      return {
+        scheduled: false,
+        needs_confirmation: true,
+        reason: resolution.reason,
+        message_for_agent: resolution.message,
+      };
+    }
+    if (!args.confirmed) {
+      return {
+        scheduled: false,
+        needs_confirmation: true,
+        scheduled_for: resolution.scheduledFor,
+        scheduled_for_spoken: resolution.scheduledForSpoken,
+        message_for_agent: `Ask the caller to confirm ${resolution.scheduledForSpoken}.`,
+      };
+    }
+    if (!args.confirmation_text.trim()) {
+      return {
+        scheduled: false,
+        needs_confirmation: true,
+        scheduled_for_spoken: resolution.scheduledForSpoken,
+        message_for_agent: "Repeat the callback date and time and obtain confirmation before storing it.",
+      };
+    }
+    const task = await createOutboundCallbackTask({
+      businessId: metadata.businessId,
+      customerId: metadata.customerId,
+      invoiceId: metadata.invoiceId,
+      scheduledFor: resolution.scheduledFor,
+      timezone: resolution.timezone,
+      reason: args.reason,
+      confirmationText: args.confirmation_text,
+      sourceCallAttemptId: metadata.callAttemptId,
+      sourceRetellCallId: String(envelope.call.call_id || ""),
+    });
+    const policy = applyOutcomePolicy("callback_scheduled");
+    await recordOutboundOutcome({
+      callAttemptId: metadata.callAttemptId,
+      invoiceId: metadata.invoiceId,
+      customerId: metadata.customerId,
+      outcome: "callback_scheduled",
+      notes: `${args.reason}: ${resolution.scheduledForSpoken}`,
+      pauseOutreach: policy.pauseOutreach,
+      invoiceStatus: policy.invoiceStatus,
+    });
+    await insertOutboundEvent({
+      business_id: metadata.businessId,
+      customer_id: metadata.customerId,
+      invoice_id: metadata.invoiceId,
+      event_type: "callback_scheduled",
+      source: "retell_function",
+      payload: { task_id: task.id, scheduled_for: resolution.scheduledFor, timezone: resolution.timezone },
+    });
+    return {
+      scheduled: true,
+      needs_confirmation: false,
+      task_id: task.id,
+      scheduled_for: resolution.scheduledFor,
+      scheduled_for_spoken: resolution.scheduledForSpoken,
+      message_for_agent: `Confirm the callback for ${resolution.scheduledForSpoken}, then end the call.`,
     };
   }),
 );
