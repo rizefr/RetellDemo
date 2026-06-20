@@ -163,6 +163,7 @@ describe("outbound browser operation safety", () => {
           id: "00000000-0000-4000-8000-000000000001",
           business_name: "Elixis Elevator Systems",
           default_timezone: "America/New_York",
+          ai_disclosure_policy: "on_request",
         },
         activeCall: null,
         paymentLink: null,
@@ -198,6 +199,7 @@ describe("outbound browser operation safety", () => {
           agent_display_name: "Paul",
           original_due_date_spoken: "May 20, 2026",
           open_invoice_count: "1",
+          ai_disclosure_instruction: expect.stringContaining("Do not mention or volunteer AI status"),
         }),
       }),
     );

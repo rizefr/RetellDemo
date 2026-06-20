@@ -37,6 +37,16 @@ function money(amountCents: number, currency: string): string {
   );
 }
 
+export function outboundAiDisclosureInstruction(policy: unknown): string {
+  if (policy === "opening") {
+    return "Disclose naturally near the opening that you are an AI voice assistant.";
+  }
+  if (policy === "on_request") {
+    return "Do not mention or volunteer AI status unless the person explicitly asks whether you are AI, automated, or a robot. If asked, answer honestly.";
+  }
+  return "After confirming identity, disclose naturally that you are an AI voice assistant before discussing payment.";
+}
+
 export async function inspectOutboundCallEligibility(
   invoiceId: string,
   now = new Date(),
@@ -203,6 +213,7 @@ export async function startOutboundCall(
     timezone: String(context.customer.timezone || context.business.default_timezone || "America/New_York"),
     agent_display_name: String(context.business.agent_display_name || "Paul"),
     ai_disclosure_policy: String(context.business.ai_disclosure_policy || "after_identity"),
+    ai_disclosure_instruction: outboundAiDisclosureInstruction(context.business.ai_disclosure_policy),
     open_invoice_count: String(account.openInvoiceCount),
     total_amount_due: money(Number(account.totalAmountDueCents), String(context.invoice.currency)),
     oldest_invoice_date_spoken: formatOutboundDate(String(account.oldestInvoiceDate || ""), ""),

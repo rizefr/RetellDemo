@@ -102,7 +102,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).not.toContain("Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice");
     expect(serialized).not.toContain("Thanks. I'm an AI voice assistant helping Elixis Elevator Systems");
     expect(serialized).toContain("ai_disclosure_policy");
-    expect(serialized).toContain("For on_request, NEVER volunteer or mention AI status");
+    expect(serialized).toContain("Disclosure instruction for this call");
+    expect(serialized).toContain("Do not infer or apply a different disclosure policy");
     expect(serialized).toContain("service_issue_reported");
     expect(serialized).toContain("mail_instructions_requested");
     expect(serialized).toContain('"id":"service_issue_logging_example"');
