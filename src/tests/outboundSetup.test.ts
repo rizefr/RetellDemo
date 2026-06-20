@@ -151,6 +151,10 @@ describe("outbound setup route and page", () => {
     expect(script).toContain("/api/outbound/setup/status");
     expect(script).toContain("/api/outbound/dashboard");
     expect(script).toContain("/api/outbound/calls/dry-run");
+    expect(script).toContain("/api/outbound/calls/start");
+    expect(script).toContain("followup_task_id");
+    expect(script).toContain("/api/outbound/businesses/");
+    expect(html).toContain("/api/outbound/templates/customers.csv");
     expect(script).toContain("I UNDERSTAND THIS IS AN AFTER-HOURS TEST");
     expect(script).toContain('mode: "dry_run"');
   });

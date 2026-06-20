@@ -9,6 +9,7 @@ import {
   insertOutboundFollowups,
   recordOutboundOutcome,
   updateOutboundCallAttempt,
+  completeOutboundCallbackForAttempt,
 } from "../services/outboundRepository";
 import { trustedRetellMetadata, verifyOutboundRetellSignature } from "../services/outboundRetell";
 
@@ -54,6 +55,7 @@ outboundRetellWebhookRouter.post("/", async (req, res) => {
         invoiceNumber: String(context.invoice.invoice_id),
       });
       if (Object.keys(patch).length) await updateOutboundCallAttempt(String(attempt.id), patch);
+      if (payload.event === "call_ended") await completeOutboundCallbackForAttempt(String(attempt.id));
     }
     await insertOutboundEvent({
       business_id: metadata.businessId,

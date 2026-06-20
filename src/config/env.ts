@@ -43,7 +43,7 @@ const envSchema = z.object({
   OUTBOUND_RETELL_CONVERSATION_FLOW_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_PHONE_NUMBER_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_AGENT_NAME: z.string().default("Outbound B2B Invoice Collections Demo"),
-  OUTBOUND_RETELL_VOICE_ID: z.string().default("11labs-Cimo"),
+  OUTBOUND_RETELL_VOICE_ID: z.string().default("11labs-Paul"),
   OUTBOUND_RETELL_WEBHOOK_SECRET: z.string().optional().default(""),
   OUTBOUND_RETELL_SMS_ENABLED: booleanFromString.default(false),
   OUTBOUND_RETELL_SMS_CHAT_AGENT_ID: z.string().optional().default(""),

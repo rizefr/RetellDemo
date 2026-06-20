@@ -6,6 +6,10 @@ export const OUTBOUND_OUTCOMES = [
   "wrong_number",
   "unable_to_pay",
   "callback_requested",
+  "callback_scheduled",
+  "service_issue_reported",
+  "mail_check_requested",
+  "mail_instructions_requested",
   "do_not_contact",
   "proof_requested",
   "dispute",
@@ -42,6 +46,15 @@ export function applyOutcomePolicy(outcome: OutboundOutcome): OutcomePolicy {
   }
   if (outcome === "dispute") {
     return { pauseOutreach: true, invoiceStatus: "disputed", scheduleFollowups: false };
+  }
+  if (outcome === "service_issue_reported") {
+    return { pauseOutreach: true, invoiceStatus: "manual_review", scheduleFollowups: false };
+  }
+  if (outcome === "callback_scheduled") {
+    return { pauseOutreach: false, scheduleFollowups: false };
+  }
+  if (["mail_check_requested", "mail_instructions_requested"].includes(outcome)) {
+    return { pauseOutreach: false, invoiceStatus: "manual_review", scheduleFollowups: false };
   }
   if (outcome === "confirmed_payment_link_requested") {
     return { pauseOutreach: false, invoiceStatus: "payment_link_sent", scheduleFollowups: true };

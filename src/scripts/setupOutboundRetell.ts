@@ -16,7 +16,7 @@ type SetupReport = {
 
 const OUTBOUND_VOICE_SETTINGS = {
   voice_model: "eleven_flash_v2_5" as const,
-  voice_speed: 1.02,
+  voice_speed: 0.98,
   voice_temperature: 1.2,
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,
@@ -66,6 +66,9 @@ const OUTBOUND_POST_CALL_ANALYSIS = [
       "attorney_represented",
       "scam_concern",
       "payment_link_issue",
+      "service_issue",
+      "mail_check",
+      "callback_scheduled",
     ],
     required: false,
   },

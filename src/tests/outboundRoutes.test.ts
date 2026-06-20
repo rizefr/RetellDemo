@@ -115,6 +115,16 @@ describe("outbound webhook contracts", () => {
     );
     expect(emailMissingMigration).toContain("'email_missing'");
     expect(emailMissingMigration).not.toMatch(/^create policy/gm);
+    const callbackMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260620_outbound_conversation_callback_upgrade.sql"),
+      "utf8",
+    );
+    expect(callbackMigration).toContain("ai_disclosure_policy");
+    expect(callbackMigration).toContain("test_phone_allowlist");
+    expect(callbackMigration).toContain("callback_confirmation_text");
+    expect(callbackMigration).toContain("'callback_scheduled'");
+    expect(callbackMigration).toContain("enable row level security");
+    expect(callbackMigration).not.toMatch(/^create policy/gm);
   });
 
   it("accepts a signed Retell webhook and rejects an invalid signature", async () => {

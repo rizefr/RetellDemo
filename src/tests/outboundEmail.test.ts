@@ -15,6 +15,7 @@ const message: OutboundPaymentEmail = {
   amount: "$150.00",
   paymentUrl: "https://checkout.stripe.test/session",
   callbackNumber: "+19842075346",
+  dueDate: "May 20, 2026",
 };
 
 describe("outbound payment email", () => {

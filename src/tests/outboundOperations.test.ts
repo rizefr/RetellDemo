@@ -192,6 +192,15 @@ describe("outbound browser operation safety", () => {
       expect.objectContaining({ event_type: "after_hours_test_override_authorized", source: "admin" }),
     );
     expect(createPhoneCall).toHaveBeenCalledTimes(1);
+    expect(createPhoneCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retell_llm_dynamic_variables: expect.objectContaining({
+          agent_display_name: "Paul",
+          original_due_date_spoken: "May 20, 2026",
+          open_invoice_count: "1",
+        }),
+      }),
+    );
     expect(insertOutboundEvent.mock.invocationCallOrder[0]).toBeLessThan(createPhoneCall.mock.invocationCallOrder[0]);
   });
 });
