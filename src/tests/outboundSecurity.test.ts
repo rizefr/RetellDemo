@@ -118,6 +118,13 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("When sent is true, confirm delivery once and immediately invoke end_call");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("State the service, natural due date, and selected balance before any payment tool");
+    expect(serialized).toContain("amount_due_spoken");
+    expect(serialized).toContain("total_amount_due_spoken");
+    expect(serialized).toContain("invoice_id_spoken");
+    expect(serialized).toContain("open_invoice_count_spoken");
+    expect(serialized).toContain("I'm an AI assistant helping Elixis Elevator Systems follow up on service accounts");
+    expect(serialized).toContain("I'm following up at the time you requested about your elevator service account");
+    expect(serialized).toContain("Never tell the person to call us back later");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
     expect(serialized).toContain("The team will follow up with the secure link");
     expect(serialized).toContain("invoke end_call immediately in the same turn");
@@ -126,7 +133,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).not.toContain("phoneNumber.update");
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
-    expect(setupScript).toContain("voice_speed: 0.98");
-    expect(setupScript).toContain("begin_message_delay_ms: 250");
+    expect(setupScript).toContain("voice_speed: 0.94");
+    expect(setupScript).toContain("begin_message_delay_ms: 650");
   });
 });
