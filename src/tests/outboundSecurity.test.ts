@@ -83,7 +83,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Do not accept card details verbally");
     expect(serialized).toContain("Never collect card details verbally");
     expect(serialized).not.toContain('"args_at_root":true');
-    expect(serialized).toContain('"type":"end_call"');
+    expect(serialized).toContain('"type":"end"');
     expect(serialized).toContain('"type":"transfer_call"');
     expect(serialized).toContain('"tool_id":"outbound_log_outcome"');
     expect(serialized).toContain('"tool_id":"outbound_create_payment_link"');
@@ -120,7 +120,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Is there anything else I can help you with?");
     expect(serialized).toContain("Have a good day. Goodbye");
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
-    expect(serialized).toContain("When sent is true, confirm delivery once and immediately invoke end_call");
+    expect(serialized).toContain("When sent is true, confirm delivery once and route to the normal final-check step");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("State the service, natural due date, and selected balance before any payment tool");
     expect(serialized).toContain("amount_due_spoken");
@@ -131,9 +131,9 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("I'm following up at the time you requested about your elevator service account");
     expect(serialized).toContain("Do not direct them to make an inbound call");
     expect(serialized).not.toMatch(/call us back later|please call the office/i);
-    expect(serialized).toContain("Terminal outcomes must end with end_call in the same turn");
-    expect(serialized).toContain("Never close a service-issue call without the tool invocation and end_call");
-    expect(serialized).toContain("Mandatory final action after any safe closing sentence for terminal outcomes");
+    expect(serialized).toContain("Normal terminal outcomes must route to the normal final-check node");
+    expect(serialized).toContain("Never close a service-issue call before the tool invocation and final-check routing");
+    expect(serialized).toContain("transition to the native end-call node");
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
     expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
@@ -144,7 +144,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Who is the best person for payments now?");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
     expect(serialized).toContain("The team will follow up with the secure link");
-    expect(serialized).toContain("invoke end_call immediately in the same turn");
+    expect(serialized).not.toContain('"type":"end_call"');
+    expect(serialized).not.toContain("invoke end_call immediately in the same turn");
     expect(serialized).not.toContain("Demo Elevator Inspections");
     expect(serialized).toContain("tool_call_invocation");
     expect(serialized).not.toContain("phoneNumber.update");
