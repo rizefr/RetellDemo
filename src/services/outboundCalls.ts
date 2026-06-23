@@ -280,6 +280,8 @@ export async function startOutboundCall(
   const preferredPaymentMethod = String(
     context.invoice.preferred_payment_method || context.customer.payment_contact_preference || "none",
   );
+  const paymentProvider = String(context.business.payment_provider || "stripe");
+  const quickBooksConnected = Boolean(context.business.quickbooks_connected);
   const dynamicVariables = {
     business_name: String(context.business.business_name),
     customer_first_name: String(context.customer.first_name),
@@ -334,6 +336,9 @@ export async function startOutboundCall(
     email_on_file: String(Boolean(preferredEmail)),
     mailing_instructions_available: String(Boolean(context.business.payment_mailing_instructions)),
     payment_mailing_instructions: String(context.business.payment_mailing_instructions || ""),
+    payment_provider: paymentProvider,
+    quickbooks_connected: String(quickBooksConnected),
+    manual_payment_followup_required: String(paymentProvider === "manual" || (paymentProvider === "quickbooks" && !quickBooksConnected)),
   };
 
   try {
