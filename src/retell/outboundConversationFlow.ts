@@ -68,10 +68,14 @@ Last payment date: {{last_payment_date_spoken}}
 Email on file: {{email_on_file}}
 Mailing instructions available: {{mailing_instructions_available}}
 Payment mailing instructions: {{payment_mailing_instructions}}
+Payment provider: {{payment_provider}}
+QuickBooks connected: {{quickbooks_connected}}
+Manual payment follow-up required: {{manual_payment_followup_required}}
 Callback number: {{business_callback_number}}
 Human transfer number: {{human_transfer_number}}
 Timezone: {{timezone}}
 Call purpose: {{call_purpose}}
+Demo call mode: {{demo_call_mode}}
 Requested callback time: {{callback_scheduled_for_spoken}}
 
 # Opening and disclosure
@@ -106,10 +110,11 @@ For already paid, dispute, proof, wrong number, attorney, scam concern, stop cal
 After explicit agreement, log confirmed_payment_link_requested and call create_payment_link. Ask whether they prefer text or email.
 For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, call send_payment_sms and trust its result. If pending/manual, say the team will follow up; never claim it was sent.
 For email, ask exactly when customer_email is populated: "Is {{customer_email}} still the best email for the secure payment link?" If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, call send_payment_email and trust its result.
+If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then invoke end_call.
 
 # Callback scheduling
-If they say call later or decline for now, ask: "What day and time would be best for us to call you back?" Never tell the person to call us back later or ask them to call the office. Never calculate, normalize, repeat, or confirm a callback date yourself. Your first response after receiving a date and time must call schedule_callback with the exact date phrase, time phrase, reason, confirmation_text="", and confirmed=false, even when their first answer sounds definite. Only use the spoken time returned by that tool when asking the caller to confirm. Only after that separate confirmation call schedule_callback again with confirmed=true and the caller's confirmation text. Then log callback_scheduled and invoke end_call. The tool stores a task; it never places a call.
+If they say call later or decline for now, ask: "What day and time would be best for us to call you back?" Do not direct them to make an inbound call or put responsibility for the next call on them. Never calculate, normalize, repeat, or confirm a callback date yourself. Your first response after receiving a date and time must call schedule_callback with the exact date phrase, time phrase, reason, confirmation_text="", and confirmed=false, even when their first answer sounds definite. Only use the spoken time returned by that tool when asking the caller to confirm. Only after that separate confirmation call schedule_callback again with confirmed=true and the caller's confirmation text. Then log callback_scheduled and invoke end_call. The tool stores a task; it never places a call.
 
 # Human and delivery tools
 Transfer only after an explicit human request and only when request_human_transfer says a number is available. If unavailable, log human_requested and say the team will follow up.
@@ -506,6 +511,9 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       total_amount_due_spoken: "",
       call_purpose: "first_reminder",
       demo_call_mode: "first_reminder",
+      payment_provider: "stripe",
+      quickbooks_connected: "false",
+      manual_payment_followup_required: "false",
       callback_scheduled_for_spoken: "",
       previous_call_date_spoken: "",
       followup_reason: "",

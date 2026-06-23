@@ -124,7 +124,11 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("open_invoice_count_spoken");
     expect(serialized).toContain("I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts");
     expect(serialized).toContain("I'm following up at the time you requested about your elevator service account");
-    expect(serialized).toContain("Never tell the person to call us back later");
+    expect(serialized).toContain("Do not direct them to make an inbound call");
+    expect(serialized).not.toMatch(/call us back later|please call the office/i);
+    expect(serialized).toContain("Payment provider: {{payment_provider}}");
+    expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
+    expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
     expect(serialized).toContain("The team will follow up with the secure link");
     expect(serialized).toContain("invoke end_call immediately in the same turn");
