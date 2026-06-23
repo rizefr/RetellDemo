@@ -548,8 +548,9 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Normal terminal final check",
       instruction: {
         type: "prompt",
-        text: "Ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, that is all, or gives no further need, say exactly: \"Have a good day. Goodbye.\" Then immediately use this node's native end_call tool. This isolated final-check node owns the goodbye and hangup; the main collections agent does not have the end_call tool.",
+        text: "This is a defensive terminal node. If the conversation arrived here after a service issue, responsible-party update, named-contact request, payment refusal classification, mail-check request, email/manual fallback, callback scheduling, or unavailable human transfer, and there is no visible prior log_outcome tool call for that outcome in the recent transcript, first call log_outcome with the correct outcome and concise notes. Then ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, that is all, or gives no further need, say exactly: \"Have a good day. Goodbye.\" Then immediately use this node's native end_call tool. This isolated final-check node owns defensive terminal logging, the goodbye, and hangup; the main collections agent does not have the end_call tool.",
       },
+      tool_ids: [OUTBOUND_TOOL_IDS.logOutcome],
       tools: [
         {
           type: "end_call",

@@ -136,10 +136,12 @@ describe("outbound flow guardrails", () => {
     expect(serialized).not.toMatch(/call us back later|please call the office/i);
     expect(serialized).toContain("Normal terminal outcomes must route to the normal final-check node");
     expect(serialized).toContain("Never close a service-issue call before the tool invocation and final-check routing");
-    expect(serialized).toContain("This isolated final-check node owns the goodbye and hangup");
+    expect(serialized).toContain("This isolated final-check node owns defensive terminal logging, the goodbye, and hangup");
     expect(JSON.stringify(mainNode)).not.toContain('"type":"end_call"');
     expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');
     expect(JSON.stringify(finalCheckNode)).toContain("end_final_check_call");
+    expect(JSON.stringify(finalCheckNode)).toContain('"tool_ids":["outbound_log_outcome"]');
+    expect(JSON.stringify(finalCheckNode)).toContain("defensive terminal node");
     expect(JSON.stringify(finalCheckNode)).toContain('"execution_message_description":"Have a good day. Goodbye."');
     expect(JSON.stringify(hardTerminalNode)).toContain('"type":"subagent"');
     expect(JSON.stringify(hardTerminalNode)).toContain('"tool_ids":["outbound_log_outcome"]');
