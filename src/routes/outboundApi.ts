@@ -74,6 +74,12 @@ function parseDollarsToCents(value: string | number | undefined): number | undef
   return Math.round(normalized * 100);
 }
 
+function blankToNull(value: string | null | undefined): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
 function sendError(res: express.Response, error: unknown) {
   const status =
     typeof error === "object" && error && "status" in error && typeof error.status === "number" ? error.status : 400;
@@ -348,9 +354,9 @@ outboundApiRouter.patch("/demo-details", async (req, res) => {
         first_name: input.first_name,
         last_name: input.last_name,
         phone_number: input.phone_number,
-        email: input.email,
-        preferred_email: input.preferred_email,
-        preferred_phone_number: input.preferred_phone_number,
+        email: blankToNull(input.email),
+        preferred_email: blankToNull(input.preferred_email),
+        preferred_phone_number: blankToNull(input.preferred_phone_number),
         payment_contact_preference: input.preferred_payment_method || undefined,
       },
       invoicePatch: {

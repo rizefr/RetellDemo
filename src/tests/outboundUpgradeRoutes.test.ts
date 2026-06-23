@@ -179,9 +179,15 @@ describe("outbound upgrade routes", () => {
         demo_call_mode: "scam_recovery",
         prior_concern_note: "Caller initially wondered if the call was legitimate.",
         preferred_payment_method: "email",
+        preferred_email: "",
+        preferred_phone_number: "",
       });
     expect(response.status).toBe(200);
     expect(updateDemoDetails).toHaveBeenCalledWith(expect.objectContaining({
+      customerPatch: expect.objectContaining({
+        preferred_email: null,
+        preferred_phone_number: null,
+      }),
       invoicePatch: expect.objectContaining({
         status: undefined,
         demo_call_mode: "scam_recovery",
