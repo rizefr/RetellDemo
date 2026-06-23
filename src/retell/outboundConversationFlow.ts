@@ -284,7 +284,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. Hard terminal outcomes route directly to the hard terminal end.",
+        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. When the caller confirms a new responsible party, your next action must be log_outcome with outcome responsible_party_update_requested before any transition, thanks, or final-check. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. Hard terminal outcomes route directly to the hard terminal end.",
       },
       edges: [
         {
@@ -292,7 +292,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           destination_node_id: "outbound_normal_terminal_final_check",
           transition_condition: {
             type: "prompt",
-            prompt: "Transition after required tools complete for normal terminal outcomes: service_issue_reported, mail_check_requested, mail_instructions_requested, email_pending_manual, email_failed, email_missing, callback_scheduled, responsible_party_update_requested, named_contact_requested, contact_update_requested, manual_review after one clarification, or unavailable human transfer. Do not transition before required outcome logging, payment delivery, callback confirmation, or follow-up tools finish.",
+            prompt: "Transition after required tools complete for normal terminal outcomes: service_issue_reported, mail_check_requested, mail_instructions_requested, email_pending_manual, email_failed, email_missing, callback_scheduled, responsible_party_update_requested, named_contact_requested, contact_update_requested, manual_review after one clarification, or unavailable human transfer. For responsible_party_update_requested, do not transition until log_outcome has already been called with the confirmed name and any provided phone or email. Do not transition before required outcome logging, payment delivery, callback confirmation, or follow-up tools finish.",
           },
         },
         {
