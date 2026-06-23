@@ -556,16 +556,33 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           name: "end_final_check_call",
           description:
             "End the call only after this final-check node has asked whether anything else is needed and then said exactly: Have a good day. Goodbye.",
-          speak_during_execution: false,
+          speak_during_execution: true,
+          execution_message_type: "static_text",
+          execution_message_description: "Have a good day. Goodbye.",
         },
       ],
       display_position: { x: 620, y: -120 },
     },
     {
       id: "outbound_hard_terminal_end",
-      type: "end",
-      name: "Hard terminal polite end",
-      speak_during_execution: false,
+      type: "subagent",
+      name: "Hard terminal logging and end",
+      instruction: {
+        type: "prompt",
+        text: "For hard terminal outcomes only: do_not_contact, attorney_represented, wrong_number, hostile or abusive request, or the caller clearly ends the call. First acknowledge briefly and professionally. Then call log_outcome with the correct outcome and notes unless it was already logged in the immediately preceding turn. Do not ask if there is anything else. After logging, immediately use this node's native end_call tool. For do_not_contact say only: \"Understood. We'll stop calling this number. Goodbye.\"",
+      },
+      tool_ids: [OUTBOUND_TOOL_IDS.logOutcome],
+      tools: [
+        {
+          type: "end_call",
+          name: "end_hard_terminal_call",
+          description:
+            "End the call after the hard terminal outcome has been acknowledged and logged. Do not use for normal service issue, callback, email, mail check, responsible-party, named-contact, or unavailable-human paths.",
+          speak_during_execution: true,
+          execution_message_type: "static_text",
+          execution_message_description: "Goodbye.",
+        },
+      ],
       display_position: { x: 620, y: 120 },
     },
     {
