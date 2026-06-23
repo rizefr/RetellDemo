@@ -74,6 +74,7 @@ textarea { min-width: 180px; resize: vertical; }
 .inline-field { display: grid; gap: .2rem; margin-top: .45rem; color: #647269; font-size: .72rem; font-weight: 700; }
 .inline-field input { min-width: 155px; }
 .subtext { display: block; margin-top: .28rem; color: #637169; font-size: .78rem; line-height: 1.35; }
+.preserve-lines { white-space: pre-line; }
 .count-badge { align-self: start; padding: .35rem .65rem; border-radius: 999px; color: #315044; background: #e8f0eb; font-size: .78rem; font-weight: 700; }
 .status-badge { display: inline-block; padding: .25rem .5rem; border-radius: 999px; background: #edf0ee; color: #435149; font-size: .72rem; font-weight: 750; }
 .status-badge.success { background: #dff3e9; color: #0f5c42; }

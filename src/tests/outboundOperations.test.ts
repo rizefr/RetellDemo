@@ -197,7 +197,8 @@ describe("outbound browser operation safety", () => {
       expect.objectContaining({
         retell_llm_dynamic_variables: expect.objectContaining({
           agent_display_name: "Paul",
-          original_due_date_spoken: "May 20, 2026",
+          original_due_date_spoken: "May 20, twenty twenty-six",
+          original_due_date_display: "May 20, 2026",
           amount_due_spoken: "one hundred fifty dollars",
           invoice_id_spoken: "invoice E-L-V, test",
           open_invoice_count: "1",
@@ -295,9 +296,11 @@ describe("outbound browser operation safety", () => {
         retell_llm_dynamic_variables: expect.objectContaining({
           call_purpose: "follow_up",
           demo_call_mode: "follow_up",
-          customer_phone_spoken: "plus one, five five five, one two three, four five six seven",
+          customer_phone_spoken: "five five five, one two three, four five six seven",
           customer_email: "billing@example.test",
-          previous_call_date_spoken: "June 19, 2026",
+          customer_email_spoken: "billing at example dot test",
+          customer_email_display: "billing@example.test",
+          previous_call_date_spoken: "June 19, twenty twenty-six",
           followup_reason: "customer asked for a later follow-up",
           prior_concern_note: "Customer initially asked if this was legitimate.",
           preferred_payment_method: "email",

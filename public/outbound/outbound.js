@@ -526,6 +526,15 @@ function renderInvoice(invoice) {
   batchSelect.onchange = updateBatchButton;
   row.querySelector('[data-field="customer"]').textContent = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
   row.querySelector('[data-field="business"]').textContent = business.business_name || "";
+  const contactContext = [
+    customer.payment_contact_preference && customer.payment_contact_preference !== "none" ? `Prefers ${humanize(customer.payment_contact_preference)}` : "",
+    customer.preferred_email ? `Preferred email: ${customer.preferred_email}` : "",
+    customer.preferred_phone_number ? `Preferred phone: ${customer.preferred_phone_number}` : "",
+    customer.responsible_party_name ? `Responsible party: ${customer.responsible_party_name}${customer.responsible_party_email ? ` (${customer.responsible_party_email})` : ""}${customer.responsible_party_phone ? ` ${customer.responsible_party_phone}` : ""}` : "",
+    customer.named_contact_requested ? `Named contact requested: ${customer.named_contact_requested}` : "",
+    customer.contact_update_note ? `Contact note: ${customer.contact_update_note}` : "",
+  ].filter(Boolean).join("\n");
+  row.querySelector('[data-field="contact-context"]').textContent = contactContext;
   phone.value = customer.phone_number || "";
   email.value = customer.email || "";
   for (const input of [phone, email]) input.oninput = () => { callButton.disabled = true; row.querySelector('[data-field="gate"]').textContent = "Save changes, then recheck"; };

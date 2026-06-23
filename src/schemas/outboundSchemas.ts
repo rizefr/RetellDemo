@@ -77,6 +77,10 @@ export const retellToolEnvelopeSchema = z.object({
 export const logOutcomeArgsSchema = z.object({
   outcome: outboundOutcomeSchema,
   notes: z.string().max(5000).optional().default(""),
+  responsible_party_name: z.string().max(200).optional().default(""),
+  responsible_party_phone: z.string().regex(/^\+[1-9]\d{7,14}$/).or(z.literal("")).optional().default(""),
+  responsible_party_email: z.string().email().or(z.literal("")).optional().default(""),
+  named_contact_name: z.string().max(200).optional().default(""),
 });
 
 export const scheduleFollowupArgsSchema = z.object({

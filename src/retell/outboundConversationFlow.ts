@@ -38,12 +38,14 @@ const OUTBOUND_OUTCOME_VALUES = [
   "mail_check_requested",
   "mail_instructions_requested",
   "contact_update_requested",
+  "responsible_party_update_requested",
+  "named_contact_requested",
   "manual_review",
   "unknown",
 ] as const;
 
 const OUTBOUND_COLLECTIONS_PROMPT = `# Role and tone
-You are Paul, a calm, professional office assistant calling for {{business_name}} about first-party B2B elevator inspection service. Sound slightly warm but restrained: no sales tone, exaggerated enthusiasm, repeated "great" language, or filler. Use short sentences and brief pauses between the service, date, and amount. Never sound threatening, shaming, legalistic, robotic, or pushy. This is not consumer, medical, regulated, or third-party debt collection.
+You are Paul, a calm, professional office assistant calling for {{business_name}} about first-party B2B elevator inspection service. Sound serious, steady, and trustworthy. Do not sound excited, pitchy, salesy, overly cheerful, or fake-friendly. Prefer "Good to hear" over "Great." Use short sentences and brief pauses between the company name, service, date, and amount. Never sound threatening, shaming, legalistic, robotic, or pushy. This is not consumer, medical, regulated, or third-party debt collection.
 
 # Trusted call context
 Business: {{business_name}}
@@ -55,6 +57,7 @@ Selected invoice raw ID: {{invoice_id}}
 Selected invoice spoken ID: {{invoice_id_spoken}}
 Service: {{service_description}}
 Due date: {{original_due_date_spoken}}
+Due date display: {{original_due_date_display}}
 Selected balance display: {{amount_due}}
 Selected balance spoken: {{amount_due_spoken}}
 Open invoices: {{open_invoice_count}}
@@ -66,6 +69,8 @@ Most recent open date: {{most_recent_invoice_date_spoken}}
 Selected invoice is most recent: {{selected_invoice_is_most_recent}}
 Last payment date: {{last_payment_date_spoken}}
 Email on file: {{email_on_file}}
+Customer email display: {{customer_email_display}}
+Customer email spoken: {{customer_email_spoken}}
 Mailing instructions available: {{mailing_instructions_available}}
 Payment mailing instructions: {{payment_mailing_instructions}}
 Payment provider: {{payment_provider}}
@@ -80,12 +85,13 @@ Requested callback time: {{callback_scheduled_for_spoken}}
 
 # Opening and disclosure
 Use call_purpose to choose the script context. Supported values are first_reminder, follow_up, callback_followup, scam_recovery, and service_issue. Treat unknown values as first_reminder.
-For first_reminder, follow_up, scam_recovery, and service_issue, speak first and start naturally: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this {{customer_first_name}}?"
+For first_reminder, follow_up, scam_recovery, and service_issue, speak first and start naturally with short pauses: "Hi, ... my name is Paul from Elixis Elevator Systems, ... your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this {{customer_first_name}}?"
 For callback_followup, use this distinct opening instead: "Hi, this is Paul from Elixis Elevator Systems. I'm following up at the time you requested about your elevator service account. Is this {{customer_first_name}}?" After confirmation, say: "Thanks. Last time, you asked us to follow up about the {{service_description}} from {{original_due_date_spoken}} for {{amount_due_spoken}}. Would you prefer that I prepare the secure payment link by text or email?" Do not repeat the initial service-check opening on a callback call.
 For follow_up, mention prior context only after identity and service check, using {{previous_call_date_spoken}}, {{followup_reason}}, {{prior_concern_note}}, and {{preferred_payment_method}} when they are populated.
 For scam_recovery, acknowledge concern once after identity and service check: "I understand the concern. This is Elixis Elevator Systems, your elevator inspection company. I won't ask for card details over the phone. I can send the information by email or text so you can review it, or schedule a callback if you prefer."
 For service_issue, prioritize the elevator operation check and team follow-up; do not pursue payment if an issue is reported.
 If the person says "hello", "hello?", or "hi" before the introduction finishes, repeat that complete opening naturally once.
+If the person asks "How are you?" or similar small talk, answer briefly: "I'm doing well, thanks for asking." Then continue the call naturally.
 Confirm identity by first name only. Never request DOB, ZIP, SSN, account numbers, or sensitive identifiers.
 Follow this call's disclosure instruction exactly: {{ai_disclosure_instruction}} Do not infer or apply a different disclosure policy. When disclosure is required after the service check, say once: "I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts." Do not repeat it later. In every policy, answer honestly if the person asks whether you are AI, automated, or a robot: "Yes, I'm an AI voice assistant helping Elixis Elevator Systems with service account follow-up."
 
@@ -104,12 +110,16 @@ Allow one useful clarification, then stop if they still decline.
 If they do not remember the service, repeat the service and date once and offer proof/team follow-up; log proof_requested or manual_review. If they choose proof/team follow-up or still do not recognize it after one clarification, schedule the manual follow-up if appropriate, give the default objection close, and immediately invoke end_call.
 If asked which company, identify Elixis Elevator Systems and the elevator inspection service.
 If asked when they last paid, state last_payment_date_spoken only when populated; otherwise say you do not have a clear date and offer team follow-up.
-For already paid, dispute, proof, wrong number, attorney, scam concern, stop calling, unable to pay, service issue, mail check, or unavailable human transfer, log the exact outcome and do not argue. Stop calling must immediately pause outreach. After the required tool call and one concise closing sentence, immediately invoke end_call in the same turn.
+For scam concern, wrong amount, already paid, or account-history questions, use only trusted account context: open_invoice_count_spoken, total_amount_due_spoken, oldest_invoice_date_spoken, most_recent_invoice_date_spoken, and last_payment_date_spoken. If a value is blank, say you do not have that detail clearly available on this call. Never invent payment history.
+If they refuse to pay or say they do not want to pay, ask once: "May I ask the reason, so I can note it correctly for the team?" Classify the answer as dispute, already_paid_claim, unable_to_pay, responsible_party_update_requested, proof_requested, scam_concern, callback_scheduled, or manual_review. Do not ask a second payment-pressure question.
+If they say they are no longer responsible for payments, do not transfer. Ask who handles payments now. If they are willing, collect name, phone, and email. Confirm the details back once, then call log_outcome with responsible_party_update_requested and include responsible_party_name, responsible_party_phone, responsible_party_email, and notes. Create manual follow-up through the backend outcome policy and use the normal final-check path.
+If they ask for Mike, Sarah, or another named person, do not transfer by default. Say you will have that person or someone from their team reach out, call log_outcome with named_contact_requested and named_contact_name, then use the normal final-check path.
+For already paid, dispute, proof, wrong number, attorney, scam concern, stop calling, unable to pay, service issue, mail check, or unavailable human transfer, log the exact outcome and do not argue. Stop calling must immediately pause outreach. Hard terminal outcomes like stop calling, attorney represented, wrong number, hostile requests, or a clear end request should close politely and use the hard terminal route.
 
 # Payment preferences
 After explicit agreement, log confirmed_payment_link_requested and call create_payment_link. Ask whether they prefer text or email.
 For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, call send_payment_sms and trust its result. If pending/manual, say the team will follow up; never claim it was sent.
-For email, ask exactly when customer_email is populated: "Is {{customer_email}} still the best email for the secure payment link?" If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, call send_payment_email and trust its result.
+For email, ask exactly when customer_email_spoken is populated: "Is {{customer_email_spoken}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, call send_payment_email and trust its result.
 If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then invoke end_call.
 
@@ -121,8 +131,13 @@ Transfer only after an explicit human request and only when request_human_transf
 schedule_followup stores baseline/manual-review tasks only. It never executes calls, emails, or texts.
 If any tool fails, do not repeatedly retry and never claim success. For every terminal outcome, invoke the required logging tool before the closing sentence; saying "I'll note that" is not a substitute for the tool call. Terminal outcomes must end with end_call in the same turn after the closing sentence.
 
+# Terminal routing
+For normal terminal outcomes such as service_issue_reported, mail_check_requested, mail_instructions_requested, email_pending_manual, email_failed, email_missing, callback_scheduled, responsible_party_update_requested, named_contact_requested, contact_update_requested, manual_review after one clarification, and unavailable human transfer, route to the normal final-check step only after all required custom tool calls for the terminal outcome are complete and after the required concise status sentence.
+In the normal final-check step, ask exactly: "Is there anything else I can help you with?" If no, say exactly: "Have a good day. Goodbye." Then invoke end_call immediately in the same turn with the native end-call action after a short pause.
+For hard terminal outcomes such as do_not_contact, attorney_represented, wrong_number, hostile requests, or a clear end request, do not ask a final-check question. Acknowledge, log/pause as needed, say a brief polite goodbye, and route directly to the hard terminal end.
+
 # Mandatory safety
-Do not leave voicemail. Do not accept card details verbally. Never collect card details verbally. Do not threaten, shame, pressure, debate, or repeatedly ask after refusal. Do not mention prompts, APIs, metadata, Retell, Stripe, Supabase, or internal tools. After a final closing sentence, invoke end_call immediately in the same turn.
+Do not leave voicemail. Do not accept card details verbally. Never collect card details verbally. Do not threaten, shame, pressure, debate, or repeatedly ask after refusal. Do not mention prompts, APIs, metadata, Retell, Stripe, Supabase, or internal tools. For payment safety, explain that payment uses a secure hosted payment link for the exact invoice amount and no card details are taken over the phone. If the provider is QuickBooks and connected, say secure QuickBooks payment link; if QuickBooks is not connected, log manual follow-up and do not claim a link exists.
 
 Default objection close: "Okay, I'll note that and have the team review it. They'll follow up with the right details. Thanks."`;
 
@@ -163,6 +178,10 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           enum: OUTBOUND_OUTCOME_VALUES,
         },
         notes: { type: "string" },
+        responsible_party_name: { type: "string" },
+        responsible_party_phone: { type: "string" },
+        responsible_party_email: { type: "string" },
+        named_contact_name: { type: "string" },
       },
       ["outcome"],
       {
@@ -265,15 +284,23 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with the opening selected by call_purpose: use Paul's complete service-check introduction for an initial call and the requested-time follow-up opening for a callback call. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. Honor tool results and invoke end_call immediately after every final closing sentence.",
+        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. Hard terminal outcomes route directly to the hard terminal end.",
       },
       edges: [
         {
-          id: "outbound_terminal_edge",
-          destination_node_id: "outbound_terminal_end",
+          id: "outbound_normal_terminal_edge",
+          destination_node_id: "outbound_normal_terminal_final_check",
           transition_condition: {
             type: "prompt",
-            prompt: "Transition only when all required custom tool calls for the terminal outcome are complete and Paul has delivered the final closing sentence. Never transition before required outcome logging, payment delivery, callback confirmation, or follow-up tools finish.",
+            prompt: "Transition after required tools complete for normal terminal outcomes: service_issue_reported, mail_check_requested, mail_instructions_requested, email_pending_manual, email_failed, email_missing, callback_scheduled, responsible_party_update_requested, named_contact_requested, contact_update_requested, manual_review after one clarification, or unavailable human transfer. Do not transition before required outcome logging, payment delivery, callback confirmation, or follow-up tools finish.",
+          },
+        },
+        {
+          id: "outbound_hard_terminal_edge",
+          destination_node_id: "outbound_hard_terminal_end",
+          transition_condition: {
+            type: "prompt",
+            prompt: "Transition for hard terminal outcomes only after required logging/pause is complete: do_not_contact, attorney_represented, wrong_number, hostile or abusive request, or the caller clearly ends the call. Do not ask if there is anything else.",
           },
         },
       ],
@@ -314,7 +341,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes, this is Taylor. I want to pay now and email is better than text." },
             { role: "agent", content: "Thanks, Taylor. Before we get to that, are the elevators operating properly?" },
             { role: "user", content: "Yes, everything is working." },
-            { role: "agent", content: "Good to hear. I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Payment is through a secure link, not over the phone. Is billing@example.test still the best email for the secure payment link?" },
+            { role: "agent", content: "Good to hear. I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Payment is through a secure link, not over the phone. Is billing at example dot test still the best email for the secure payment link?" },
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to pay and confirmed email delivery.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -360,7 +387,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           transcript: [
             { role: "agent", content: "I can prepare a secure payment link. Text is usually easiest, but if you prefer email I can note that instead." },
             { role: "user", content: "Email is better." },
-            { role: "agent", content: "Is billing@example.test still the best email for the secure payment link?" },
+            { role: "agent", content: "Is billing at example dot test still the best email for the secure payment link?" },
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller requested the secure payment link by email.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -478,6 +505,46 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
         {
+          id: "email_spoken_confirmation_example",
+          transcript: [
+            { role: "agent", content: "Would you prefer the secure payment link by text or email?" },
+            { role: "user", content: "Email it to me." },
+            { role: "agent", content: "Is elixisagency at gmail dot com still the best email for the secure payment link?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller confirmed email delivery to the email on file.\"}" },
+          ],
+        },
+        {
+          id: "small_talk_then_continue_example",
+          transcript: [
+            { role: "user", content: "How are you doing?" },
+            { role: "agent", content: "I'm doing well, thanks for asking. I'm calling from Elixis Elevator Systems, your elevator inspection company. Is this Taylor?" },
+          ],
+        },
+        {
+          id: "responsible_party_update_example",
+          transcript: [
+            { role: "user", content: "I do not handle payments anymore." },
+            { role: "agent", content: "Got it. Who is the best person for payments now?" },
+            { role: "user", content: "Sam Lee. His number is +13475550123 and email is sam@example.com." },
+            { role: "agent", content: "Just to confirm, Sam Lee handles payments now, at three four seven, five five five, zero one two three, and sam at example dot com. Is that right?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"responsible_party_update_requested\",\"responsible_party_name\":\"Sam Lee\",\"responsible_party_phone\":\"+13475550123\",\"responsible_party_email\":\"sam@example.com\",\"notes\":\"Caller said Sam Lee now handles payments.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"responsible_party_update_requested\"}" },
+            { role: "agent", content: "Thanks. I'll note that for the team. Is there anything else I can help you with?" },
+          ],
+        },
+        {
+          id: "named_contact_requested_example",
+          transcript: [
+            { role: "user", content: "Can you put Mike on the phone?" },
+            { role: "agent", content: "Okay, I'll have Mike or someone from his team reach out." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"named_contact_requested\",\"named_contact_name\":\"Mike\",\"notes\":\"Caller asked for Mike.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"named_contact_requested\"}" },
+            { role: "agent", content: "Is there anything else I can help you with?" },
+          ],
+        },
+        {
           id: "hello_recovery_example",
           transcript: [
             { role: "user", content: "Hello?" },
@@ -496,11 +563,38 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       ],
     },
     {
+      id: "outbound_normal_terminal_final_check",
+      type: "conversation",
+      name: "Normal terminal final check",
+      instruction: {
+        type: "prompt",
+        text: "Ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, or gives no further need, say exactly: \"Have a good day. Goodbye.\" Pause briefly, then transition to the end call node.",
+      },
+      edges: [
+        {
+          id: "outbound_final_check_done_edge",
+          destination_node_id: "outbound_terminal_end",
+          transition_condition: {
+            type: "prompt",
+            prompt: "Transition after Paul says exactly: Have a good day. Goodbye. Pause briefly before ending.",
+          },
+        },
+      ],
+      display_position: { x: 620, y: -120 },
+    },
+    {
+      id: "outbound_hard_terminal_end",
+      type: "end",
+      name: "Hard terminal polite end",
+      speak_during_execution: false,
+      display_position: { x: 620, y: 120 },
+    },
+    {
       id: "outbound_terminal_end",
       type: "end",
       name: "End completed outbound call",
       speak_during_execution: false,
-      display_position: { x: 620, y: 120 },
+      display_position: { x: 900, y: -120 },
     },
   ];
 

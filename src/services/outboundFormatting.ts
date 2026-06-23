@@ -55,10 +55,24 @@ export function formatOutboundInvoiceCountSpoken(count: number): string {
 
 export function formatOutboundPhoneSpoken(value: string | null | undefined): string {
   const input = String(value ?? "").trim();
-  const match = input.match(/^\+(\d)(\d{3})(\d{3})(\d{4})$/);
-  if (!match) return input || "phone number unavailable";
+  const usMatch = input.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
   const speakDigits = (digits: string) => digits.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join(" ");
-  return `plus ${speakDigits(match[1])}, ${speakDigits(match[2])}, ${speakDigits(match[3])}, ${speakDigits(match[4])}`;
+  if (usMatch) return `${speakDigits(usMatch[1])}, ${speakDigits(usMatch[2])}, ${speakDigits(usMatch[3])}`;
+  const digits = input.replace(/\D/g, "");
+  return digits ? speakDigits(digits) : "phone number unavailable";
+}
+
+export function formatOutboundEmailSpoken(value: string | null | undefined): string {
+  const input = String(value ?? "").trim().toLowerCase();
+  if (!input) return "email unavailable";
+  return input
+    .replace(/@/g, " at ")
+    .replace(/\./g, " dot ")
+    .replace(/\+/g, " plus ")
+    .replace(/_/g, " underscore ")
+    .replace(/-/g, " dash ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function normalizeOutboundDate(value: string | null | undefined): string | null {
@@ -74,6 +88,25 @@ export function formatOutboundDate(value: string | null | undefined, fallback = 
   const normalized = normalizeOutboundDate(value);
   if (!normalized) return fallback;
   return DateTime.fromISO(normalized, { zone: "utc" }).toFormat("LLLL d, yyyy");
+}
+
+export function formatOutboundYearSpoken(value: number | string | null | undefined): string {
+  const year = Number(value);
+  if (!Number.isInteger(year)) return "";
+  if (year >= 2000 && year <= 2099) {
+    const suffix = year - 2000;
+    if (suffix === 0) return "two thousand";
+    if (suffix < 10) return `twenty oh ${SMALL_NUMBERS[suffix]}`;
+    return `twenty ${integerToWords(suffix)}`;
+  }
+  return integerToWords(year);
+}
+
+export function formatOutboundDateSpoken(value: string | null | undefined, fallback = "date unavailable"): string {
+  const normalized = normalizeOutboundDate(value);
+  if (!normalized) return fallback;
+  const parsed = DateTime.fromISO(normalized, { zone: "utc" });
+  return `${parsed.toFormat("LLLL d")}, ${formatOutboundYearSpoken(parsed.year)}`;
 }
 
 export function formatOutboundDateTime(

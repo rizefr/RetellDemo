@@ -37,7 +37,7 @@ export async function listOutboundInvoices() {
   return unwrap(
     await db()
       .from("outbound_invoices")
-      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,notes,payment_contact_preference,preferred_email,preferred_phone_number,contact_update_note,imported_last_payment_date), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(task_type,scheduled_for,status,reason)")
+      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,notes,payment_contact_preference,preferred_email,preferred_phone_number,contact_update_note,imported_last_payment_date,responsible_party_name,responsible_party_phone,responsible_party_email,responsible_party_note,named_contact_requested), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(task_type,scheduled_for,status,reason)")
       .order("created_at", { ascending: false }),
   );
 }
@@ -48,7 +48,7 @@ export async function listOutboundDashboardData(limit = 100) {
   const [invoiceResult, callResult, paymentResult, eventResult, businessResult, followupResult] = await Promise.all([
     client
       .from("outbound_invoices")
-      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,pause_reason,notes,payment_contact_preference,preferred_email,preferred_phone_number,contact_update_note,imported_last_payment_date), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(id,task_type,scheduled_for,status,reason)")
+      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,pause_reason,notes,payment_contact_preference,preferred_email,preferred_phone_number,contact_update_note,imported_last_payment_date,responsible_party_name,responsible_party_phone,responsible_party_email,responsible_party_note,named_contact_requested), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(id,task_type,scheduled_for,status,reason)")
       .order("created_at", { ascending: false }),
     client
       .from("outbound_call_attempts")
