@@ -135,6 +135,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Never close a service-issue call before the tool invocation and final-check routing");
     expect(serialized).toContain("transition to the native end-call node");
     expect(serialized).toContain("the native end-call node owns the goodbye and hangup");
+    expect(serialized).toContain('"skip_response_edge"');
+    expect(serialized).toContain("Skip response and transition when the caller says no");
     expect(serialized).toContain('"speak_during_execution":true');
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
