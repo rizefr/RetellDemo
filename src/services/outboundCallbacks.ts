@@ -18,7 +18,9 @@ const WEEKDAYS: Record<string, number> = {
 
 function callbackDate(reference: DateTime, phrase: string): DateTime | null {
   const value = phrase.trim().toLowerCase();
-  if (value === "today") return reference.startOf("day");
+  if (value === "today" || value === "later today" || /^in\s+\d{1,3}\s*(minute|minutes|min|mins)$/.test(value)) {
+    return reference.startOf("day");
+  }
   if (value === "tomorrow") return reference.plus({ days: 1 }).startOf("day");
   if (value in WEEKDAYS) {
     const target = WEEKDAYS[value];
@@ -30,6 +32,17 @@ function callbackDate(reference: DateTime, phrase: string): DateTime | null {
   return normalized ? DateTime.fromISO(normalized, { zone: reference.zoneName || "UTC" }) : null;
 }
 
+function roundedRelativeTime(reference: DateTime, value: string): { hour: number; minute: number } | null {
+  const match = value.match(/^in\s+(\d{1,3})\s*(minute|minutes|min|mins)$/);
+  if (!match) return null;
+  const requested = reference.plus({ minutes: Number(match[1]) });
+  const roundedMinute = Math.ceil(requested.minute / 5) * 5;
+  const rounded = roundedMinute >= 60
+    ? requested.plus({ hours: 1 }).set({ minute: 0, second: 0, millisecond: 0 })
+    : requested.set({ minute: roundedMinute, second: 0, millisecond: 0 });
+  return { hour: rounded.hour, minute: rounded.minute };
+}
+
 function parseClock(value: string): { hour: number; minute: number } | null {
   const parsed = DateTime.fromFormat(value, "HH:mm", { zone: "utc" });
   return parsed.isValid ? { hour: parsed.hour, minute: parsed.minute } : null;
@@ -38,8 +51,12 @@ function parseClock(value: string): { hour: number; minute: number } | null {
 function callbackTime(
   phrase: string,
   rules: { morning_time?: string; afternoon_time?: string },
+  reference: DateTime,
 ): { hour: number; minute: number } | null {
   const value = phrase.trim().toLowerCase().replace(/\s+/g, " ");
+  const relative = roundedRelativeTime(reference, value);
+  if (relative) return relative;
+  if (value === "later today") return parseClock(rules.afternoon_time || "14:00");
   if (value === "morning") return parseClock(rules.morning_time || "10:00");
   if (value === "afternoon") return parseClock(rules.afternoon_time || "14:00");
   const twelveHour = DateTime.fromFormat(value.toUpperCase(), "h:mm a", { zone: "utc" });
@@ -61,7 +78,7 @@ export function resolveOutboundCallback(input: {
   const reference = DateTime.fromJSDate(input.referenceTime ?? new Date(), { zone: timezone });
   const date = callbackDate(reference, input.datePhrase);
   const rules = input.rules ?? {};
-  const time = callbackTime(input.timePhrase, rules);
+  const time = callbackTime(input.timePhrase, rules, reference);
   if (!date || !time) {
     return {
       ok: false,

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   formatOutboundDate,
+  formatOutboundDateSpoken,
+  formatOutboundEmailSpoken,
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
   formatOutboundPhoneSpoken,
+  formatOutboundYearSpoken,
   normalizeOutboundDate,
 } from "../services/outboundFormatting";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
@@ -30,6 +33,12 @@ describe("outbound natural date formatting", () => {
     expect(normalizeOutboundDate("20261340")).toBeNull();
     expect(formatOutboundDate("not-a-date")).toBe("Date unavailable");
   });
+
+  it("formats spoken years and dates without saying two thousand twenty six", () => {
+    expect(formatOutboundYearSpoken(2026)).toBe("twenty twenty-six");
+    expect(formatOutboundDateSpoken("20260520")).toBe("May 20, twenty twenty-six");
+    expect(formatOutboundDateSpoken("2026-05-20")).toBe("May 20, twenty twenty-six");
+  });
 });
 
 describe("outbound speech-safe invoice formatting", () => {
@@ -54,7 +63,15 @@ describe("outbound speech-safe invoice formatting", () => {
   });
 
   it("formats phone numbers for spoken confirmation", () => {
-    expect(formatOutboundPhoneSpoken("+13475850249")).toBe("plus one, three four seven, five eight five, zero two four nine");
+    expect(formatOutboundPhoneSpoken("+13475850249")).toBe("three four seven, five eight five, zero two four nine");
+    expect(formatOutboundPhoneSpoken("+442071838750")).toBe("four four two zero seven one eight three eight seven five zero");
+  });
+
+  it("formats email addresses for slow spoken confirmation", () => {
+    expect(formatOutboundEmailSpoken("elixisagency@gmail.com")).toBe("elixisagency at gmail dot com");
+    expect(formatOutboundEmailSpoken("billing.team+demo@elixis.agency")).toBe(
+      "billing dot team plus demo at elixis dot agency",
+    );
   });
 });
 
@@ -87,6 +104,19 @@ describe("outbound callback resolution", () => {
     expect(resolveOutboundCallback({ ...base, datePhrase: "Friday", timePhrase: "11:30 AM" })).toMatchObject({
       ok: true,
       scheduledFor: "2026-06-26T15:30:00.000Z",
+    });
+  });
+
+  it("resolves short relative callback requests and rounds to a clean increment", () => {
+    expect(resolveOutboundCallback({ ...base, datePhrase: "today", timePhrase: "in 10 minutes" })).toMatchObject({
+      ok: true,
+      scheduledFor: "2026-06-22T15:10:00.000Z",
+      scheduledForSpoken: "June 22, 2026 at 11:10 AM EDT",
+    });
+    expect(resolveOutboundCallback({ ...base, datePhrase: "later today", timePhrase: "later today" })).toMatchObject({
+      ok: true,
+      scheduledFor: "2026-06-22T18:00:00.000Z",
+      scheduledForSpoken: "June 22, 2026 at 2:00 PM EDT",
     });
   });
 

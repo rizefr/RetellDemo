@@ -76,7 +76,7 @@ describe("outbound flow guardrails", () => {
     );
     const flow = buildOutboundConversationFlow("https://example.com");
     expect(flow.start_node_id).toBe("outbound_collections_agent");
-    expect(flow.nodes).toHaveLength(2);
+    expect(flow.nodes.length).toBeGreaterThanOrEqual(4);
     expect(serialized).toContain('"type":"subagent"');
     expect(serialized).toContain('"tool_ids"');
     expect(serialized).toContain("Do not leave voicemail");
@@ -105,6 +105,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Disclosure instruction for this call");
     expect(serialized).toContain("Do not infer or apply a different disclosure policy");
     expect(serialized).toContain("service_issue_reported");
+    expect(serialized).toContain("responsible_party_update_requested");
+    expect(serialized).toContain("named_contact_requested");
     expect(serialized).toContain("mail_instructions_requested");
     expect(serialized).toContain('"id":"service_issue_logging_example"');
     expect(serialized).toContain('"id":"callback_propose_then_confirm_example"');
@@ -113,7 +115,10 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"email_sent_terminal_example"');
     expect(serialized).toContain('"id":"human_unavailable_terminal_example"');
     expect(serialized).toContain("your next action must be the schedule_callback tool");
-    expect(serialized).toContain('"id":"outbound_terminal_end"');
+    expect(serialized).toContain('"id":"outbound_normal_terminal_final_check"');
+    expect(serialized).toContain('"id":"outbound_hard_terminal_end"');
+    expect(serialized).toContain("Is there anything else I can help you with?");
+    expect(serialized).toContain("Have a good day. Goodbye");
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
     expect(serialized).toContain("When sent is true, confirm delivery once and immediately invoke end_call");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
@@ -132,6 +137,11 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
     expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
+    expect(serialized).toContain("Is {{customer_email_spoken}} still the best email for the secure payment link?");
+    expect(serialized).toContain("Is elixisagency at gmail dot com still the best email for the secure payment link?");
+    expect(serialized).toContain("May I ask the reason, so I can note it correctly for the team?");
+    expect(serialized).toContain("I'm doing well, thanks for asking.");
+    expect(serialized).toContain("Who is the best person for payments now?");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
     expect(serialized).toContain("The team will follow up with the secure link");
     expect(serialized).toContain("invoke end_call immediately in the same turn");
@@ -141,6 +151,6 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain("voice_speed: 0.88");
-    expect(setupScript).toContain("begin_message_delay_ms: 650");
+    expect(setupScript).toContain("begin_message_delay_ms: 1000");
   });
 });

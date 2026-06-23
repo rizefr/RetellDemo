@@ -17,27 +17,29 @@ The business using it is responsible for establishing its right to contact each 
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
 
-## Current setup status (June 20, 2026)
+## Current setup status (June 23, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
 - The outbound migrations have been applied. The isolated `public.outbound_*` tables, including `outbound_demo_call_authorizations`, exist with RLS enabled and no `anon` or `authenticated` policies/grants. `outbound_mark_invoice_paid` is detected from the deployed service-role path. Call attempts store duration and structured analysis; the paid-invoice RPC uses qualified table references.
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
 - Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event. `ELV-TEST-OWN-NUMBER` remains unpaid but is currently `manual_review`; an admin must deliberately return it to an eligible unpaid status before another call preflight can pass.
-- Retell outbound agent and Conversation Flow are on the presentation-ready publish:
-  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `24`
-  - Conversation Flow: `conversation_flow_bebdceabc801`, version `24`
+- Retell outbound agent and Conversation Flow are on the final presentation hardening track:
+  - agent: `agent_4aa8074d7eabe311109ed6da89`
+  - Conversation Flow: `conversation_flow_bebdceabc801`
+  - target publish for this pass: V25 after the additive migration and backend deploy are verified
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - voice remains `11labs-Paul`; the presentation speed is `0.88` with the existing `650 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
+  - voice remains `11labs-Paul`; the presentation speed is `0.88` with a `1000 ms` first-message delay target; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved unless Retell readback/simulation proves a better setting
   - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
   - if asked whether he is AI or a robot, Paul answers honestly: “Yes, I’m an AI voice assistant helping Elixis Elevator Systems with service account follow-up.”
-  - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, and `open_invoice_count_spoken` prevent currency symbols, stored cents, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
+  - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `customer_phone_spoken`, and `customer_email_spoken` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
-- Retell V24 readback confirms Paul, speed `0.88`, the `650 ms` start delay, seven wrapped custom tools, voicemail hangup, the virtual-assistant wording, honest AI answer, explicit phone/email confirmation, separate call-purpose scripts, no inbound-callback wording, and same-turn `end_call` direction for terminal outcomes. Native no-call simulations should be rerun in Retell before the next live call.
+- Retell V25 must be published only to the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after publishing, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
+- Retell V25 structural terminal routing uses normal final-check and hard-terminal end nodes. Service issue, mail-check/manual instructions, email/manual fallback, callback scheduled, responsible-party update, named-contact request, and unavailable human paths route through “Is there anything else I can help you with?” and then “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
-- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Resend domain `elixis.agency` is verified for the local API key, and one controlled diagnostic email was sent to `elixisagency@gmail.com` from `Elixis Elevator Systems <billing@elixis.agency>`. The production backend email tool still returns `email_failed`, which indicates the Vercel Production `EMAIL_PROVIDER_API_KEY` should be updated from the verified local Resend key and redeployed before relying on live email delivery.
+- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Resend delivery is verified by a controlled diagnostic email received at `elixisagency@gmail.com` from `Elixis Elevator Systems <billing@elixis.agency>`. The remaining email release check is the deployed backend path: Vercel Production must use the current Resend key, the Retell email tool must send one controlled email to `elixisagency@gmail.com`, Supabase must log `email_sent`, and `/outbound` must show the event/status.
 - The after-hours self-test override is enabled in Vercel but remains unavailable unless test mode, one-item max batch, allowlisting, admin authentication, the warning checkbox, and the exact confirmation phrase all pass. Batch endpoints never accept the override.
 - The browser CSV upload validates all three demo rows, and a deployed batch dry run reports zero calls placed. The single-call button remains gated by recipient-local weekday 10:00-16:00 eligibility and explicit approval.
 - No call, SMS, real batch, real charge, phone binding change, or receptionist code/data mutation was performed by the setup pass.
@@ -278,7 +280,9 @@ No provider resources are created unless this exact flag is set:
 CONFIRM_CREATE_RETELL_OUTBOUND_AGENT=true npm run outbound:setup-retell
 ```
 
-Confirmed mode creates and publishes a new unbound Conversation Flow and agent, or updates the matching unbound outbound resources through a new draft version. It reads the resources back, prints outbound IDs, and writes the setup report. It does not call a phone-number update API, bind a number, change receptionist bindings, place a call, or send SMS. Copy IDs manually into the secret manager; the script never overwrites `.env`.
+Confirmed mode updates and publishes only the explicit existing outbound resources through a new draft version. It reads the resources back, prints outbound IDs, and writes the setup report. It does not call a phone-number update API, bind a number, change receptionist bindings, place a call, send SMS, match by name, create duplicates, or overwrite `.env`.
+
+For the presentation Retell flow, confirmed mode requires `OUTBOUND_RETELL_AGENT_ID=agent_4aa8074d7eabe311109ed6da89` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID=conversation_flow_bebdceabc801`, retrieves those exact resources, and refuses to match by name or create duplicates. If either ID is missing or the agent is not attached to the configured flow, the script stops.
 
 Review `retell/outbound_collections_flow_spec.md` and `retell/outbound_collections_flow_payload.example.json`. Configure these signed wrapped-body functions:
 
@@ -302,9 +306,22 @@ Configure voicemail detection with action `hangup`. The setup payload also reque
 
 Dynamic variables:
 
-`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `amount_due_spoken`, `original_due_date`, `original_due_date_spoken`, `service_description`, `invoice_id`, `invoice_id_spoken`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `open_invoice_count_spoken`, `total_amount_due`, `total_amount_due_spoken`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `call_purpose`, `demo_call_mode`, `previous_call_date_spoken`, `followup_reason`, `prior_concern_note`, `preferred_payment_method`, `customer_phone_spoken`, `customer_email`, `callback_scheduled_for_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
+`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `amount_due_spoken`, `original_due_date`, `original_due_date_spoken`, `original_due_date_display`, `service_description`, `invoice_id`, `invoice_id_spoken`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `open_invoice_count_spoken`, `total_amount_due`, `total_amount_due_spoken`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `call_purpose`, `demo_call_mode`, `previous_call_date_spoken`, `followup_reason`, `prior_concern_note`, `preferred_payment_method`, `customer_phone_spoken`, `customer_email`, `customer_email_display`, `customer_email_spoken`, `callback_scheduled_for_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
 
 The upgraded flow introduces Paul with a service-first opening, natural spoken dates, configurable `after_identity|on_request|opening` AI disclosure, elevator service-issue/manual-review handling, one helpful objection clarification, account-level invoice context, mail-check handling, and a signed `schedule-callback` tool. Callback phrases are normalized in the recipient timezone, confirmed before storage, and never auto-executed.
+
+Presentation speech rules:
+
+- Dates sent to Retell use `May 20, twenty twenty-six` style phrasing. Display dates can still use `May 20, 2026`.
+- U.S. phone numbers sent to Retell omit “plus one” and are spoken as area code, exchange, and line number.
+- Emails sent to Retell use spoken-safe text such as `elixisagency at gmail dot com`; dashboard and email bodies still use the normal display address.
+- Paul uses “virtual assistant” once after identity/service check when the policy requires disclosure. If asked whether he is AI or a robot, he answers honestly.
+- If asked “How are you?”, Paul replies briefly and continues the call.
+- If payment is refused, Paul asks once: “May I ask the reason, so I can note it correctly for the team?” He classifies the answer and stops after one clarification.
+- If the caller is no longer responsible for payments, Paul asks who handles payments now, collects name/phone/email if offered, confirms the details, logs `responsible_party_update_requested`, and creates manual follow-up. He does not transfer by default.
+- If the caller asks for Mike, Sarah, or another named person, Paul logs `named_contact_requested` and creates manual follow-up instead of transferring by default.
+- For scam concern, wrong amount, already paid, and last-payment questions, Paul uses only trusted account context. If the data is unavailable, he says so and offers details/team follow-up. He never invents payment history.
+- Normal terminal paths use the final-check sequence. Hard terminal paths such as stop-calling, attorney, wrong number, hostile requests, or clear-end requests acknowledge, log/pause as needed, and end without the extra “anything else” question.
 
 Set `HUMAN_TRANSFER_NUMBER` only after verifying ownership and live transfer behavior. If absent, the tool logs `human_requested` and the agent must end with a team-follow-up message.
 

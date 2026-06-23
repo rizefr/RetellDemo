@@ -5,7 +5,7 @@ import { buildOutboundConversationFlow } from "../retell/outboundConversationFlo
 import { getRetellClient } from "../retell/retellClient";
 
 type SetupReport = {
-  mode: "dry_run" | "created_unbound" | "updated_unbound";
+  mode: "dry_run" | "updated_unbound";
   created_provider_resources: boolean;
   phone_binding_changed: false;
   outbound_agent_id: string | null;
@@ -21,7 +21,7 @@ const OUTBOUND_VOICE_SETTINGS = {
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,
   enable_backchannel: true,
-  begin_message_delay_ms: 650,
+  begin_message_delay_ms: 1000,
 };
 
 const OUTBOUND_POST_CALL_ANALYSIS = [
@@ -89,13 +89,21 @@ const OUTBOUND_POST_CALL_ANALYSIS = [
   },
 ];
 
-async function findExistingOutboundAgent() {
+async function retrieveExplicitOutboundAgent() {
   const client = getRetellClient();
-  const agents = await client.agent.list();
-  const agent = agents.find((candidate) => candidate.agent_name === env.OUTBOUND_RETELL_AGENT_NAME);
-  if (!agent || agent.response_engine?.type !== "conversation-flow") return null;
-  const flow = await client.conversationFlow.retrieve(agent.response_engine.conversation_flow_id);
-  if (!flow.global_prompt?.includes("first-party B2B unpaid invoice follow-up")) return null;
+  if (!env.OUTBOUND_RETELL_AGENT_ID || !env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID) {
+    throw new Error(
+      "OUTBOUND_RETELL_AGENT_ID and OUTBOUND_RETELL_CONVERSATION_FLOW_ID are required; refusing to create or match Retell resources by name.",
+    );
+  }
+  const agent = await client.agent.retrieve(env.OUTBOUND_RETELL_AGENT_ID);
+  if (agent.response_engine?.type !== "conversation-flow") {
+    throw new Error("Configured OUTBOUND_RETELL_AGENT_ID is not a Conversation Flow agent.");
+  }
+  if (agent.response_engine.conversation_flow_id !== env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID) {
+    throw new Error("Configured outbound agent is not attached to OUTBOUND_RETELL_CONVERSATION_FLOW_ID.");
+  }
+  const flow = await client.conversationFlow.retrieve(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID);
   return { agent, flow };
 }
 
@@ -110,7 +118,7 @@ async function publishAgentVersion(agentId: string, version: number) {
 }
 
 async function updateExistingOutboundAgent(
-  existing: NonNullable<Awaited<ReturnType<typeof findExistingOutboundAgent>>>,
+  existing: Awaited<ReturnType<typeof retrieveExplicitOutboundAgent>>,
   flow: ReturnType<typeof buildOutboundConversationFlow>,
 ) {
   const client = getRetellClient();
@@ -197,8 +205,8 @@ async function main() {
     published_version: null,
     notes: [
       "Safe default: no Retell resources were created.",
-      "Set CONFIRM_CREATE_RETELL_OUTBOUND_AGENT=true to create and publish an unbound flow and agent.",
-      "This script contains no phone-number update or binding operation.",
+      "Set CONFIRM_CREATE_RETELL_OUTBOUND_AGENT=true to update and publish only the explicit OUTBOUND_RETELL_AGENT_ID and OUTBOUND_RETELL_CONVERSATION_FLOW_ID.",
+      "This script contains no phone-number update, phone binding, name matching, or duplicate creation operation.",
     ],
   };
 
@@ -213,66 +221,26 @@ async function main() {
     );
   }
 
-  const client = getRetellClient();
-  const existing = await findExistingOutboundAgent();
-  if (existing) {
-    const updated = await updateExistingOutboundAgent(existing, flow);
-    const report: SetupReport = {
-      mode: "updated_unbound",
-      created_provider_resources: false,
-      phone_binding_changed: false,
-      outbound_agent_id: updated.agent.agent_id,
-      outbound_conversation_flow_id: updated.flow.conversation_flow_id,
-      published_version: updated.agent.version,
-      notes: [
-        "Updated and published the existing matching unbound outbound agent and Conversation Flow.",
-        "No phone binding API was called.",
-        "Copy outbound IDs manually from the generated env example after reviewing the report.",
-      ],
-    };
-    await writeArtifacts(report, updated.flow);
-    console.log(JSON.stringify(report, null, 2));
-    console.log(`OUTBOUND_RETELL_AGENT_ID=${updated.agent.agent_id}`);
-    console.log(`OUTBOUND_RETELL_CONVERSATION_FLOW_ID=${updated.flow.conversation_flow_id}`);
-    return;
-  }
-
-  const createdFlow = await client.conversationFlow.create(flow);
-  const agent = await client.agent.create({
-    response_engine: {
-      type: "conversation-flow",
-      conversation_flow_id: createdFlow.conversation_flow_id,
-    },
-    voice_id: env.OUTBOUND_RETELL_VOICE_ID,
-    ...OUTBOUND_VOICE_SETTINGS,
-    agent_name: env.OUTBOUND_RETELL_AGENT_NAME,
-    webhook_url: `${env.APP_BASE_URL.replace(/\/$/, "")}/api/outbound/webhooks/retell`,
-    webhook_events: ["call_started", "call_ended", "call_analyzed", "transcript_updated"],
-    voicemail_option: { action: { type: "hangup" } },
-    data_storage_setting: "everything_except_pii",
-    data_storage_retention_days: 30,
-    analysis_summary_prompt: "Summarize the B2B invoice follow-up outcome without adding sensitive identifiers.",
-    post_call_analysis_data: OUTBOUND_POST_CALL_ANALYSIS,
-  });
-  await publishAgentVersion(agent.agent_id, agent.version);
-  const readback = await client.agent.retrieve(agent.agent_id);
+  const existing = await retrieveExplicitOutboundAgent();
+  const updated = await updateExistingOutboundAgent(existing, flow);
   const report: SetupReport = {
-    mode: "created_unbound",
-    created_provider_resources: true,
+    mode: "updated_unbound",
+    created_provider_resources: false,
     phone_binding_changed: false,
-    outbound_agent_id: agent.agent_id,
-    outbound_conversation_flow_id: createdFlow.conversation_flow_id,
-    published_version: readback.version,
+    outbound_agent_id: updated.agent.agent_id,
+    outbound_conversation_flow_id: updated.flow.conversation_flow_id,
+    published_version: updated.agent.version,
     notes: [
-      "Created and published a new unbound outbound agent and Conversation Flow.",
-      "No phone binding was read or changed.",
+      "Updated and published only the explicit outbound agent and Conversation Flow IDs.",
+      "No phone binding API was called.",
+      "No name matching or duplicate provider resource creation was performed.",
       "Copy outbound IDs manually from the generated env example after reviewing the report.",
     ],
   };
-  await writeArtifacts(report, flow);
+  await writeArtifacts(report, updated.flow);
   console.log(JSON.stringify(report, null, 2));
-  console.log(`OUTBOUND_RETELL_AGENT_ID=${agent.agent_id}`);
-  console.log(`OUTBOUND_RETELL_CONVERSATION_FLOW_ID=${createdFlow.conversation_flow_id}`);
+  console.log(`OUTBOUND_RETELL_AGENT_ID=${updated.agent.agent_id}`);
+  console.log(`OUTBOUND_RETELL_CONVERSATION_FLOW_ID=${updated.flow.conversation_flow_id}`);
 }
 
 main().catch((error) => {

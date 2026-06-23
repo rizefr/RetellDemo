@@ -115,6 +115,16 @@ describe("outbound webhook contracts", () => {
     );
     expect(emailMissingMigration).toContain("'email_missing'");
     expect(emailMissingMigration).not.toMatch(/^create policy/gm);
+    const finalPresentationMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260623_outbound_final_presentation_hardening.sql"),
+      "utf8",
+    );
+    expect(finalPresentationMigration).toContain("responsible_party_name");
+    expect(finalPresentationMigration).toContain("'responsible_party_update_requested'");
+    expect(finalPresentationMigration).toContain("'named_contact_requested'");
+    expect(finalPresentationMigration).toContain("enable row level security");
+    expect(finalPresentationMigration).toContain("revoke all on public.outbound_customers from anon, authenticated");
+    expect(finalPresentationMigration).not.toMatch(/^create policy/gm);
     const callbackMigration = fs.readFileSync(
       path.resolve(process.cwd(), "supabase/migrations/20260620_outbound_conversation_callback_upgrade.sql"),
       "utf8",
@@ -225,6 +235,105 @@ describe("outbound webhook contracts", () => {
         outcome: "wrong_number",
       }),
     );
+  });
+
+  it("stores responsible-party and named-contact updates from signed wrapped Retell outcome tools", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-tool-api-key";
+    const recordOutboundOutcome = vi.fn().mockResolvedValue({ outreachPaused: false, invoiceStatus: null, followups: [] });
+    const updateOutboundCustomer = vi.fn().mockResolvedValue({});
+    const insertOutboundFollowups = vi.fn().mockResolvedValue([]);
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: { id: "00000000-0000-4000-8000-000000000003", status: "unpaid" },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: { id: "00000000-0000-4000-8000-000000000001" },
+        }),
+        recordOutboundOutcome,
+        updateOutboundCustomer,
+        insertOutboundFollowups,
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const metadata = {
+      business_id: "00000000-0000-4000-8000-000000000001",
+      customer_id: "00000000-0000-4000-8000-000000000002",
+      invoice_id: "00000000-0000-4000-8000-000000000003",
+      call_attempt_id: "00000000-0000-4000-8000-000000000004",
+    };
+    const responsiblePayload = JSON.stringify({
+      name: "log_outcome",
+      args: {
+        outcome: "responsible_party_update_requested",
+        responsible_party_name: "Sam Lee",
+        responsible_party_phone: "+13475550123",
+        responsible_party_email: "sam@example.com",
+        notes: "Caller said Sam handles payments now.",
+      },
+      call: { call_id: "call_responsible_party", metadata },
+    });
+    const responsibleSignature = await sign(responsiblePayload, "retell-tool-api-key");
+    const responsibleResponse = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", responsibleSignature)
+      .send(responsiblePayload);
+
+    expect(responsibleResponse.status).toBe(200);
+    expect(updateOutboundCustomer).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000002",
+      expect.objectContaining({
+        responsible_party_name: "Sam Lee",
+        responsible_party_phone: "+13475550123",
+        responsible_party_email: "sam@example.com",
+        contact_update_note: expect.stringContaining("Sam handles payments"),
+      }),
+    );
+    expect(insertOutboundFollowups).toHaveBeenCalledWith(
+      {
+        businessId: "00000000-0000-4000-8000-000000000001",
+        customerId: "00000000-0000-4000-8000-000000000002",
+        invoiceId: "00000000-0000-4000-8000-000000000003",
+      },
+      expect.arrayContaining([expect.objectContaining({ task_type: "manual_review", reason: "responsible_party_update_requested" })]),
+    );
+
+    const namedPayload = JSON.stringify({
+      name: "log_outcome",
+      args: {
+        outcome: "named_contact_requested",
+        named_contact_name: "Mike",
+        notes: "Caller asked for Mike.",
+      },
+      call: { call_id: "call_named_contact", metadata },
+    });
+    const namedSignature = await sign(namedPayload, "retell-tool-api-key");
+    const namedResponse = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", namedSignature)
+      .send(namedPayload);
+
+    expect(namedResponse.status).toBe(200);
+    expect(updateOutboundCustomer).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000002",
+      expect.objectContaining({
+        named_contact_requested: "Mike",
+        contact_update_note: "Caller asked for Mike.",
+      }),
+    );
+    vi.doUnmock("../services/outboundRepository");
+    vi.resetModules();
   });
 
   it("rejects signed root-only Retell tool args because trusted call metadata is absent", async () => {

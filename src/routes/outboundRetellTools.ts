@@ -80,7 +80,28 @@ outboundRetellToolsRouter.post(
       pauseOutreach: policy.pauseOutreach,
       invoiceStatus: policy.invoiceStatus,
     });
-    if (["service_issue_reported", "mail_check_requested", "mail_instructions_requested"].includes(args.outcome)) {
+    if (args.outcome === "responsible_party_update_requested") {
+      await updateOutboundCustomer(metadata.customerId, {
+        responsible_party_name: args.responsible_party_name || null,
+        responsible_party_phone: args.responsible_party_phone || null,
+        responsible_party_email: args.responsible_party_email || null,
+        responsible_party_note: args.notes || null,
+        contact_update_note: args.notes || null,
+      });
+    }
+    if (args.outcome === "named_contact_requested") {
+      await updateOutboundCustomer(metadata.customerId, {
+        named_contact_requested: args.named_contact_name || args.notes || null,
+        contact_update_note: args.notes || null,
+      });
+    }
+    if ([
+      "service_issue_reported",
+      "mail_check_requested",
+      "mail_instructions_requested",
+      "responsible_party_update_requested",
+      "named_contact_requested",
+    ].includes(args.outcome)) {
       const context = await getOutboundInvoiceContext(metadata.invoiceId);
       await insertOutboundFollowups(
         { businessId: metadata.businessId, customerId: metadata.customerId, invoiceId: metadata.invoiceId },
