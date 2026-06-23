@@ -560,6 +560,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           },
         },
       ],
+      skip_response_edge: {
+        id: "outbound_final_check_done_skip_edge",
+        destination_node_id: "outbound_terminal_end",
+        transition_condition: {
+          type: "prompt",
+          prompt:
+            "Skip response and transition when the caller says no, no thanks, that's all, thank you, bye, goodbye, or otherwise indicates there is nothing else needed.",
+        },
+      },
       display_position: { x: 620, y: -120 },
     },
     {
