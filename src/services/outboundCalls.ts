@@ -48,14 +48,15 @@ function money(amountCents: number, currency: string): string {
   );
 }
 
-export function outboundAiDisclosureInstruction(policy: unknown): string {
+export function outboundAiDisclosureInstruction(policy: unknown, businessName = "Elixis Elevator Systems"): string {
+  const safeBusinessName = businessName.trim() || "Elixis Elevator Systems";
   if (policy === "opening") {
     return "Disclose naturally near the opening that you are an AI voice assistant.";
   }
   if (policy === "on_request") {
     return "Do not mention or volunteer AI status unless the person explicitly asks whether you are AI, automated, or a robot. If asked, answer honestly.";
   }
-  return "After confirming identity and after the elevator operation check, say only once: \"I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts.\" Then continue naturally into the service and invoice details. If asked whether you are AI or a robot, answer honestly.";
+  return `After confirming identity and after the elevator operation check, say only once: "I'm a virtual assistant helping ${safeBusinessName} follow up on service accounts." Then continue naturally into the service and invoice details. If asked whether you are AI or a robot, answer honestly.`;
 }
 
 function demoCallMode(value: unknown): string {
@@ -306,7 +307,10 @@ export async function startOutboundCall(
     timezone: String(context.customer.timezone || context.business.default_timezone || "America/New_York"),
     agent_display_name: String(context.business.agent_display_name || "Paul"),
     ai_disclosure_policy: String(context.business.ai_disclosure_policy || "after_identity"),
-    ai_disclosure_instruction: outboundAiDisclosureInstruction(context.business.ai_disclosure_policy),
+    ai_disclosure_instruction: outboundAiDisclosureInstruction(
+      context.business.ai_disclosure_policy,
+      String(context.business.business_name || ""),
+    ),
     open_invoice_count: String(account.openInvoiceCount),
     open_invoice_count_spoken: formatOutboundInvoiceCountSpoken(Number(account.openInvoiceCount)),
     total_amount_due: money(Number(account.totalAmountDueCents), String(context.invoice.currency)),

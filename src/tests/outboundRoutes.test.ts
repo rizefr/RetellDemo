@@ -13,6 +13,7 @@ describe("outbound admin routes", () => {
       if (!(key in originalEnv)) delete process.env[key];
     });
     Object.assign(process.env, originalEnv);
+    vi.unstubAllGlobals();
     vi.resetModules();
     vi.restoreAllMocks();
   });
@@ -430,6 +431,125 @@ describe("outbound webhook contracts", () => {
     expect(response.body).toMatchObject({ sent: false, status: "email_missing" });
     expect(createOutboundCheckoutSession).not.toHaveBeenCalled();
     expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: "email_missing" }));
+    vi.doUnmock("../services/outboundRepository");
+    vi.doUnmock("../services/outboundStripe");
+    vi.resetModules();
+  });
+
+  it("sends a payment email from a signed wrapped Retell tool after trusted agreement and allowlist checks", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-email-api-key";
+    process.env.EMAIL_PROVIDER = "resend";
+    process.env.EMAIL_PROVIDER_API_KEY = "resend-test-key";
+    process.env.OUTBOUND_PAYMENT_EMAIL_FROM = "Elixis Elevator Systems <billing@elixis.agency>";
+    process.env.OUTBOUND_PAYMENT_EMAIL_ENABLED = "true";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "email_route_success_1" }),
+    }));
+    const insertOutboundEvent = vi.fn().mockResolvedValue({});
+    const markOutboundPaymentLinkDelivered = vi.fn().mockResolvedValue({});
+    const updateOutboundCustomer = vi.fn().mockResolvedValue({});
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: {
+            id: "00000000-0000-4000-8000-000000000003",
+            invoice_id: "ELV-EMAIL-ROUTE",
+            status: "unpaid",
+            service_description: "annual elevator inspection",
+            amount_due_cents: 15000,
+            currency: "usd",
+            original_due_date: "2026-05-20",
+          },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            email: "elixisagency@gmail.com",
+            preferred_email: "",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: {
+            id: "00000000-0000-4000-8000-000000000001",
+            business_name: "Elixis Elevator Systems",
+            callback_number: "+19842075346",
+            payment_email_enabled: true,
+            email_from: "Elixis Elevator Systems <billing@elixis.agency>",
+            email_test_recipient_allowlist: ["elixisagency@gmail.com"],
+            test_mode: true,
+          },
+        }),
+        hasOutboundPaymentLinkAgreement: vi.fn().mockResolvedValue(true),
+        insertOutboundEvent,
+        markOutboundPaymentLinkDelivered,
+        updateOutboundCustomer,
+      };
+    });
+    vi.doMock("../services/outboundStripe", () => ({
+      createOutboundCheckoutSession: vi.fn().mockResolvedValue({
+        reused: false,
+        payment_link: {
+          id: "00000000-0000-4000-8000-000000000010",
+          url: "https://checkout.stripe.test/email-route",
+        },
+      }),
+    }));
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "send_payment_email",
+      args: {},
+      call: {
+        call_id: "call_email_success",
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-email-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/send-payment-email")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      sent: true,
+      status: "email_sent",
+      provider_message_id: "email_route_success_1",
+    });
+    expect(updateOutboundCustomer).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000002",
+      { payment_contact_preference: "email" },
+    );
+    expect(markOutboundPaymentLinkDelivered).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000010",
+      "email",
+    );
+    expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: "email_requested" }));
+    expect(insertOutboundEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: "email_sent",
+        payload: expect.objectContaining({ provider_message_id: "email_route_success_1" }),
+      }),
+    );
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    const [, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(requestInit.body));
+    expect(body).toMatchObject({
+      from: "Elixis Elevator Systems <billing@elixis.agency>",
+      to: ["elixisagency@gmail.com"],
+      subject: "Elixis Elevator Systems invoice ELV-EMAIL-ROUTE",
+    });
+    expect(String(requestInit.body)).not.toContain("resend-test-key");
     vi.doUnmock("../services/outboundRepository");
     vi.doUnmock("../services/outboundStripe");
     vi.resetModules();
