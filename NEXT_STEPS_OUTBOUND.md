@@ -1,5 +1,17 @@
 # Next Steps For Outbound Demo
 
+## Current Verified Baseline
+
+- Production domain: `https://elixis.agency`.
+- Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
+- Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
+- Latest verified Retell version: V32.
+- Voice and pacing: `11labs-Paul`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
+- Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
+- Production backend email path: verified with one controlled `email_sent` event to `elixisagency@gmail.com`.
+- Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
+- SMS remains disabled/manual. QuickBooks remains scaffold-only.
+
 ## QuickBooks Future Connection
 
 QuickBooks is scaffolded only. Do not create live QuickBooks payment links until a business authorizes its QuickBooks Online company and the token-storage policy is reviewed. Stripe remains the default provider for the elevator demo.
