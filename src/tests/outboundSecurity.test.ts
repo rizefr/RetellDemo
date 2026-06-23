@@ -75,6 +75,8 @@ describe("outbound flow guardrails", () => {
       "utf8",
     );
     const flow = buildOutboundConversationFlow("https://example.com");
+    const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
+    const finalCheckNode = flow.nodes.find((node) => node.id === "outbound_normal_terminal_final_check");
     expect(flow.start_node_id).toBe("outbound_collections_agent");
     expect(flow.nodes.length).toBeGreaterThanOrEqual(4);
     expect(serialized).toContain('"type":"subagent"');
@@ -133,10 +135,10 @@ describe("outbound flow guardrails", () => {
     expect(serialized).not.toMatch(/call us back later|please call the office/i);
     expect(serialized).toContain("Normal terminal outcomes must route to the normal final-check node");
     expect(serialized).toContain("Never close a service-issue call before the tool invocation and final-check routing");
-    expect(serialized).toContain("transition to the native end-call node");
-    expect(serialized).toContain("the native end-call node owns the goodbye and hangup");
-    expect(serialized).toContain('"skip_response_edge"');
-    expect(serialized).toContain("Skip response and transition when the caller says no");
+    expect(serialized).toContain("This isolated final-check node owns the goodbye and hangup");
+    expect(JSON.stringify(mainNode)).not.toContain('"type":"end_call"');
+    expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');
+    expect(JSON.stringify(finalCheckNode)).toContain("end_final_check_call");
     expect(serialized).toContain('"speak_during_execution":true');
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
@@ -148,7 +150,6 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Who is the best person for payments now?");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
     expect(serialized).toContain("The team will follow up with the secure link");
-    expect(serialized).not.toContain('"type":"end_call"');
     expect(serialized).not.toContain("invoke end_call immediately in the same turn");
     expect(serialized).not.toContain("Demo Elevator Inspections");
     expect(serialized).toContain("tool_call_invocation");
