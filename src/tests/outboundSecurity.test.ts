@@ -180,9 +180,20 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain("voice_speed: 0.88");
     expect(setupScript).toContain("begin_message_delay_ms: 1000");
+    expect(setupScript).toContain('ambient_sound: "call-center"');
+    expect(setupScript).toContain("ambient_sound_volume: 0.18");
     expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
     expect(setupScript).toContain("preserves the current dashboard voice");
     expect(setupScript).toContain("current_dashboard");
+  });
+
+  it("adds subtle tool-wait bridge behavior without exposing internals", () => {
+    const serialized = JSON.stringify(buildOutboundConversationFlow("https://elixis.agency"));
+    expect(serialized).toContain("One moment while I pull that up.");
+    expect(serialized).toContain("Give me a moment while I prepare that.");
+    expect(serialized).toContain("One moment while I check that time.");
+    expect(serialized).toContain("Do not overuse the bridge line for quick background logging");
+    expect(serialized).toContain("Never mention tools, APIs, systems, or databases");
   });
 
   it("keeps Presentation Mode copy professional and surfaces specific demo gate messages", () => {
