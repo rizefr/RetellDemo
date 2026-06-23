@@ -581,7 +581,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             "End the call after the hard terminal outcome has been acknowledged and logged. Do not use for normal service issue, callback, email, mail check, responsible-party, named-contact, or unavailable-human paths.",
           speak_during_execution: true,
           execution_message_type: "static_text",
-          execution_message_description: "Goodbye.",
+          execution_message_description: "Understood. We'll stop calling this number. Goodbye.",
         },
       ],
       display_position: { x: 620, y: 120 },

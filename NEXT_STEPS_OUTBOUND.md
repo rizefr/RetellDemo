@@ -5,12 +5,28 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version: V32.
+- Latest verified Retell version: V33; V34 is the hard-terminal acknowledgment patch when published.
 - Voice and pacing: `11labs-Paul`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
+- GPT-5.1 was tested against GPT-4.1 on the same V33 Retell native scenarios. It did not clearly improve reliability and was slower in the observed batch, so GPT-4.1 remains the selected demo model.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
-- Production backend email path: verified with one controlled `email_sent` event to `elixisagency@gmail.com`.
+- Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
 - Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
 - SMS remains disabled/manual. QuickBooks remains scaffold-only.
+
+## Retell Model And Voice Maintenance
+
+Current Retell settings to preserve for the elevator demo:
+
+- agent `agent_4aa8074d7eabe311109ed6da89`
+- flow `conversation_flow_bebdceabc801`
+- model GPT-4.1
+- voice `11labs-Paul`
+- voice model ElevenLabs Flash v2.5
+- speed `0.88`
+- first-message delay `1000 ms`
+- wrapped signed tools with `args_at_root` disabled
+
+Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is currently cheaper per standard LLM minute than GPT-4.1, but the V33 simulation comparison did not show a demo-quality improvement. Re-test GPT-5.1 only if Retell releases a lower-latency setting or if GPT-4.1 starts missing tool/final-check behavior.
 
 ## QuickBooks Future Connection
 
