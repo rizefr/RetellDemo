@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version: V34; V35 is the final-check native end-call tightening patch when published.
+- Latest verified Retell version: V35.
 - Voice and pacing: `11labs-Paul`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was tested against GPT-4.1 on the same V33 Retell native scenarios. It did not clearly improve reliability and was slower in the observed batch, so GPT-4.1 remains the selected demo model.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
