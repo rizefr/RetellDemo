@@ -27,7 +27,7 @@ The business using it is responsible for establishing its right to contact each 
 - Retell outbound agent and Conversation Flow are published and verified for the final presentation path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V32
+  - active verified version: V33; V34 is the hard-terminal acknowledgment patch when published
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
   - voice remains `11labs-Paul`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
   - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
@@ -35,11 +35,11 @@ The business using it is responsible for establishing its right to contact each 
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `customer_phone_spoken`, and `customer_email_spoken` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
-- Retell V32 structural terminal routing uses normal final-check and hard-terminal end nodes. Stateful Playground simulations passed for service issue, mail-check/manual instructions, email/manual fallback, callback scheduled, responsible-party update, named-contact request, unavailable human, and hard-terminal stop-calling paths. Normal endings route through “Is there anything else I can help you with?” and then “Have a good day. Goodbye.” with a native end-call action. Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
+- Retell V33 structural terminal routing uses normal final-check and hard-terminal end nodes. Retell native tests passed for service issue, mail-check/manual instructions, email success, and named-contact request through the final-check/native end-call path. Stop-calling logs `do_not_contact`, skips the final-check, and ends through the hard-terminal native end-call path; V34 changes the hard-terminal native message from a bare “Goodbye” to “Understood. We'll stop calling this number. Goodbye.” Normal endings route through “Is there anything else I can help you with?” and then “Have a good day. Goodbye.” with a native end-call action.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
-- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Resend delivery is verified by a controlled diagnostic email received at `elixisagency@gmail.com` from `Elixis Elevator Systems <billing@elixis.agency>`. The deployed backend/Retell-email-tool path has also been verified with one controlled email to `elixisagency@gmail.com`; Supabase logged `email_requested` and `email_sent`, and `/outbound` shows the event/status.
+- SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Resend delivery is verified by a controlled diagnostic email received at `elixisagency@gmail.com` from `Elixis Elevator Systems <billing@elixis.agency>`. The deployed backend/Retell-email-tool path has also been verified with one controlled email to `elixisagency@gmail.com`; Gmail received it, Supabase logged `email_requested` and `email_sent`, and `/outbound` shows the event/status.
 - The live `/outbound` Presentation Mode workflow has been verified through authorization and preflight without placing a call: a temporary demo number was authorized, demo variables were saved, the normal preflight blocked outside hours, and the after-hours confirmation path enabled the single-call Start button for an unpaid demo invoice.
 - The after-hours self-test override is enabled in Vercel but remains unavailable unless test mode, one-item max batch, allowlisting, admin authentication, the warning checkbox, and the exact confirmation phrase all pass. Batch endpoints never accept the override.
 - The browser CSV upload validates all three demo rows, and a deployed batch dry run reports zero calls placed. The single-call button remains gated by recipient-local weekday 10:00-16:00 eligibility and explicit approval.
@@ -71,6 +71,24 @@ Demo call mode is separate script context and does not change payment status:
 The demo-number control is temporary and separate from the persistent test-phone allowlist. It requires admin auth, test mode, max batch size `1`, an E.164 number, a warning checkbox, and the exact phrase `I AUTHORIZE THIS DEMO TEST CALL`. The authorization has a TTL and can be reused during that demo session for manually started single calls. It never applies to batch calls and never bypasses normal calling hours unless the separate after-hours override is also explicitly confirmed.
 
 The demo details editor can update the fake customer and invoice variables used by Retell: name, phone, email, business name, service description, amount, due/service date, invoice ID, demo call mode, previous call date, follow-up reason, prior concern, preferred payment method, callback details, and mailing/check instructions. These changes are sent to protected backend routes and feed real Retell dynamic variables; they are not browser-only labels.
+
+## Retell model and voice notes
+
+Current production selection:
+
+- Model: GPT-4.1
+- Voice: `11labs-Paul`
+- Voice model: ElevenLabs Flash v2.5
+- Speed: `0.88`
+- First-message delay: `1000 ms`
+- Model temperature: `0.2`
+- Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
+
+GPT-5.1 was re-evaluated against GPT-4.1 on Retell V33 with the same native test-case batch: custom business opening/small talk, email success, payment refusal clarification, callback relative time, and responsible-party update. GPT-4.1 passed 4/5 in about 47.7 seconds. GPT-5.1 passed 4/5 in about 57.9 seconds. Both failed the callback edge case under the same confirmation mock. GPT-5.1 was slower in this batch and slightly more likely to skip the clean email-preference question in one transcript, so GPT-4.1 remains selected for the demo.
+
+Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
+
+If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. Do not publish from stale local assumptions after a dashboard voice experiment; pass the intended `OUTBOUND_RETELL_VOICE_ID` explicitly.
 
 ## Supabase setup
 
