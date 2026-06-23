@@ -154,6 +154,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("May I ask the reason, so I can note it correctly for the team?");
     expect(serialized).toContain("I'm doing well, thanks for asking.");
     expect(serialized).toContain("Who is the best person for payments now?");
+    expect(serialized).toContain("your next action must be log_outcome with outcome responsible_party_update_requested");
+    expect(serialized).toContain("do not transition until log_outcome has already been called with the confirmed name");
     expect(serialized).toContain('"id":"same_turn_payment_request_example"');
     expect(serialized).toContain("The team will follow up with the secure link");
     expect(serialized).not.toContain("invoke end_call immediately in the same turn");
