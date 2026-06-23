@@ -74,6 +74,7 @@ describe("outbound flow guardrails", () => {
       path.resolve(process.cwd(), "src/scripts/setupOutboundRetell.ts"),
       "utf8",
     );
+    const envConfig = fs.readFileSync(path.resolve(process.cwd(), "src/config/env.ts"), "utf8");
     const flow = buildOutboundConversationFlow("https://example.com");
     const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
     const finalCheckNode = flow.nodes.find((node) => node.id === "outbound_normal_terminal_final_check");
@@ -179,5 +180,26 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain("voice_speed: 0.88");
     expect(setupScript).toContain("begin_message_delay_ms: 1000");
+    expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
+    expect(setupScript).toContain("preserves the current dashboard voice");
+    expect(setupScript).toContain("current_dashboard");
+  });
+
+  it("keeps Presentation Mode copy professional and surfaces specific demo gate messages", () => {
+    const html = fs.readFileSync(path.resolve(process.cwd(), "web/outbound.html"), "utf8");
+    const js = fs.readFileSync(path.resolve(process.cwd(), "public/outbound/outbound.js"), "utf8");
+    expect(html).not.toMatch(/tomorrow/i);
+    expect(html).toContain("Presentation mode");
+    expect(html).toContain("Demo test number and editable call context");
+    expect(html).toContain("demo-feedback-badges");
+    expect(js).toContain("Invalid phone number format. Use E.164, like +13475850249.");
+    expect(js).toContain("Exact confirmation phrase is incorrect");
+    expect(js).toContain("Warning checkbox is required");
+    expect(js).toContain("Temporary demo authorization expired");
+    expect(js).toContain("After-hours override is required");
+    expect(js).toContain("Demo number authorized");
+    expect(js).toContain("Needs after-hours confirmation");
+    expect(js).toContain("QuickBooks is not connected");
+    expect(js).toContain("SMS is disabled/manual");
   });
 });

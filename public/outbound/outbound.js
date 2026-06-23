@@ -68,6 +68,71 @@ function humanize(value) {
   return String(value || "unknown").replaceAll("_", " ");
 }
 
+const CALL_GATE_MESSAGES = {
+  invalid_phone_number: "Invalid phone number format. Use E.164, like +13475850249.",
+  invalid_phone: "Invalid phone number format. Use E.164, like +13475850249.",
+  invalid_format: "Invalid phone number format. Use E.164, like +13475850249.",
+  confirmation_required: "Exact confirmation phrase is incorrect.",
+  checkbox_required: "Warning checkbox is required.",
+  test_mode_disabled: "Test mode is off. Presentation Mode requires test mode.",
+  max_batch_size_not_one: "Batch size must be 1 for Presentation Mode.",
+  demo_authorization_expired: "Temporary demo authorization expired. Authorize the test number again.",
+  demo_call_authorization_expired: "Temporary demo authorization expired. Authorize the test number again.",
+  demo_call_authorization_missing: "Authorize a temporary demo number before preflight.",
+  outside_calling_window: "After-hours override is required outside the normal calling window.",
+  after_hours_override_required: "After-hours override is required.",
+  after_hours_confirmation_invalid: "After-hours phrase is missing or incorrect.",
+  invoice_not_outstanding: "Invoice is not eligible. Use an unpaid or payment-link-sent demo invoice.",
+  invoice_not_eligible: "Invoice is not eligible for a call.",
+  customer_paused: "Customer outreach is paused.",
+  outreach_paused: "Customer outreach is paused.",
+  retell_agent_missing: "Retell agent ID is missing.",
+  retell_from_number_missing: "Retell from number is missing.",
+  email_not_ready: "Email is not ready.",
+  sms_disabled: "SMS is disabled/manual.",
+  quickbooks_not_connected: "QuickBooks is not connected; Stripe remains the ready provider.",
+};
+
+function friendlyReason(reason) {
+  return CALL_GATE_MESSAGES[reason] || humanize(reason);
+}
+
+function friendlyErrorMessage(error) {
+  const message = error?.message || String(error || "");
+  const lower = message.toLowerCase();
+  if (lower.includes("e.164") || (lower.includes("phone") && lower.includes("invalid"))) {
+    return CALL_GATE_MESSAGES.invalid_phone_number;
+  }
+  if (lower.includes("authorize") && lower.includes("demo")) return CALL_GATE_MESSAGES.demo_call_authorization_missing;
+  if (lower.includes("test mode")) return CALL_GATE_MESSAGES.test_mode_disabled;
+  if (lower.includes("maximum batch size") || lower.includes("batch size 1")) return CALL_GATE_MESSAGES.max_batch_size_not_one;
+  if (lower.includes(DEMO_CALL_CONFIRMATION.toLowerCase()) || lower.includes("exact")) {
+    return `Exact confirmation phrase is incorrect. Type ${DEMO_CALL_CONFIRMATION}.`;
+  }
+  if (lower.includes(AFTER_HOURS_CONFIRMATION.toLowerCase())) {
+    return `After-hours phrase is missing or incorrect. Type ${AFTER_HOURS_CONFIRMATION}.`;
+  }
+  return message;
+}
+
+function stateBadge(label, tone = "neutral") {
+  const span = document.createElement("span");
+  span.className = `state-badge ${tone}`;
+  span.textContent = label;
+  return span;
+}
+
+function setDemoFeedback(message, badges = []) {
+  const result = document.getElementById("demo-last-result");
+  const container = document.getElementById("demo-feedback-badges");
+  if (result) result.textContent = message;
+  if (container) container.replaceChildren(...badges.map((item) => stateBadge(item.label, item.tone)));
+}
+
+function demoAuthorizationExpired() {
+  return activeDemoAuthorization?.expires_at && new Date(activeDemoAuthorization.expires_at) <= new Date();
+}
+
 function badge(value, tone = "neutral") {
   const span = document.createElement("span");
   span.className = `status-badge ${tone}`;
@@ -321,9 +386,17 @@ async function renderPresentationPanel() {
 async function authorizeDemoNumber() {
   const business = selectedBusiness();
   if (!business) return setStatus("Select a business before authorizing a demo number.", true);
-  if (!document.getElementById("demo-authorize-ack").checked) return setStatus("Acknowledge permission for the demo test number first.", true);
+  if (!document.getElementById("demo-authorize-ack").checked) {
+    const message = "Warning checkbox is required before authorizing a temporary test number.";
+    setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+    return setStatus(message, true);
+  }
   const confirmation = document.getElementById("demo-authorize-confirmation").value.trim();
-  if (confirmation !== DEMO_CALL_CONFIRMATION) return setStatus(`Type ${DEMO_CALL_CONFIRMATION} exactly.`, true);
+  if (confirmation !== DEMO_CALL_CONFIRMATION) {
+    const message = `Exact confirmation phrase is incorrect. Type ${DEMO_CALL_CONFIRMATION}.`;
+    setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+    return setStatus(message, true);
+  }
   try {
     const result = await api("/api/outbound/demo-call/authorize-number", {
       method: "POST",
@@ -342,10 +415,16 @@ async function authorizeDemoNumber() {
     document.getElementById("demo-preflight").disabled = false;
     document.getElementById("demo-start-call").disabled = true;
     document.getElementById("demo-auth-status").textContent = `Authorized ${activeDemoAuthorization.phone_number} until ${formatDate(activeDemoAuthorization.expires_at)}`;
+    setDemoFeedback(`Temporary test number ${activeDemoAuthorization.phone_number} is authorized. Run Preflight Check before starting any call.`, [
+      { label: "Demo number authorized", tone: "ready" },
+      { label: "Preflight required", tone: "warning" },
+    ]);
     setStatus("Temporary demo test number authorized. Run the real backend preflight next.");
     await loadDashboard(true);
   } catch (error) {
-    setStatus(error.message, true);
+    const message = friendlyErrorMessage(error);
+    setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+    setStatus(message, true);
   }
 }
 
@@ -381,10 +460,20 @@ async function saveDemoDetails() {
         payment_mailing_instructions: document.getElementById("demo-mailing-instructions").value.trim() || null,
       }),
     });
+    activeDemoPreflight = null;
+    document.getElementById("demo-start-call").disabled = true;
+    setDemoFeedback("Demo variables saved. Run Preflight Check again so the backend can evaluate the updated call context.", [
+      ...(activeDemoAuthorization?.id && !demoAuthorizationExpired()
+        ? [{ label: "Demo number authorized", tone: "ready" }]
+        : [{ label: "Needs setup", tone: "warning" }]),
+      { label: "Preflight required", tone: "warning" },
+    ]);
     setStatus("Demo variables saved. Invoice payment status was not changed.");
     await refreshAll();
   } catch (error) {
-    setStatus(error.message, true);
+    const message = friendlyErrorMessage(error);
+    setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+    setStatus(message, true);
   }
 }
 
@@ -392,6 +481,7 @@ function demoRunPayload() {
   const invoice = selectedDemoInvoice();
   if (!invoice) throw new Error("Select a demo invoice first.");
   if (!activeDemoAuthorization?.id) throw new Error("Authorize a temporary demo number first.");
+  if (demoAuthorizationExpired()) throw new Error("Temporary demo authorization expired. Authorize the test number again.");
   return {
     invoice_id: invoice.id,
     demo_call_authorization_id: activeDemoAuthorization.id,
@@ -406,13 +496,29 @@ async function demoPreflight() {
       body: JSON.stringify(demoRunPayload()),
     });
     document.getElementById("demo-start-call").disabled = !activeDemoPreflight.eligible;
+    const reason = activeDemoPreflight.after_hours_override_block_reason || activeDemoPreflight.reason;
+    const message = activeDemoPreflight.eligible
+      ? `Preflight passed for ${activeDemoPreflight.destination_phone_number}. The Start button will still use the real backend single-call endpoint.`
+      : friendlyReason(reason);
+    const badges = activeDemoPreflight.eligible
+      ? [
+          { label: "Ready", tone: "ready" },
+          { label: "Demo number authorized", tone: "ready" },
+        ]
+      : [
+          { label: reason === "outside_calling_window" ? "Needs after-hours confirmation" : "Blocked", tone: reason === "outside_calling_window" ? "warning" : "blocked" },
+          { label: "Backend preflight", tone: "info" },
+        ];
+    setDemoFeedback(message, badges);
     setStatus(activeDemoPreflight.eligible
       ? `Demo call preflight passed for ${activeDemoPreflight.destination_phone_number}.`
-      : `Demo call blocked: ${humanize(activeDemoPreflight.reason)}.`,
+      : `Demo call blocked: ${message}`,
       !activeDemoPreflight.eligible);
   } catch (error) {
     document.getElementById("demo-start-call").disabled = true;
-    setStatus(error.message, true);
+    const message = friendlyErrorMessage(error);
+    setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+    setStatus(message, true);
   }
 }
 
@@ -422,17 +528,26 @@ async function startDemoCall() {
       method: "POST",
       body: JSON.stringify(demoRunPayload()),
     });
-    if (!preflight.eligible) return setStatus(`Demo call blocked: ${humanize(preflight.reason)}.`, true);
+    if (!preflight.eligible) {
+      const message = friendlyReason(preflight.after_hours_override_block_reason || preflight.reason);
+      setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+      return setStatus(`Demo call blocked: ${message}`, true);
+    }
     if (!confirm(`Start one gated presentation call to ${preflight.destination_phone_number}?`)) return;
     const result = await api("/api/outbound/demo-call/start", {
       method: "POST",
       body: JSON.stringify(demoRunPayload()),
     });
     document.getElementById("demo-start-call").disabled = true;
+    setDemoFeedback(`Retell accepted the one-call request for ${preflight.destination_phone_number}. Dashboard data is refreshing.`, [
+      { label: "Submitted", tone: "ready" },
+    ]);
     setStatus(`Retell demo call registered: ${result.call_id}`);
     await refreshAll();
   } catch (error) {
-    setStatus(error.message, true);
+    const message = friendlyErrorMessage(error);
+    setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
+    setStatus(message, true);
   }
 }
 
@@ -458,12 +573,12 @@ function setGateState(row, result) {
   const overrideLabel = result.after_hours_override_used ? " · after-hours self-test override" : "";
   gate.textContent = result.eligible
     ? `Eligible now${overrideLabel}`
-    : `${humanize(result.after_hours_override_block_reason || result.reason)} · ${formatDate(result.recipient_local_time)}`;
+    : `${friendlyReason(result.after_hours_override_block_reason || result.reason)} · ${formatDate(result.recipient_local_time)}`;
   gate.className = `gate-status ${result.eligible ? "ready" : "blocked"}`;
   callButton.disabled = !result.eligible;
   selectedCallStatus.textContent = result.eligible
     ? `Selected call is eligible in ${result.timezone}${overrideLabel}. The server will recheck every gate when starting.`
-    : `Selected call is blocked: ${humanize(result.after_hours_override_block_reason || result.reason)}. Window: ${result.calling_window}.`;
+    : `Selected call is blocked: ${friendlyReason(result.after_hours_override_block_reason || result.reason)} Window: ${result.calling_window}.`;
   selectedCallStatus.className = `selected-call-status ${result.eligible ? "ready" : "blocked"}`;
 }
 
