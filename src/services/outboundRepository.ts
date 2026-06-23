@@ -37,7 +37,7 @@ export async function listOutboundInvoices() {
   return unwrap(
     await db()
       .from("outbound_invoices")
-      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,notes,payment_contact_preference,imported_last_payment_date), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(task_type,scheduled_for,status,reason)")
+      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,notes,payment_contact_preference,preferred_email,preferred_phone_number,contact_update_note,imported_last_payment_date), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(task_type,scheduled_for,status,reason)")
       .order("created_at", { ascending: false }),
   );
 }
@@ -48,7 +48,7 @@ export async function listOutboundDashboardData(limit = 100) {
   const [invoiceResult, callResult, paymentResult, eventResult, businessResult, followupResult] = await Promise.all([
     client
       .from("outbound_invoices")
-      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,pause_reason,notes,payment_contact_preference,imported_last_payment_date), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(id,task_type,scheduled_for,status,reason)")
+      .select("*, outbound_customers(id,first_name,last_name,phone_number,email,timezone,outreach_paused,pause_reason,notes,payment_contact_preference,preferred_email,preferred_phone_number,contact_update_note,imported_last_payment_date), outbound_businesses(id,business_name,callback_number,human_transfer_number), outbound_payment_links(id,url,status,expires_at,created_at,paid_at,sent_via,stripe_checkout_session_id), outbound_call_attempts(id,status,outcome,summary,analysis,duration_ms,created_at), outbound_followup_tasks(id,task_type,scheduled_for,status,reason)")
       .order("created_at", { ascending: false }),
     client
       .from("outbound_call_attempts")
@@ -170,6 +170,77 @@ export async function updateOutboundBusinessSettings(id: string, patch: Record<s
   ) as Record<string, unknown>;
 }
 
+export async function createOutboundDemoCallAuthorization(input: {
+  businessId: string;
+  phoneNumber: string;
+  demoCallMode: string;
+  scenario?: string | null;
+  expiresAt: string;
+}) {
+  return unwrap(
+    await db()
+      .from("outbound_demo_call_authorizations")
+      .insert({
+        business_id: input.businessId,
+        phone_number: input.phoneNumber,
+        demo_call_mode: input.demoCallMode,
+        scenario: input.scenario || null,
+        expires_at: input.expiresAt,
+      })
+      .select("*")
+      .single(),
+  ) as Record<string, unknown>;
+}
+
+export async function listOutboundDemoCallAuthorizations(businessId?: string) {
+  let query = db()
+    .from("outbound_demo_call_authorizations")
+    .select("*")
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(25);
+  if (businessId) query = query.eq("business_id", businessId);
+  const result = await query;
+  if (result.error) throw new OutboundDatabaseError(result.error.message);
+  return result.data ?? [];
+}
+
+export async function getOutboundDemoCallAuthorization(id: string) {
+  return unwrap(
+    await db().from("outbound_demo_call_authorizations").select("*").eq("id", id).maybeSingle(),
+    true,
+  ) as Record<string, unknown>;
+}
+
+export async function revokeOutboundDemoCallAuthorization(id: string) {
+  return unwrap(
+    await db()
+      .from("outbound_demo_call_authorizations")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle(),
+    true,
+  ) as Record<string, unknown>;
+}
+
+export async function touchOutboundDemoCallAuthorization(id: string) {
+  const current = await getOutboundDemoCallAuthorization(id);
+  return unwrap(
+    await db()
+      .from("outbound_demo_call_authorizations")
+      .update({
+        last_used_at: new Date().toISOString(),
+        uses_count: Number(current.uses_count || 0) + 1,
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle(),
+    true,
+  ) as Record<string, unknown>;
+}
+
 export async function importOutboundBusinesses(rows: OutboundBusinessCsvRow[], dryRun: boolean) {
   if (dryRun) return { dry_run: true, rows_valid: rows.length, businesses_created: 0, businesses_updated: 0, rows_skipped: 0 };
   const client = db();
@@ -287,6 +358,54 @@ export async function updateOutboundInvoice(id: string, patch: Record<string, un
     throw new OutboundDatabaseError("Paid invoices cannot be reopened by this demo", 409);
   }
   return unwrap(await db().from("outbound_invoices").update(patch).eq("id", id).select("*").maybeSingle(), true);
+}
+
+export async function updateOutboundDemoDetails(input: {
+  businessId: string;
+  customerId: string;
+  invoiceId: string;
+  businessPatch: Record<string, unknown>;
+  customerPatch: Record<string, unknown>;
+  invoicePatch: Record<string, unknown>;
+}) {
+  const client = db();
+  const cleanPatch = (patch: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+  const businessPatch = cleanPatch(input.businessPatch);
+  const customerPatch = cleanPatch(input.customerPatch);
+  const invoicePatch = cleanPatch(input.invoicePatch);
+  const [businessResult, customerResult, invoiceResult] = await Promise.all([
+    Object.keys(businessPatch).length
+      ? client
+          .from("outbound_businesses")
+          .update(businessPatch)
+          .eq("id", input.businessId)
+          .select("*")
+          .maybeSingle()
+      : client.from("outbound_businesses").select("*").eq("id", input.businessId).maybeSingle(),
+    Object.keys(customerPatch).length
+      ? client
+          .from("outbound_customers")
+          .update(customerPatch)
+          .eq("id", input.customerId)
+          .select("*")
+          .maybeSingle()
+      : client.from("outbound_customers").select("*").eq("id", input.customerId).maybeSingle(),
+    Object.keys(invoicePatch).length
+      ? client
+          .from("outbound_invoices")
+          .update(invoicePatch)
+          .eq("id", input.invoiceId)
+          .neq("status", "paid")
+          .select("*")
+          .maybeSingle()
+      : client.from("outbound_invoices").select("*").eq("id", input.invoiceId).maybeSingle(),
+  ]);
+  return {
+    business: unwrap(businessResult, true),
+    customer: unwrap(customerResult, true),
+    invoice: unwrap(invoiceResult, true),
+  };
 }
 
 export async function setOutboundPause(id: string, paused: boolean, reason: string | null) {

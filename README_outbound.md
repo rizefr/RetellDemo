@@ -24,12 +24,13 @@ The business using it is responsible for establishing its right to contact each 
 - The outbound migrations have been applied. All seven `public.outbound_*` tables exist, RLS is enabled, no `anon` or `authenticated` policies/grants are present, and `outbound_mark_invoice_paid` is detected from the deployed service-role path. Call attempts now store duration and structured analysis; the paid-invoice RPC uses qualified table references.
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
 - Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event. `ELV-TEST-OWN-NUMBER` remains unpaid but is currently `manual_review`; an admin must deliberately return it to an eligible unpaid status before another call preflight can pass.
-- Retell outbound agent and Conversation Flow were hardened and published:
+- Retell outbound agent and Conversation Flow were hardened. This branch prepares the next presentation-ready publish:
   - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `20`
   - Conversation Flow: `conversation_flow_bebdceabc801`, version `20`
-  - the flow uses a tool-capable Subagent Node, a terminal End Node, and seven custom tools using Retell's signed `{name,args,call}` envelope; `args_at_root` is disabled
-  - voice is `11labs-Paul` at speed `0.94` with a `650 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
-  - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained AI-assistant disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
+  - the next publish should become V21 with the same agent/flow IDs, wrapped signed `{name,args,call}` tools, and `args_at_root` disabled
+  - voice remains `11labs-Paul`; the target presentation speed is `0.88` with the existing `650 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
+  - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
+  - if asked whether he is AI or a robot, Paul answers honestly: “Yes, I’m an AI voice assistant helping Elixis Elevator Systems with service account follow-up.”
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, and `open_invoice_count_spoken` prevent currency symbols, stored cents, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
 - Retell native V20 simulations pass for opening/hello recovery, one-time `after_identity` disclosure and AI honesty, service/date/amount clarity, service issue, proof, scam concern, callback resolver ordering, callback-call opening, disabled SMS, mail check, already paid, stop calling, and unavailable human transfer. The email tool uses trusted metadata and returns the correct sent/manual wording, but Retell Playground can still omit `end_call` after that final email sentence; keep the test-recipient allowlist empty until this terminal behavior is reverified.
@@ -40,6 +41,33 @@ The business using it is responsible for establishing its right to contact each 
 - The after-hours self-test override is enabled in Vercel but remains unavailable unless test mode, one-item max batch, allowlisting, admin authentication, the warning checkbox, and the exact confirmation phrase all pass. Batch endpoints never accept the override.
 - The browser CSV upload validates all three demo rows, and a deployed batch dry run reports zero calls placed. The single-call button remains gated by recipient-local weekday 10:00-16:00 eligibility and explicit approval.
 - No call, SMS, real batch, real charge, phone binding change, or receptionist code/data mutation was performed by the setup pass.
+
+## Presentation mode
+
+The `/outbound` page includes a **Presentation Mode / Demo Test Number** panel for demo-day calls.
+
+Invoice/payment status stays payment-focused:
+
+- `unpaid`
+- `payment_link_sent`
+- `paid`
+- `disputed`
+- `manual_review`
+- `cancelled`
+
+Demo call mode is separate script context and does not change payment status:
+
+- `first_reminder`: initial service-account check and invoice reminder
+- `follow_up`: later follow-up context while the invoice can remain `unpaid`
+- `callback_followup`: customer asked to be called at a specific time
+- `scam_recovery`: customer previously raised legitimacy/scam concern
+- `service_issue`: elevator issue is primary, payment is not pushed
+
+`callback_scheduled` is a customer/outreach state meaning the customer asked for a specific callback time. `do_not_contact` means outreach must stop for that customer. `follow_up` is a demo/script mode or outreach context, not an invoice payment status.
+
+The demo-number control is temporary and separate from the persistent test-phone allowlist. It requires admin auth, test mode, max batch size `1`, an E.164 number, a warning checkbox, and the exact phrase `I AUTHORIZE THIS DEMO TEST CALL`. The authorization has a TTL and can be reused during that demo session for manually started single calls. It never applies to batch calls and never bypasses normal calling hours unless the separate after-hours override is also explicitly confirmed.
+
+The demo details editor can update the fake customer and invoice variables used by Retell: name, phone, email, business name, service description, amount, due/service date, invoice ID, demo call mode, previous call date, follow-up reason, prior concern, preferred payment method, callback details, and mailing/check instructions. These changes are sent to protected backend routes and feed real Retell dynamic variables; they are not browser-only labels.
 
 ## Supabase setup
 
@@ -131,6 +159,9 @@ The page provides joined customers/invoices, call history, payment sessions, and
 - business-level safety settings without exposing provider secrets
 - separate customer-invoice and business-setup CSV templates
 - callback task review, editing, completion, preflight, and manual one-call start
+- presentation/demo mode with temporary E.164 test-number authorization
+- editable demo variables that feed Retell dynamic variables
+- QuickBooks future-ready payment-provider status and placeholder routes
 
 ### Business and safety settings
 
@@ -157,6 +188,8 @@ Normal demo operation no longer requires the CSV import CLI: upload the file, va
 7. Use **Events and debug** to inspect redacted Retell webhooks, Stripe events, admin actions, callback scheduling, and email results. Raw provider payloads are expandable but secrets are never returned.
 8. Use **Callbacks and follow-ups** to review the requested local time, timezone, reason, confirmation, and status. Edit or complete a task manually. A callback task never auto-dials.
 9. Use **Settings** for the business/agent names, disclosure policy, timezone, callback/transfer numbers, mailing instructions, test mode, phone allowlist, batch limit, after-hours test switch, and requested email/SMS states. Provider secrets remain in Vercel and appear only as present/missing readiness checks.
+10. Use **Presentation Mode** to authorize a temporary demo test number, choose the demo call mode, save demo variables, run the real backend preflight, and start exactly one manually approved demo call. This is separate from normal operations and does not edit invoice payment status.
+11. Use **QuickBooks status** only as a future-ready setup indicator. Stripe remains the current demo default unless the business payment provider is deliberately changed.
 
 #### One-call and callback workflow
 
@@ -180,6 +213,20 @@ For a callback task, Paul receives `call_purpose=callback_followup` and the trus
 5. After explicit payment-link agreement, send one test through the normal email tool, confirm the `email_sent` event in **Events and debug**, then confirm delivery in the controlled inbox.
 
 If any check fails, leave the allowlist empty. The endpoint returns `email_pending_manual`, and Paul must not claim delivery. SMS remains disabled/manual until a separate Retell SMS-capability rollout; `sms_pending_manual` is expected and the CSV/business settings already preserve the future preference.
+
+#### QuickBooks foundation
+
+The current demo uses Stripe for exact-amount Checkout Sessions. A business can choose `stripe`, `quickbooks`, or `manual` as its payment provider in settings, but QuickBooks is scaffold-only until a real business authorizes its QuickBooks Online company.
+
+Configured routes:
+
+- `GET /api/outbound/quickbooks/status`
+- `GET /api/outbound/quickbooks/connect`
+- `GET /api/outbound/quickbooks/callback`
+- `POST /api/outbound/quickbooks/disconnect`
+- `POST /api/outbound/quickbooks/invoice-link`
+
+The connect route builds an Intuit OAuth URL when `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, and `QUICKBOOKS_REDIRECT_URI` are configured. The callback/token exchange and invoice/payment-link creation intentionally return scaffold responses until a client’s QuickBooks credentials, company authorization, token storage policy, and payment-link behavior are approved. Retell must not claim a QuickBooks link was sent unless the provider is connected and the backend returns a real link.
 
 ## Stripe setup
 
@@ -255,7 +302,7 @@ Configure voicemail detection with action `hangup`. The setup payload also reque
 
 Dynamic variables:
 
-`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `amount_due_spoken`, `original_due_date`, `original_due_date_spoken`, `service_description`, `invoice_id`, `invoice_id_spoken`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `open_invoice_count_spoken`, `total_amount_due`, `total_amount_due_spoken`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `call_purpose`, `callback_scheduled_for_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
+`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `amount_due_spoken`, `original_due_date`, `original_due_date_spoken`, `service_description`, `invoice_id`, `invoice_id_spoken`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `open_invoice_count_spoken`, `total_amount_due`, `total_amount_due_spoken`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `call_purpose`, `demo_call_mode`, `previous_call_date_spoken`, `followup_reason`, `prior_concern_note`, `preferred_payment_method`, `customer_phone_spoken`, `customer_email`, `callback_scheduled_for_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
 
 The upgraded flow introduces Paul with a service-first opening, natural spoken dates, configurable `after_identity|on_request|opening` AI disclosure, elevator service-issue/manual-review handling, one helpful objection clarification, account-level invoice context, mail-check handling, and a signed `schedule-callback` tool. Callback phrases are normalized in the recipient timezone, confirmed before storage, and never auto-executed.
 
@@ -314,7 +361,7 @@ Vercel/Express raw-body routes are mounted before global JSON parsing for Stripe
 
 Do not call until the migration, deployed environment, Stripe webhook, Retell flow, Retell number outbound capability, AI/recording disclosure, and contact-right review are complete.
 
-1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` and flow `conversation_flow_bebdceabc801` on published version `19`.
+1. Confirm the Retell dashboard shows agent `agent_4aa8074d7eabe311109ed6da89` and flow `conversation_flow_bebdceabc801` on the latest published presentation version.
 2. Confirm the current `+19842075346` assignment remains intentional. Do not change it from code; use explicit dashboard approval for any phone binding correction.
 3. Open `https://elixis.agency/outbound` and confirm the setup panel is ready, test mode is enabled, the allowlist has one number, and SMS is disabled/manual.
 4. Confirm invoice `ELV-TEST-OWN-NUMBER` is assigned to `+13475850249`, is not paused, and remains `unpaid` or `payment_link_sent`.
@@ -324,6 +371,17 @@ Do not call until the migration, deployed environment, Stripe webhook, Retell fl
 8. Inspect the refreshed call outcome, events, notes, and follow-up status in `/outbound` and Supabase.
 
 A small batch should remain `dry_run` until one single call, signature verification, payment webhook, pause behavior, and no-voicemail handling are all verified.
+
+## Demo-day checklist
+
+1. Verify `/health` and `/outbound` on `https://elixis.agency`.
+2. Confirm test mode is on, max batch is `1`, SMS is disabled/manual, and email is either verified or visibly pending/manual.
+3. Pick the demo invoice and set invoice payment status to `unpaid`; choose the separate demo call mode for the script you want.
+4. Save demo variables: name, phone/email, service, amount, natural date, prior concern/follow-up details, and preferred payment method.
+5. If using a different phone number, authorize it in **Presentation Mode** with `I AUTHORIZE THIS DEMO TEST CALL`.
+6. Run preflight. If outside normal hours, use the separate after-hours self-test confirmation only for a number you control.
+7. Get explicit approval for exactly one call, then start the single call from the backend-backed button.
+8. After the call, refresh and show the summary, outcome, transcript, events, callback task, and payment/email state.
 
 ## Compliance notes
 

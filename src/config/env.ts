@@ -59,6 +59,11 @@ const envSchema = z.object({
   OUTBOUND_PAYMENT_EMAIL_FROM: z.string().optional().default(""),
   OUTBOUND_PAYMENT_EMAIL_ENABLED: booleanFromString.default(false),
 
+  QUICKBOOKS_CLIENT_ID: z.string().optional().default(""),
+  QUICKBOOKS_CLIENT_SECRET: z.string().optional().default(""),
+  QUICKBOOKS_REDIRECT_URI: z.string().optional().default(""),
+  QUICKBOOKS_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+
   PUBLIC_BASE_URL: z.string().optional().default(""),
   RETELL_WEBHOOK_URL: z.string().optional().default(""),
   TOOLS_BASE_URL: z.string().optional().default(""),

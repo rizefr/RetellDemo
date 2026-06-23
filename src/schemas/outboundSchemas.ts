@@ -10,6 +10,13 @@ export const outboundInvoiceStatusSchema = z.enum([
   "manual_review",
   "cancelled",
 ]);
+export const outboundDemoCallModeSchema = z.enum([
+  "first_reminder",
+  "follow_up",
+  "callback_followup",
+  "scam_recovery",
+  "service_issue",
+]);
 export const outboundOutcomeSchema = z.enum(OUTBOUND_OUTCOMES);
 
 export const customerPatchSchema = z
@@ -22,6 +29,9 @@ export const customerPatchSchema = z
     timezone: z.string().max(100).optional(),
     notes: z.string().max(5000).optional(),
     payment_contact_preference: z.enum(["none", "sms", "email", "mail_check"]).optional(),
+    preferred_email: z.string().email().or(z.literal("")).optional(),
+    preferred_phone_number: z.string().regex(/^\+[1-9]\d{7,14}$/).or(z.literal("")).optional(),
+    contact_update_note: z.string().max(1000).optional(),
   })
   .strict();
 
@@ -48,6 +58,7 @@ export const startCallSchema = z
   .object({
     invoice_id: uuidSchema,
     followup_task_id: uuidSchema.optional(),
+    demo_call_authorization_id: uuidSchema.optional(),
     after_hours_override: afterHoursOverrideSchema.optional(),
   })
   .strict();
@@ -98,6 +109,7 @@ export const businessSettingsPatchSchema = z
     email_from: z.string().max(300).nullable().optional(),
     email_test_recipient_allowlist: z.array(z.string().email()).max(25).optional(),
     callback_rules: z.record(z.string(), z.unknown()).optional(),
+    payment_provider: z.enum(["stripe", "quickbooks", "manual"]).optional(),
     production_mode_confirmation: z.string().max(100).optional(),
     batch_limit_confirmation: z.string().max(100).optional(),
   })
@@ -117,4 +129,55 @@ export const followupPatchSchema = z
 export const businessImportSchema = z.object({
   csv: z.string().min(1).max(500_000),
   dry_run: z.boolean().default(true),
+});
+
+export const demoCallAuthorizationSchema = z
+  .object({
+    business_id: uuidSchema,
+    phone_number: z.string().regex(/^\+[1-9]\d{7,14}$/),
+    demo_call_mode: outboundDemoCallModeSchema.default("first_reminder"),
+    scenario: z.string().max(200).optional(),
+    ttl_minutes: z.number().int().min(5).max(480).optional().default(240),
+    acknowledged: z.literal(true),
+    confirmation: z.string().max(100),
+  })
+  .strict();
+
+export const demoCallRunSchema = startCallSchema.extend({
+  demo_call_authorization_id: uuidSchema,
+});
+
+export const demoDetailsPatchSchema = z
+  .object({
+    business_id: uuidSchema,
+    customer_id: uuidSchema,
+    invoice_id: uuidSchema,
+    first_name: z.string().min(1).max(100).optional(),
+    last_name: z.string().min(1).max(100).optional(),
+    phone_number: z.string().regex(/^\+[1-9]\d{7,14}$/).optional(),
+    email: z.string().email().or(z.literal("")).optional(),
+    business_name: z.string().min(1).max(200).optional(),
+    service_description: z.string().min(1).max(500).optional(),
+    amount_due: z.union([z.string(), z.number()]).optional(),
+    original_due_date: z.string().min(8).max(20).optional(),
+    external_invoice_id: z.string().min(1).max(100).optional(),
+    demo_call_mode: outboundDemoCallModeSchema.optional(),
+    previous_call_date: z.string().min(8).max(20).nullable().optional(),
+    followup_reason: z.string().max(1000).nullable().optional(),
+    prior_concern_note: z.string().max(1000).nullable().optional(),
+    preferred_payment_method: z.enum(["none", "sms", "email", "mail_check"]).nullable().optional(),
+    callback_details: z.string().max(1000).nullable().optional(),
+    preferred_email: z.string().email().or(z.literal("")).optional(),
+    preferred_phone_number: z.string().regex(/^\+[1-9]\d{7,14}$/).or(z.literal("")).optional(),
+    payment_mailing_instructions: z.string().max(2000).nullable().optional(),
+  })
+  .strict();
+
+export const quickBooksBusinessQuerySchema = z.object({
+  business_id: uuidSchema,
+});
+
+export const quickBooksInvoiceLinkSchema = z.object({
+  business_id: uuidSchema,
+  invoice_id: uuidSchema,
 });

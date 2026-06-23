@@ -203,11 +203,105 @@ describe("outbound browser operation safety", () => {
           open_invoice_count: "1",
           open_invoice_count_spoken: "one open invoice",
           total_amount_due_spoken: "one hundred fifty dollars",
-          call_purpose: "initial_invoice_followup",
+          call_purpose: "first_reminder",
           ai_disclosure_instruction: expect.stringContaining("Do not mention or volunteer AI status"),
         }),
       }),
     );
     expect(insertOutboundEvent.mock.invocationCallOrder[0]).toBeLessThan(createPhoneCall.mock.invocationCallOrder[0]);
+  });
+
+  it("uses a temporary presentation demo number for one manual call without changing invoice status", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.OUTBOUND_TEST_MODE = "true";
+    process.env.OUTBOUND_TEST_PHONE_ALLOWLIST = "+13475850249";
+    process.env.OUTBOUND_MAX_BATCH_SIZE = "1";
+    process.env.OUTBOUND_RETELL_AGENT_ID = "agent_outbound";
+    process.env.RETELL_FROM_NUMBER = "+19842075346";
+    const createPhoneCall = vi.fn().mockResolvedValue({ call_id: "call_demo_number", call_status: "registered" });
+    const touchOutboundDemoCallAuthorization = vi.fn().mockResolvedValue({});
+    const updateOutboundInvoice = vi.fn();
+    vi.doMock("../services/outboundRepository", () => ({
+      getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+        invoice: {
+          id: "00000000-0000-4000-8000-000000000003",
+          invoice_id: "ELV-DEMO",
+          status: "unpaid",
+          amount_due_cents: 15000,
+          currency: "usd",
+          original_due_date: "2026-05-20",
+          service_description: "annual elevator inspection",
+          demo_call_mode: "follow_up",
+          previous_call_date: "2026-06-19",
+          followup_reason: "customer asked for a later follow-up",
+          prior_concern_note: "Customer initially asked if this was legitimate.",
+          preferred_payment_method: "email",
+        },
+        customer: {
+          id: "00000000-0000-4000-8000-000000000002",
+          first_name: "Test",
+          last_name: "Owner",
+          phone_number: "+13475850249",
+          preferred_phone_number: "+15551234567",
+          email: "owner@example.test",
+          preferred_email: "billing@example.test",
+          timezone: "America/New_York",
+          outreach_paused: false,
+        },
+        business: {
+          id: "00000000-0000-4000-8000-000000000001",
+          business_name: "Elixis Elevator Systems",
+          default_timezone: "America/New_York",
+          ai_disclosure_policy: "after_identity",
+        },
+        activeCall: null,
+        paymentLink: null,
+      }),
+      getOutboundDemoCallAuthorization: vi.fn().mockResolvedValue({
+        id: "00000000-0000-4000-8000-000000000099",
+        business_id: "00000000-0000-4000-8000-000000000001",
+        phone_number: "+15551234567",
+        demo_call_mode: "follow_up",
+        expires_at: "2026-06-30T00:00:00.000Z",
+        revoked_at: null,
+      }),
+      touchOutboundDemoCallAuthorization,
+      nextOutboundAttemptNumber: vi.fn().mockResolvedValue(3),
+      createOutboundCallAttempt: vi.fn().mockResolvedValue({ id: "00000000-0000-4000-8000-000000000004" }),
+      updateOutboundCallAttempt: vi.fn().mockResolvedValue({}),
+      insertOutboundEvent: vi.fn().mockResolvedValue({}),
+      updateOutboundInvoice,
+    }));
+    vi.doMock("../retell/retellClient", () => ({
+      getRetellClient: () => ({ call: { createPhoneCall } }),
+    }));
+    vi.resetModules();
+    const { startOutboundCall } = await import("../services/outboundCalls");
+    const result = await startOutboundCall(
+      "00000000-0000-4000-8000-000000000003",
+      undefined,
+      new Date("2026-06-22T15:00:00.000Z"),
+      undefined,
+      "00000000-0000-4000-8000-000000000099",
+    );
+
+    expect(result.call_id).toBe("call_demo_number");
+    expect(createPhoneCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to_number: "+15551234567",
+        retell_llm_dynamic_variables: expect.objectContaining({
+          call_purpose: "follow_up",
+          demo_call_mode: "follow_up",
+          customer_phone_spoken: "plus one, five five five, one two three, four five six seven",
+          customer_email: "billing@example.test",
+          previous_call_date_spoken: "June 19, 2026",
+          followup_reason: "customer asked for a later follow-up",
+          prior_concern_note: "Customer initially asked if this was legitimate.",
+          preferred_payment_method: "email",
+        }),
+      }),
+    );
+    expect(touchOutboundDemoCallAuthorization).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000099");
+    expect(updateOutboundInvoice).not.toHaveBeenCalled();
   });
 });

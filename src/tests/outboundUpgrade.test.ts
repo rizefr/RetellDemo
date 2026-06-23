@@ -4,6 +4,7 @@ import {
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
+  formatOutboundPhoneSpoken,
   normalizeOutboundDate,
 } from "../services/outboundFormatting";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
@@ -51,6 +52,10 @@ describe("outbound speech-safe invoice formatting", () => {
     expect(formatOutboundInvoiceCountSpoken(1)).toBe("one open invoice");
     expect(formatOutboundInvoiceCountSpoken(3)).toBe("three open invoices");
   });
+
+  it("formats phone numbers for spoken confirmation", () => {
+    expect(formatOutboundPhoneSpoken("+13475850249")).toBe("plus one, three four seven, five eight five, zero two four nine");
+  });
 });
 
 describe("outbound AI disclosure instruction", () => {
@@ -59,6 +64,8 @@ describe("outbound AI disclosure instruction", () => {
     expect(outboundAiDisclosureInstruction("opening")).toContain("near the opening");
     expect(outboundAiDisclosureInstruction("after_identity")).toContain("after the elevator operation check");
     expect(outboundAiDisclosureInstruction("after_identity")).toContain("only once");
+    expect(outboundAiDisclosureInstruction("after_identity")).toContain("virtual assistant");
+    expect(outboundAiDisclosureInstruction("after_identity")).not.toContain("AI assistant helping Elixis Elevator Systems follow up on service accounts. Then continue");
   });
 });
 

@@ -11,6 +11,7 @@ export const OUTBOUND_TABLE_NAMES = [
   "outbound_payment_links",
   "outbound_events",
   "outbound_followup_tasks",
+  "outbound_demo_call_authorizations",
 ] as const;
 
 export type OutboundTableName = (typeof OUTBOUND_TABLE_NAMES)[number];

@@ -10,6 +10,11 @@ import {
   businessSettingsPatchSchema,
   followupPatchSchema,
   businessImportSchema,
+  demoCallAuthorizationSchema,
+  demoCallRunSchema,
+  demoDetailsPatchSchema,
+  quickBooksBusinessQuerySchema,
+  quickBooksInvoiceLinkSchema,
 } from "../schemas/outboundSchemas";
 import {
   clearOutboundAdminCookie,
@@ -41,6 +46,10 @@ import {
   getOutboundFollowupTask,
   updateOutboundFollowupTask,
   importOutboundBusinesses,
+  createOutboundDemoCallAuthorization,
+  listOutboundDemoCallAuthorizations,
+  revokeOutboundDemoCallAuthorization,
+  updateOutboundDemoDetails,
 } from "../services/outboundRepository";
 import { createOutboundCheckoutSession } from "../services/outboundStripe";
 import { getOutboundSetupStatus } from "../services/outboundSetup";
@@ -49,8 +58,21 @@ import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSett
 import { customerCsvTemplate, businessCsvTemplate } from "../services/outboundTemplates";
 import { parseOutboundBusinessCsv } from "../services/outboundBusinessCsv";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
+import { normalizeOutboundDate } from "../services/outboundFormatting";
+import {
+  buildOutboundQuickBooksConnectUrl,
+  buildOutboundQuickBooksStatus,
+} from "../services/outboundQuickBooks";
 
 export const outboundApiRouter = express.Router();
+const DEMO_CALL_CONFIRMATION = "I AUTHORIZE THIS DEMO TEST CALL";
+
+function parseDollarsToCents(value: string | number | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const normalized = typeof value === "number" ? value : Number(String(value).replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(normalized) || normalized < 0) throw new Error("Invoice amount must be a positive dollar amount.");
+  return Math.round(normalized * 100);
+}
 
 function sendError(res: express.Response, error: unknown) {
   const status =
@@ -176,6 +198,253 @@ outboundApiRouter.post("/businesses/import", async (req, res) => {
   }
 });
 
+outboundApiRouter.get("/demo-call/authorizations", async (req, res) => {
+  try {
+    const businessId = typeof req.query.business_id === "string" ? uuidSchema.parse(req.query.business_id) : undefined;
+    res.json({ authorizations: await listOutboundDemoCallAuthorizations(businessId) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/demo-call/authorize-number", async (req, res) => {
+  try {
+    const input = demoCallAuthorizationSchema.parse(req.body);
+    if (input.confirmation !== DEMO_CALL_CONFIRMATION) {
+      res.status(400).json({ error: `Type ${DEMO_CALL_CONFIRMATION} to authorize this demo test number.` });
+      return;
+    }
+    const business = await getOutboundBusinessSettings(input.business_id);
+    const runtime = outboundBusinessRuntimeSettings(business);
+    if (!runtime.testMode) {
+      res.status(403).json({ error: "Presentation demo numbers require test mode." });
+      return;
+    }
+    if (runtime.maxBatchSize !== 1) {
+      res.status(403).json({ error: "Presentation demo numbers require maximum batch size 1." });
+      return;
+    }
+    const expiresAt = new Date(Date.now() + input.ttl_minutes * 60_000).toISOString();
+    const authorization = await createOutboundDemoCallAuthorization({
+      businessId: input.business_id,
+      phoneNumber: input.phone_number,
+      demoCallMode: input.demo_call_mode,
+      scenario: input.scenario || null,
+      expiresAt,
+    });
+    await insertOutboundEvent({
+      business_id: input.business_id,
+      event_type: "demo_call_number_authorized",
+      source: "admin",
+      payload: {
+        phone_number: input.phone_number,
+        demo_call_mode: input.demo_call_mode,
+        scenario: input.scenario || null,
+        expires_at: expiresAt,
+      },
+    });
+    res.status(201).json({ authorization });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/demo-call/authorizations/:id/revoke", async (req, res) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const authorization = await revokeOutboundDemoCallAuthorization(id);
+    await insertOutboundEvent({
+      business_id: String(authorization.business_id),
+      event_type: "demo_call_number_revoked",
+      source: "admin",
+      payload: { authorization_id: id, phone_number: authorization.phone_number },
+    });
+    res.json({ authorization });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/demo-call/preflight", async (req, res) => {
+  try {
+    const input = demoCallRunSchema.parse(req.body);
+    res.json(await describeOutboundCallPreflight(
+      input.invoice_id,
+      new Date(),
+      input.after_hours_override,
+      input.followup_task_id,
+      input.demo_call_authorization_id,
+    ));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/demo-call/start", async (req, res) => {
+  let context: Awaited<ReturnType<typeof inspectOutboundCallEligibility>>["context"] | null = null;
+  try {
+    const input = demoCallRunSchema.parse(req.body);
+    const eligibility = await inspectOutboundCallEligibility(
+      input.invoice_id,
+      new Date(),
+      input.after_hours_override,
+      input.demo_call_authorization_id,
+    );
+    context = eligibility.context;
+    await insertOutboundEvent({
+      business_id: String(context.business.id),
+      customer_id: String(context.customer.id),
+      invoice_id: String(context.invoice.id),
+      event_type: "demo_call_start_requested",
+      source: "admin",
+      payload: {
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+        followup_task_id: input.followup_task_id || null,
+        demo_call_authorization_id: input.demo_call_authorization_id,
+      },
+    });
+    if (!eligibility.eligible) throw new Error(`Outbound call blocked: ${eligibility.reason}`);
+    const result = await startOutboundCall(
+      input.invoice_id,
+      input.after_hours_override,
+      new Date(),
+      input.followup_task_id,
+      input.demo_call_authorization_id,
+    );
+    res.status(201).json(result);
+  } catch (error) {
+    if (context) {
+      await insertOutboundEvent({
+        business_id: String(context.business.id),
+        customer_id: String(context.customer.id),
+        invoice_id: String(context.invoice.id),
+        event_type: "demo_call_start_blocked",
+        source: "admin",
+        payload: { reason: error instanceof Error ? error.message : "Outbound call failed" },
+      }).catch(() => undefined);
+    }
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.patch("/demo-details", async (req, res) => {
+  try {
+    const input = demoDetailsPatchSchema.parse(req.body);
+    const normalizedOriginalDueDate = input.original_due_date ? normalizeOutboundDate(input.original_due_date) : undefined;
+    if (input.original_due_date && !normalizedOriginalDueDate) throw new Error("Original due date must be YYYY-MM-DD or YYYYMMDD.");
+    const normalizedPreviousCallDate =
+      input.previous_call_date === null ? null : input.previous_call_date ? normalizeOutboundDate(input.previous_call_date) : undefined;
+    if (input.previous_call_date && !normalizedPreviousCallDate) throw new Error("Previous call date must be YYYY-MM-DD or YYYYMMDD.");
+    const updated = await updateOutboundDemoDetails({
+      businessId: input.business_id,
+      customerId: input.customer_id,
+      invoiceId: input.invoice_id,
+      businessPatch: {
+        business_name: input.business_name,
+        payment_mailing_instructions: input.payment_mailing_instructions,
+      },
+      customerPatch: {
+        first_name: input.first_name,
+        last_name: input.last_name,
+        phone_number: input.phone_number,
+        email: input.email,
+        preferred_email: input.preferred_email,
+        preferred_phone_number: input.preferred_phone_number,
+        payment_contact_preference: input.preferred_payment_method || undefined,
+      },
+      invoicePatch: {
+        status: undefined,
+        invoice_id: input.external_invoice_id,
+        amount_due_cents: parseDollarsToCents(input.amount_due),
+        original_due_date: normalizedOriginalDueDate,
+        service_description: input.service_description,
+        demo_call_mode: input.demo_call_mode,
+        previous_call_date: normalizedPreviousCallDate,
+        followup_reason: input.followup_reason,
+        prior_concern_note: input.prior_concern_note,
+        preferred_payment_method: input.preferred_payment_method,
+        callback_details: input.callback_details,
+      },
+    });
+    await insertOutboundEvent({
+      business_id: input.business_id,
+      customer_id: input.customer_id,
+      invoice_id: input.invoice_id,
+      event_type: "demo_details_updated",
+      source: "admin",
+      payload: {
+        demo_call_mode: input.demo_call_mode || null,
+        payment_status_unchanged: true,
+        fields: Object.keys(req.body || {}).filter((key) => !["business_id", "customer_id", "invoice_id"].includes(key)),
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.get("/quickbooks/status", async (req, res) => {
+  try {
+    const query = quickBooksBusinessQuerySchema.parse(req.query);
+    const business = await getOutboundBusinessSettings(query.business_id);
+    res.json(buildOutboundQuickBooksStatus(business));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.get("/quickbooks/connect", async (req, res) => {
+  try {
+    const query = quickBooksBusinessQuerySchema.parse(req.query);
+    res.json({ url: buildOutboundQuickBooksConnectUrl(query.business_id) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.get("/quickbooks/callback", (_req, res) => {
+  res.status(501).json({ error: "QuickBooks OAuth callback is scaffolded only; token exchange is not enabled in this demo pass." });
+});
+
+outboundApiRouter.post("/quickbooks/disconnect", async (req, res) => {
+  try {
+    const input = quickBooksBusinessQuerySchema.parse(req.body);
+    const settings = await updateOutboundBusinessSettings(input.business_id, {
+      quickbooks_connected: false,
+      quickbooks_realm_id: null,
+      quickbooks_access_token_present: false,
+      quickbooks_refresh_token_present: false,
+      quickbooks_disconnected_at: new Date().toISOString(),
+    });
+    await insertOutboundEvent({
+      business_id: input.business_id,
+      event_type: "quickbooks_disconnect_requested",
+      source: "admin",
+      payload: { connected: false },
+    });
+    res.json({ status: buildOutboundQuickBooksStatus(settings) });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+outboundApiRouter.post("/quickbooks/invoice-link", async (req, res) => {
+  try {
+    const input = quickBooksInvoiceLinkSchema.parse(req.body);
+    const business = await getOutboundBusinessSettings(input.business_id);
+    const status = buildOutboundQuickBooksStatus(business);
+    if (!status.connected) {
+      res.status(409).json({ error: "QuickBooks not connected", status });
+      return;
+    }
+    res.status(501).json({ error: "QuickBooks invoice/payment-link creation is scaffolded only.", status });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
 outboundApiRouter.patch("/customers/:id", async (req, res) => {
   try {
     const id = uuidSchema.parse(req.params.id);
@@ -278,7 +547,12 @@ outboundApiRouter.post("/calls/start", async (req, res) => {
   let context: Awaited<ReturnType<typeof inspectOutboundCallEligibility>>["context"] | null = null;
   try {
     const input = startCallSchema.parse(req.body);
-    const eligibility = await inspectOutboundCallEligibility(input.invoice_id, new Date(), input.after_hours_override);
+    const eligibility = await inspectOutboundCallEligibility(
+      input.invoice_id,
+      new Date(),
+      input.after_hours_override,
+      input.demo_call_authorization_id,
+    );
     context = eligibility.context;
     await insertOutboundEvent({
       business_id: String(context.business.id),
@@ -286,17 +560,33 @@ outboundApiRouter.post("/calls/start", async (req, res) => {
       invoice_id: String(context.invoice.id),
       event_type: "admin_call_start_requested",
       source: "admin",
-      payload: { eligible: eligibility.eligible, reason: eligibility.reason, followup_task_id: input.followup_task_id || null },
+      payload: {
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+        followup_task_id: input.followup_task_id || null,
+        demo_call_authorization_id: input.demo_call_authorization_id || null,
+      },
     });
     if (!eligibility.eligible) throw new Error(`Outbound call blocked: ${eligibility.reason}`);
-    const result = await startOutboundCall(input.invoice_id, input.after_hours_override, new Date(), input.followup_task_id);
+    const result = await startOutboundCall(
+      input.invoice_id,
+      input.after_hours_override,
+      new Date(),
+      input.followup_task_id,
+      input.demo_call_authorization_id,
+    );
     await insertOutboundEvent({
       business_id: String(context.business.id),
       customer_id: String(context.customer.id),
       invoice_id: String(context.invoice.id),
       event_type: "admin_call_start_submitted",
       source: "admin",
-      payload: { call_id: result.call_id, attempt_id: result.attempt_id, followup_task_id: input.followup_task_id || null },
+      payload: {
+        call_id: result.call_id,
+        attempt_id: result.attempt_id,
+        followup_task_id: input.followup_task_id || null,
+        demo_call_authorization_id: input.demo_call_authorization_id || null,
+      },
     });
     res.status(201).json(result);
   } catch (error) {
@@ -326,7 +616,13 @@ outboundApiRouter.post("/calls/:id/rebuild-analysis", async (req, res) => {
 outboundApiRouter.post("/calls/dry-run", async (req, res) => {
   try {
     const input = startCallSchema.parse(req.body);
-    res.json(await describeOutboundCallPreflight(input.invoice_id, new Date(), input.after_hours_override, input.followup_task_id));
+    res.json(await describeOutboundCallPreflight(
+      input.invoice_id,
+      new Date(),
+      input.after_hours_override,
+      input.followup_task_id,
+      input.demo_call_authorization_id,
+    ));
   } catch (error) {
     sendError(res, error);
   }

@@ -1,6 +1,7 @@
 const statuses = ["unpaid", "payment_link_sent", "paid", "disputed", "manual_review", "cancelled"];
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const AFTER_HOURS_CONFIRMATION = "I UNDERSTAND THIS IS AN AFTER-HOURS TEST";
+const DEMO_CALL_CONFIRMATION = "I AUTHORIZE THIS DEMO TEST CALL";
 const pageStatus = document.getElementById("page-status");
 const importResult = document.getElementById("import-result");
 const commitImportButton = document.getElementById("commit-import");
@@ -12,6 +13,8 @@ let dashboardState = { invoices: [], calls: [], payment_links: [], events: [], b
 let setupState = null;
 let settingsReadiness = null;
 let activeCallPoll = null;
+let activeDemoAuthorization = null;
+let activeDemoPreflight = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -203,6 +206,7 @@ async function renderSettings() {
   document.getElementById("setting-agent-name").value = business.agent_display_name || "Paul";
   document.getElementById("setting-timezone").value = business.default_timezone || "America/New_York";
   document.getElementById("setting-disclosure").value = business.ai_disclosure_policy || "after_identity";
+  document.getElementById("setting-payment-provider").value = business.payment_provider || "stripe";
   document.getElementById("setting-callback-number").value = business.callback_number || "";
   document.getElementById("setting-transfer-number").value = business.human_transfer_number || "";
   document.getElementById("setting-max-batch").value = business.max_batch_size || 1;
@@ -239,6 +243,7 @@ async function saveSettings() {
     agent_display_name: document.getElementById("setting-agent-name").value.trim(),
     default_timezone: document.getElementById("setting-timezone").value.trim(),
     ai_disclosure_policy: document.getElementById("setting-disclosure").value,
+    payment_provider: document.getElementById("setting-payment-provider").value,
     callback_number: document.getElementById("setting-callback-number").value.trim() || null,
     human_transfer_number: document.getElementById("setting-transfer-number").value.trim() || null,
     max_batch_size: Number(document.getElementById("setting-max-batch").value),
@@ -261,6 +266,174 @@ async function saveSettings() {
     setStatus("Business and safety settings saved and audit logged.");
     await refreshAll();
   } catch (error) { setStatus(error.message, true); }
+}
+
+function selectedDemoInvoice() {
+  const id = document.getElementById("demo-invoice-select")?.value;
+  return (dashboardState.invoices || []).find((invoice) => invoice.id === id) || (dashboardState.invoices || [])[0] || null;
+}
+
+function populateDemoEditor(invoice) {
+  if (!invoice) return;
+  const customer = invoice.outbound_customers || {};
+  const business = invoice.outbound_businesses || {};
+  document.getElementById("demo-call-mode").value = invoice.demo_call_mode || "first_reminder";
+  document.getElementById("demo-first-name").value = customer.first_name || "";
+  document.getElementById("demo-last-name").value = customer.last_name || "";
+  document.getElementById("demo-customer-phone").value = customer.phone_number || "";
+  document.getElementById("demo-customer-email").value = customer.email || "";
+  document.getElementById("demo-business-name").value = business.business_name || "";
+  document.getElementById("demo-external-invoice-id").value = invoice.invoice_id || "";
+  document.getElementById("demo-amount-due").value = invoice.amount_due_cents === undefined ? "" : (Number(invoice.amount_due_cents) / 100).toFixed(2);
+  document.getElementById("demo-original-due-date").value = invoice.original_due_date || "";
+  document.getElementById("demo-service-description").value = invoice.service_description || "";
+  document.getElementById("demo-previous-call-date").value = invoice.previous_call_date || "";
+  document.getElementById("demo-preferred-payment-method").value = invoice.preferred_payment_method || customer.payment_contact_preference || "none";
+  document.getElementById("demo-preferred-email").value = customer.preferred_email || "";
+  document.getElementById("demo-preferred-phone").value = customer.preferred_phone_number || "";
+  document.getElementById("demo-followup-reason").value = invoice.followup_reason || "";
+  document.getElementById("demo-prior-concern-note").value = invoice.prior_concern_note || "";
+  document.getElementById("demo-callback-details").value = invoice.callback_details || "";
+  document.getElementById("demo-mailing-instructions").value = selectedBusiness()?.payment_mailing_instructions || "";
+  activeDemoPreflight = null;
+  document.getElementById("demo-start-call").disabled = true;
+}
+
+async function renderPresentationPanel() {
+  const select = document.getElementById("demo-invoice-select");
+  const previous = select.value;
+  select.replaceChildren(...(dashboardState.invoices || []).map((invoice) => {
+    const customer = invoice.outbound_customers || {};
+    return new Option(`${customer.first_name || ""} ${customer.last_name || ""} · ${invoice.invoice_id || "invoice"}`, invoice.id);
+  }));
+  if (previous && [...select.options].some((option) => option.value === previous)) select.value = previous;
+  populateDemoEditor(selectedDemoInvoice());
+  const business = selectedBusiness();
+  if (!business) return;
+  try {
+    const qb = await api(`/api/outbound/quickbooks/status?business_id=${encodeURIComponent(business.id)}`);
+    document.getElementById("quickbooks-status").textContent = `Payment provider: ${humanize(qb.provider)}. QuickBooks: ${qb.connected ? "connected" : "not connected"}; OAuth configured: ${qb.configured ? "yes" : "no"}; environment: ${qb.environment}. Stripe remains default unless changed.`;
+  } catch (error) {
+    document.getElementById("quickbooks-status").textContent = `QuickBooks status unavailable: ${error.message}`;
+  }
+}
+
+async function authorizeDemoNumber() {
+  const business = selectedBusiness();
+  if (!business) return setStatus("Select a business before authorizing a demo number.", true);
+  if (!document.getElementById("demo-authorize-ack").checked) return setStatus("Acknowledge permission for the demo test number first.", true);
+  const confirmation = document.getElementById("demo-authorize-confirmation").value.trim();
+  if (confirmation !== DEMO_CALL_CONFIRMATION) return setStatus(`Type ${DEMO_CALL_CONFIRMATION} exactly.`, true);
+  try {
+    const result = await api("/api/outbound/demo-call/authorize-number", {
+      method: "POST",
+      body: JSON.stringify({
+        business_id: business.id,
+        phone_number: document.getElementById("demo-phone-number").value.trim(),
+        demo_call_mode: document.getElementById("demo-call-mode").value,
+        scenario: document.getElementById("demo-call-mode").value,
+        ttl_minutes: Number(document.getElementById("demo-ttl-minutes").value || 240),
+        acknowledged: true,
+        confirmation,
+      }),
+    });
+    activeDemoAuthorization = result.authorization;
+    activeDemoPreflight = null;
+    document.getElementById("demo-preflight").disabled = false;
+    document.getElementById("demo-start-call").disabled = true;
+    document.getElementById("demo-auth-status").textContent = `Authorized ${activeDemoAuthorization.phone_number} until ${formatDate(activeDemoAuthorization.expires_at)}`;
+    setStatus("Temporary demo test number authorized. Run the real backend preflight next.");
+    await loadDashboard(true);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+}
+
+async function saveDemoDetails() {
+  const invoice = selectedDemoInvoice();
+  const customer = invoice?.outbound_customers || {};
+  const business = invoice?.outbound_businesses || selectedBusiness();
+  if (!invoice || !customer.id || !business?.id) return setStatus("Select a demo invoice before saving details.", true);
+  try {
+    await api("/api/outbound/demo-details", {
+      method: "PATCH",
+      body: JSON.stringify({
+        business_id: business.id,
+        customer_id: customer.id,
+        invoice_id: invoice.id,
+        first_name: document.getElementById("demo-first-name").value.trim(),
+        last_name: document.getElementById("demo-last-name").value.trim(),
+        phone_number: document.getElementById("demo-customer-phone").value.trim(),
+        email: document.getElementById("demo-customer-email").value.trim(),
+        business_name: document.getElementById("demo-business-name").value.trim(),
+        service_description: document.getElementById("demo-service-description").value.trim(),
+        amount_due: document.getElementById("demo-amount-due").value.trim(),
+        original_due_date: document.getElementById("demo-original-due-date").value.trim(),
+        external_invoice_id: document.getElementById("demo-external-invoice-id").value.trim(),
+        demo_call_mode: document.getElementById("demo-call-mode").value,
+        previous_call_date: document.getElementById("demo-previous-call-date").value.trim() || null,
+        followup_reason: document.getElementById("demo-followup-reason").value.trim() || null,
+        prior_concern_note: document.getElementById("demo-prior-concern-note").value.trim() || null,
+        preferred_payment_method: document.getElementById("demo-preferred-payment-method").value,
+        callback_details: document.getElementById("demo-callback-details").value.trim() || null,
+        preferred_email: document.getElementById("demo-preferred-email").value.trim(),
+        preferred_phone_number: document.getElementById("demo-preferred-phone").value.trim(),
+        payment_mailing_instructions: document.getElementById("demo-mailing-instructions").value.trim() || null,
+      }),
+    });
+    setStatus("Demo variables saved. Invoice payment status was not changed.");
+    await refreshAll();
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+}
+
+function demoRunPayload() {
+  const invoice = selectedDemoInvoice();
+  if (!invoice) throw new Error("Select a demo invoice first.");
+  if (!activeDemoAuthorization?.id) throw new Error("Authorize a temporary demo number first.");
+  return {
+    invoice_id: invoice.id,
+    demo_call_authorization_id: activeDemoAuthorization.id,
+    after_hours_override: afterHoursOverridePayload(),
+  };
+}
+
+async function demoPreflight() {
+  try {
+    activeDemoPreflight = await api("/api/outbound/demo-call/preflight", {
+      method: "POST",
+      body: JSON.stringify(demoRunPayload()),
+    });
+    document.getElementById("demo-start-call").disabled = !activeDemoPreflight.eligible;
+    setStatus(activeDemoPreflight.eligible
+      ? `Demo call preflight passed for ${activeDemoPreflight.destination_phone_number}.`
+      : `Demo call blocked: ${humanize(activeDemoPreflight.reason)}.`,
+      !activeDemoPreflight.eligible);
+  } catch (error) {
+    document.getElementById("demo-start-call").disabled = true;
+    setStatus(error.message, true);
+  }
+}
+
+async function startDemoCall() {
+  try {
+    const preflight = activeDemoPreflight?.eligible ? activeDemoPreflight : await api("/api/outbound/demo-call/preflight", {
+      method: "POST",
+      body: JSON.stringify(demoRunPayload()),
+    });
+    if (!preflight.eligible) return setStatus(`Demo call blocked: ${humanize(preflight.reason)}.`, true);
+    if (!confirm(`Start one gated presentation call to ${preflight.destination_phone_number}?`)) return;
+    const result = await api("/api/outbound/demo-call/start", {
+      method: "POST",
+      body: JSON.stringify(demoRunPayload()),
+    });
+    document.getElementById("demo-start-call").disabled = true;
+    setStatus(`Retell demo call registered: ${result.call_id}`);
+    await refreshAll();
+  } catch (error) {
+    setStatus(error.message, true);
+  }
 }
 
 function afterHoursOverridePayload() {
@@ -638,6 +811,7 @@ async function loadDashboard(silent = false) {
     dashboardState = await api("/api/outbound/dashboard");
     renderInvoices();
     await renderSettings();
+    await renderPresentationPanel();
     renderCallbacks();
     renderCalls();
     renderPayments();
@@ -700,6 +874,12 @@ document.getElementById("refresh-all").onclick = refreshAll;
 document.getElementById("refresh-setup").onclick = loadSetupStatus;
 document.getElementById("settings-business").onchange = renderSettings;
 document.getElementById("save-settings").onclick = saveSettings;
+document.getElementById("demo-invoice-select").onchange = () => populateDemoEditor(selectedDemoInvoice());
+document.getElementById("demo-call-mode").onchange = () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; };
+document.getElementById("demo-authorize-number").onclick = authorizeDemoNumber;
+document.getElementById("demo-save-details").onclick = saveDemoDetails;
+document.getElementById("demo-preflight").onclick = demoPreflight;
+document.getElementById("demo-start-call").onclick = startDemoCall;
 document.getElementById("invoice-filter").onchange = renderInvoices;
 document.getElementById("invoice-search").oninput = renderInvoices;
 document.getElementById("event-filter").onchange = renderEvents;
