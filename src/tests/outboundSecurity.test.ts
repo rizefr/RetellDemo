@@ -126,6 +126,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("I'm following up at the time you requested about your elevator service account");
     expect(serialized).toContain("Do not direct them to make an inbound call");
     expect(serialized).not.toMatch(/call us back later|please call the office/i);
+    expect(serialized).toContain("Terminal outcomes must end with end_call in the same turn");
+    expect(serialized).toContain("Never close a service-issue call without the tool invocation and end_call");
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
     expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
