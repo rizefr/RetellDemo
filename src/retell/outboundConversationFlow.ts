@@ -548,7 +548,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Normal terminal final check",
       instruction: {
         type: "prompt",
-        text: "Ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, or gives no further need, say exactly: \"Have a good day. Goodbye.\" Pause briefly, then transition to the end call node.",
+        text: "Ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, that is all, or gives no further need, transition immediately to the native end-call node. Do not say the goodbye line in this node; the native end-call node owns the goodbye and hangup.",
       },
       edges: [
         {
@@ -556,7 +556,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           destination_node_id: "outbound_terminal_end",
           transition_condition: {
             type: "prompt",
-            prompt: "Transition after Paul says exactly: Have a good day. Goodbye. Pause briefly before ending.",
+            prompt: "Transition when the caller says no, no thanks, that's all, thank you, bye, goodbye, or otherwise indicates there is nothing else needed. The destination native end-call node says the goodbye line and ends the call.",
           },
         },
       ],
@@ -573,7 +573,11 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       id: "outbound_terminal_end",
       type: "end",
       name: "End completed outbound call",
-      speak_during_execution: false,
+      instruction: {
+        type: "static_text",
+        text: "Have a good day. Goodbye.",
+      },
+      speak_during_execution: true,
       display_position: { x: 900, y: -120 },
     },
   ];

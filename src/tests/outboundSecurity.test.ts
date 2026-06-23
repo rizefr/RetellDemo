@@ -134,6 +134,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Normal terminal outcomes must route to the normal final-check node");
     expect(serialized).toContain("Never close a service-issue call before the tool invocation and final-check routing");
     expect(serialized).toContain("transition to the native end-call node");
+    expect(serialized).toContain("the native end-call node owns the goodbye and hangup");
+    expect(serialized).toContain('"speak_during_execution":true');
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
     expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
