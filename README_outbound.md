@@ -25,15 +25,15 @@ The business using it is responsible for establishing its right to contact each 
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
 - Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event. `ELV-TEST-OWN-NUMBER` remains unpaid but is currently `manual_review`; an admin must deliberately return it to an eligible unpaid status before another call preflight can pass.
 - Retell outbound agent and Conversation Flow are on the presentation-ready publish:
-  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `23`
-  - Conversation Flow: `conversation_flow_bebdceabc801`, version `23`
+  - agent: `agent_4aa8074d7eabe311109ed6da89`, published version `24`
+  - Conversation Flow: `conversation_flow_bebdceabc801`, version `24`
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
   - voice remains `11labs-Paul`; the presentation speed is `0.88` with the existing `650 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
   - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
   - if asked whether he is AI or a robot, Paul answers honestly: “Yes, I’m an AI voice assistant helping Elixis Elevator Systems with service account follow-up.”
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, and `open_invoice_count_spoken` prevent currency symbols, stored cents, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
-- Retell V23 readback confirms Paul, speed `0.88`, the `650 ms` start delay, seven wrapped custom tools, voicemail hangup, the virtual-assistant wording, honest AI answer, explicit phone/email confirmation, separate call-purpose scripts, no inbound-callback wording, and same-turn `end_call` direction for terminal outcomes. Native no-call simulations should be rerun in Retell before the next live call.
+- Retell V24 readback confirms Paul, speed `0.88`, the `650 ms` start delay, seven wrapped custom tools, voicemail hangup, the virtual-assistant wording, honest AI answer, explicit phone/email confirmation, separate call-purpose scripts, no inbound-callback wording, and same-turn `end_call` direction for terminal outcomes. Native no-call simulations should be rerun in Retell before the next live call.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.

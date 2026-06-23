@@ -301,7 +301,8 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           type: "end_call",
           name: "end_call",
-          description: "End the call after the safe closing has been said or when voicemail/refusal means the call should end.",
+          description:
+            "Mandatory final action after any safe closing sentence for terminal outcomes, including service_issue_reported, proof_requested, manual_review, mail_check_requested, mail_instructions_requested, do_not_contact, wrong_number, human_requested when transfer is unavailable, already_paid_claim, dispute, scam_concern, unable_to_pay, and attorney_represented. Do not leave the call open after saying thanks.",
           speak_during_execution: false,
         },
       ],
@@ -404,6 +405,17 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
         {
+          id: "service_issue_after_identity_example",
+          transcript: [
+            { role: "agent", content: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this Taylor?" },
+            { role: "user", content: "Yes, but elevator two is making a loud noise." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"service_issue_reported\",\"notes\":\"Caller reported elevator two is making a loud noise.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"service_issue_reported\"}" },
+            { role: "agent", content: "Thanks for letting me know. I'll have the team review the issue and follow up. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
+          ],
+        },
+        {
           id: "callback_propose_then_confirm_example",
           transcript: [
             { role: "user", content: "Call me Monday afternoon." },
@@ -423,6 +435,19 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           id: "mail_check_missing_instructions_example",
           transcript: [
             { role: "user", content: "I want to mail a check." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"mail_check_requested\",\"notes\":\"Caller prefers to pay by mailed check.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"mail_check_requested\"}" },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_2", arguments: "{\"outcome\":\"mail_instructions_requested\",\"notes\":\"Mailing instructions are not configured; team follow-up required.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"logged\":true,\"outcome\":\"mail_instructions_requested\"}" },
+            { role: "agent", content: "I don't have the mailing instructions available on this call, so I'll have the team follow up with the correct details. Thanks." },
+            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_3", arguments: "{}" },
+          ],
+        },
+        {
+          id: "mail_check_from_payment_preference_example",
+          transcript: [
+            { role: "agent", content: "Would you prefer the secure payment link by text or email?" },
+            { role: "user", content: "Can I mail a check instead?" },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"mail_check_requested\",\"notes\":\"Caller prefers to pay by mailed check.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"mail_check_requested\"}" },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_2", arguments: "{\"outcome\":\"mail_instructions_requested\",\"notes\":\"Mailing instructions are not configured; team follow-up required.\"}" },
