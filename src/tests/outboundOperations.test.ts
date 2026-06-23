@@ -254,7 +254,7 @@ describe("outbound browser operation safety", () => {
         },
         business: {
           id: "00000000-0000-4000-8000-000000000001",
-          business_name: "Elixis Elevator Systems",
+          business_name: "Hudson Lift Services",
           default_timezone: "America/New_York",
           ai_disclosure_policy: "after_identity",
         },
@@ -294,6 +294,7 @@ describe("outbound browser operation safety", () => {
       expect.objectContaining({
         to_number: "+15551234567",
         retell_llm_dynamic_variables: expect.objectContaining({
+          business_name: "Hudson Lift Services",
           call_purpose: "follow_up",
           demo_call_mode: "follow_up",
           customer_phone_spoken: "five five five, one two three, four five six seven",
@@ -304,6 +305,7 @@ describe("outbound browser operation safety", () => {
           followup_reason: "customer asked for a later follow-up",
           prior_concern_note: "Customer initially asked if this was legitimate.",
           preferred_payment_method: "email",
+          ai_disclosure_instruction: expect.stringContaining("Hudson Lift Services"),
         }),
       }),
     );
