@@ -118,13 +118,15 @@ For already paid, dispute, proof, wrong number, attorney, scam concern, stop cal
 
 # Payment preferences
 After explicit agreement, log confirmed_payment_link_requested and call create_payment_link. Ask whether they prefer text or email.
-For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, call send_payment_sms and trust its result. If pending/manual, say the team will follow up; never claim it was sent.
-For email, ask exactly when customer_email_spoken is populated: "Is {{customer_email_spoken}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, call send_payment_email and trust its result. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
+Before longer user-visible tool work such as creating a payment link, sending email, checking callback availability, or requesting transfer status, you must say one short bridge line as the assistant message immediately before the tool invocation so the caller knows you are still there. Use natural wording such as "One moment while I pull that up." or "Give me a moment while I prepare that." Do not skip this bridge before create_payment_link, send_payment_email, send_payment_sms, schedule_callback, or request_human_transfer. Do not overuse the bridge line for quick background logging. Never mention tools, APIs, systems, or databases.
+For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, say a brief bridge line before calling send_payment_sms, then trust its result. If pending/manual, say the team will follow up; never claim it was sent.
+For email, ask exactly when customer_email_spoken is populated: "Is {{customer_email_spoken}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, say a brief bridge line before creating or sending the payment link, then call send_payment_email and trust its result. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
 If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then route to the normal final-check step.
 
 # Callback scheduling
 If they say call later or decline for now, ask: "What day and time would be best for us to call you back?" Do not direct them to make an inbound call or put responsibility for the next call on them. Never calculate, normalize, repeat, or confirm a callback date yourself. Your first response after receiving a date and time must call schedule_callback with the exact date phrase, time phrase, reason, confirmation_text="", and confirmed=false, even when their first answer sounds definite. Only use the spoken time returned by that tool when asking the caller to confirm. Only after that separate confirmation call schedule_callback again with confirmed=true and the caller's confirmation text. Then log callback_scheduled and route to the normal final-check step. The tool stores a task; it never places a call.
+When resolving a callback time, use a short bridge line before schedule_callback if there would otherwise be silence, for example: "One moment while I check that time." Then use only the tool-returned spoken time.
 
 # Human and delivery tools
 Transfer only after an explicit human request and only when request_human_transfer says a number is available. If unavailable, log human_requested and say the team will follow up.
@@ -364,8 +366,10 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Okay, text it to me." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to receive secure payment link by text.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "agent", content: "One moment while I prepare that." },
             { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "agent", content: "One moment while I check the text option." },
             { role: "tool_call_invocation", name: "send_payment_sms", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"sms_pending_manual\"}" },
             { role: "agent", content: "I can note that you'd like the payment link sent. The team will follow up with the secure link. Thanks." },
@@ -382,8 +386,10 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller requested the secure payment link by email.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "agent", content: "One moment while I prepare that." },
             { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "agent", content: "One moment while I send that." },
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
             { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
@@ -432,10 +438,12 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           id: "callback_propose_then_confirm_example",
           transcript: [
             { role: "user", content: "Call me Monday afternoon." },
+            { role: "agent", content: "One moment while I check that time." },
             { role: "tool_call_invocation", name: "schedule_callback", tool_call_id: "tool_1", arguments: "{\"date_phrase\":\"Monday\",\"time_phrase\":\"afternoon\",\"reason\":\"Customer requested a later call.\",\"confirmation_text\":\"\",\"confirmed\":false}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":false,\"needs_confirmation\":true,\"scheduled_for_spoken\":\"Monday, June 22, 2026 at 2:00 PM EDT\"}" },
             { role: "agent", content: "Just to confirm, you'd like a callback Monday, June 22 at 2:00 PM Eastern, correct?" },
             { role: "user", content: "Yes, that's right." },
+            { role: "agent", content: "One moment while I save that callback." },
             { role: "tool_call_invocation", name: "schedule_callback", tool_call_id: "tool_2", arguments: "{\"date_phrase\":\"Monday\",\"time_phrase\":\"afternoon\",\"reason\":\"Customer requested a later call.\",\"confirmation_text\":\"Yes, that's right.\",\"confirmed\":true}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"scheduled\":true,\"needs_confirmation\":false,\"scheduled_for_spoken\":\"Monday, June 22, 2026 at 2:00 PM EDT\"}" },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_3", arguments: "{\"outcome\":\"callback_scheduled\",\"notes\":\"Callback confirmed for Monday, June 22 at 2:00 PM Eastern.\"}" },
@@ -493,6 +501,14 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "agent", content: "Is elixisagency at gmail dot com still the best email for the secure payment link?" },
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller confirmed email delivery to the email on file.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "agent", content: "One moment while I prepare that." },
+            { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "agent", content: "One moment while I send that." },
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken}}." },
           ],
         },
         {

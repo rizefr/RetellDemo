@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version: V36 after the Gilfoy voice publish.
+- Latest verified Retell version: V38 after the low-volume ambient/tool-wait bridge publish.
 - Voice and pacing: `11labs-Gilfoy`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was tested against GPT-4.1 on the same V33 Retell native scenarios. It did not clearly improve reliability and was slower in the observed batch, so GPT-4.1 remains the selected demo model.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
@@ -24,9 +24,11 @@ Current Retell settings to preserve for the elevator demo:
 - voice model ElevenLabs Flash v2.5
 - speed `0.88`
 - first-message delay `1000 ms`
+- ambient sound `call-center` at low volume `0.18`
 - wrapped signed tools with `args_at_root` disabled
 
 Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. To switch back to Paul, change the voice in Retell to `11labs-Paul` or run a confirmed publish with `OUTBOUND_RETELL_VOICE_ID=11labs-Paul`. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
+Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is currently cheaper per standard LLM minute than GPT-4.1, but the V33 simulation comparison did not show a demo-quality improvement. Re-test GPT-5.1 only if Retell releases a lower-latency setting or if GPT-4.1 starts missing tool/final-check behavior.
 

@@ -27,15 +27,15 @@ The business using it is responsible for establishing its right to contact each 
 - Retell outbound agent and Conversation Flow are published and verified for the final presentation path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V36 after the Gilfoy voice publish
+  - active verified version: V38 after the low-volume ambient/tool-wait bridge publish
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - current demo voice is `11labs-Gilfoy`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
+  - current demo voice is `11labs-Gilfoy`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, low-volume `call-center` ambient sound, and voicemail hangup are preserved
   - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
   - if asked whether he is AI or a robot, Paul answers honestly: “Yes, I’m an AI voice assistant helping Elixis Elevator Systems with service account follow-up.”
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `customer_phone_spoken`, and `customer_email_spoken` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
-- Retell V35/V36 structural terminal routing uses normal final-check and hard-terminal end nodes. Retell native tests passed for service issue, mail-check/manual instructions, email success, named-contact request, and stop-calling. The terminal nodes now route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
+- Retell V38 structural terminal routing uses normal final-check and hard-terminal end nodes. Retell native tests passed for service issue, mail-check/manual instructions, email success, named-contact request, stop-calling, and the email tool bridge path. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
@@ -83,6 +83,7 @@ Current production selection:
 - Voice model: ElevenLabs Flash v2.5
 - Speed: `0.88`
 - First-message delay: `1000 ms`
+- Ambient sound: `call-center` at low volume (`0.18`) so longer tool waits have subtle office background instead of sounding like a dead line. Retell does not currently expose a keyboard-only sound effect tied only to custom-tool execution, so Paul also uses short bridge lines such as “One moment while I pull that up” before longer user-visible tool work.
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
