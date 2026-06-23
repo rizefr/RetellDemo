@@ -1,3 +1,15 @@
+import { env } from "../config/env";
+import {
+  getOutboundInvoiceContext,
+  hasOutboundPaymentLinkAgreement,
+  insertOutboundEvent,
+  markOutboundPaymentLinkDelivered,
+  updateOutboundCustomer,
+} from "./outboundRepository";
+import { createOutboundCheckoutSession } from "./outboundStripe";
+import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
+import { formatOutboundDate } from "./outboundFormatting";
+
 export type OutboundPaymentEmail = {
   to: string;
   from: string;
@@ -108,7 +120,11 @@ export async function sendOutboundPaymentEmailForInvoice(invoiceId: string) {
     source: "retell_function",
     payload: { recipient_on_file: Boolean(context.customer.email) },
   });
-  const recipient = typeof context.customer.email === "string" ? context.customer.email.trim() : "";
+  const recipient = typeof context.customer.preferred_email === "string" && context.customer.preferred_email.trim()
+    ? context.customer.preferred_email.trim()
+    : typeof context.customer.email === "string"
+      ? context.customer.email.trim()
+      : "";
   if (!recipient) {
     await insertOutboundEvent({
       ...ids,
@@ -176,14 +192,3 @@ export async function sendOutboundPaymentEmailForInvoice(invoiceId: string) {
       : "The email was not sent. Say the team will follow up with the secure link.",
   };
 }
-import { env } from "../config/env";
-import {
-  getOutboundInvoiceContext,
-  hasOutboundPaymentLinkAgreement,
-  insertOutboundEvent,
-  markOutboundPaymentLinkDelivered,
-  updateOutboundCustomer,
-} from "./outboundRepository";
-import { createOutboundCheckoutSession } from "./outboundStripe";
-import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
-import { formatOutboundDate } from "./outboundFormatting";

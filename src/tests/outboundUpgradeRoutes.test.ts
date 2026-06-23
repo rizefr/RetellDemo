@@ -80,6 +80,160 @@ describe("outbound upgrade routes", () => {
     expect(JSON.stringify(accepted.body)).not.toContain("secret-provider-key");
   });
 
+  it("creates a temporary presentation demo number authorization with strict gates", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.OUTBOUND_ADMIN_TOKEN = "upgrade-admin";
+    const createAuthorization = vi.fn().mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000099",
+      phone_number: "+15551234567",
+      demo_call_mode: "follow_up",
+      expires_at: "2026-06-23T18:00:00.000Z",
+      revoked_at: null,
+    });
+    const insertOutboundEvent = vi.fn().mockResolvedValue({});
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>("../services/outboundRepository");
+      return {
+        ...actual,
+        getOutboundBusinessSettings: vi.fn().mockResolvedValue({
+          id: "00000000-0000-4000-8000-000000000001",
+          business_name: "Elixis Elevator Systems",
+          test_mode: true,
+          test_phone_allowlist: ["+13475850249"],
+          max_batch_size: 1,
+        }),
+        createOutboundDemoCallAuthorization: createAuthorization,
+        insertOutboundEvent,
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const rejected = await request(createApp())
+      .post("/api/outbound/demo-call/authorize-number")
+      .set("Authorization", "Bearer upgrade-admin")
+      .send({
+        business_id: "00000000-0000-4000-8000-000000000001",
+        phone_number: "+15551234567",
+        demo_call_mode: "follow_up",
+        acknowledged: true,
+        confirmation: "wrong phrase",
+      });
+    expect(rejected.status).toBe(400);
+
+    const accepted = await request(createApp())
+      .post("/api/outbound/demo-call/authorize-number")
+      .set("Authorization", "Bearer upgrade-admin")
+      .send({
+        business_id: "00000000-0000-4000-8000-000000000001",
+        phone_number: "+15551234567",
+        demo_call_mode: "follow_up",
+        acknowledged: true,
+        confirmation: "I AUTHORIZE THIS DEMO TEST CALL",
+      });
+    expect(accepted.status).toBe(201);
+    expect(createAuthorization).toHaveBeenCalledWith(expect.objectContaining({
+      businessId: "00000000-0000-4000-8000-000000000001",
+      phoneNumber: "+15551234567",
+      demoCallMode: "follow_up",
+    }));
+    expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event_type: "demo_call_number_authorized",
+      source: "admin",
+    }));
+  });
+
+  it("updates editable demo details without changing invoice payment status meaning", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.OUTBOUND_ADMIN_TOKEN = "upgrade-admin";
+    const updateDemoDetails = vi.fn().mockResolvedValue({
+      customer: { id: "00000000-0000-4000-8000-000000000002", preferred_email: "owner@example.test" },
+      invoice: { id: "00000000-0000-4000-8000-000000000003", status: "unpaid", demo_call_mode: "scam_recovery" },
+      business: { id: "00000000-0000-4000-8000-000000000001", business_name: "Elixis Elevator Systems" },
+    });
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>("../services/outboundRepository");
+      return {
+        ...actual,
+        updateOutboundDemoDetails: updateDemoDetails,
+        insertOutboundEvent: vi.fn().mockResolvedValue({}),
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const response = await request(createApp())
+      .patch("/api/outbound/demo-details")
+      .set("Authorization", "Bearer upgrade-admin")
+      .send({
+        business_id: "00000000-0000-4000-8000-000000000001",
+        customer_id: "00000000-0000-4000-8000-000000000002",
+        invoice_id: "00000000-0000-4000-8000-000000000003",
+        first_name: "Morgan",
+        last_name: "Owner",
+        phone_number: "+13475850249",
+        email: "owner@example.test",
+        business_name: "Elixis Elevator Systems",
+        service_description: "annual elevator inspection",
+        amount_due: "150.00",
+        original_due_date: "2026-05-20",
+        external_invoice_id: "ELV-DEMO",
+        demo_call_mode: "scam_recovery",
+        prior_concern_note: "Caller initially wondered if the call was legitimate.",
+        preferred_payment_method: "email",
+      });
+    expect(response.status).toBe(200);
+    expect(updateDemoDetails).toHaveBeenCalledWith(expect.objectContaining({
+      invoicePatch: expect.objectContaining({
+        status: undefined,
+        demo_call_mode: "scam_recovery",
+      }),
+    }));
+    expect(response.body.invoice.status).toBe("unpaid");
+  });
+
+  it("returns redacted QuickBooks status and a safe not-connected placeholder", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.OUTBOUND_ADMIN_TOKEN = "upgrade-admin";
+    process.env.QUICKBOOKS_CLIENT_ID = "qb-client";
+    process.env.QUICKBOOKS_CLIENT_SECRET = "qb-secret";
+    process.env.QUICKBOOKS_REDIRECT_URI = "https://elixis.agency/api/outbound/quickbooks/callback";
+    process.env.QUICKBOOKS_ENVIRONMENT = "sandbox";
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>("../services/outboundRepository");
+      return {
+        ...actual,
+        getOutboundBusinessSettings: vi.fn().mockResolvedValue({
+          id: "00000000-0000-4000-8000-000000000001",
+          payment_provider: "quickbooks",
+          quickbooks_connected: false,
+          quickbooks_realm_id: null,
+        }),
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const status = await request(createApp())
+      .get("/api/outbound/quickbooks/status?business_id=00000000-0000-4000-8000-000000000001")
+      .set("Authorization", "Bearer upgrade-admin");
+    expect(status.status).toBe(200);
+    expect(status.body).toMatchObject({
+      provider: "quickbooks",
+      configured: true,
+      connected: false,
+      environment: "sandbox",
+    });
+    expect(JSON.stringify(status.body)).not.toContain("qb-secret");
+
+    const placeholder = await request(createApp())
+      .post("/api/outbound/quickbooks/invoice-link")
+      .set("Authorization", "Bearer upgrade-admin")
+      .send({
+        business_id: "00000000-0000-4000-8000-000000000001",
+        invoice_id: "00000000-0000-4000-8000-000000000003",
+      });
+    expect(placeholder.status).toBe(409);
+    expect(placeholder.body.error).toContain("QuickBooks not connected");
+  });
+
   it("proposes then stores a signed callback using trusted call metadata", async () => {
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "callback-signing-key";

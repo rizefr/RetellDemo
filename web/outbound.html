@@ -38,6 +38,7 @@
           <label>Agent display name <input id="setting-agent-name" value="Paul" /></label>
           <label>Default timezone <input id="setting-timezone" /></label>
           <label>AI disclosure policy <select id="setting-disclosure"><option value="after_identity">After identity (safer default)</option><option value="on_request">Only when asked (compliance-sensitive)</option><option value="opening">Near the opening</option></select></label>
+          <label>Payment provider <select id="setting-payment-provider"><option value="stripe">Stripe</option><option value="quickbooks">QuickBooks</option><option value="manual">Manual</option></select></label>
           <label>Callback number <input id="setting-callback-number" type="tel" /></label>
           <label>Human transfer number <input id="setting-transfer-number" type="tel" /></label>
           <label>Maximum batch size <input id="setting-max-batch" type="number" min="1" max="25" /></label>
@@ -57,6 +58,56 @@
           <label>Batch-limit phrase <input id="setting-batch-confirmation" placeholder="INCREASE OUTBOUND BATCH LIMIT" /></label>
         </div>
         <div id="settings-readiness" class="setup-summary">Load dashboard data to inspect effective provider readiness.</div>
+      </section>
+
+      <section class="panel presentation-panel" aria-labelledby="presentation-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Presentation mode</p>
+            <h2 id="presentation-heading">Demo test number and editable call context</h2>
+            <p>Use this for tomorrow’s elevator demo. Invoice status stays payment-focused; demo call mode only changes Paul’s script and context.</p>
+          </div>
+          <span id="demo-auth-status" class="count-badge">No demo number authorized</span>
+        </div>
+        <div class="demo-grid">
+          <label>Demo invoice <select id="demo-invoice-select"></select></label>
+          <label>Demo call mode <select id="demo-call-mode"><option value="first_reminder">First reminder</option><option value="follow_up">Follow-up</option><option value="callback_followup">Callback follow-up</option><option value="scam_recovery">Scam recovery</option><option value="service_issue">Service issue</option></select></label>
+          <label>Temporary test number <input id="demo-phone-number" type="tel" placeholder="+15551234567" /></label>
+          <label>TTL minutes <input id="demo-ttl-minutes" type="number" min="5" max="480" value="240" /></label>
+          <label class="check-control"><input id="demo-authorize-ack" type="checkbox" /> I control this test number or have explicit permission to call it.</label>
+          <label class="wide">Type exact phrase <input id="demo-authorize-confirmation" placeholder="I AUTHORIZE THIS DEMO TEST CALL" autocomplete="off" /></label>
+          <div class="row-actions wide">
+            <button id="demo-authorize-number" class="secondary">Authorize demo number</button>
+            <button id="demo-preflight" class="secondary" disabled>Run real backend preflight</button>
+            <button id="demo-start-call" class="danger-muted" disabled>Start one demo call</button>
+          </div>
+        </div>
+        <div class="demo-editor">
+          <h3>Editable demo variables</h3>
+          <p>These values feed the same backend dynamic variables that Retell receives. They are not frontend-only labels.</p>
+          <div class="settings-grid">
+            <label>First name <input id="demo-first-name" /></label>
+            <label>Last name <input id="demo-last-name" /></label>
+            <label>Customer phone <input id="demo-customer-phone" type="tel" /></label>
+            <label>Customer email <input id="demo-customer-email" type="email" /></label>
+            <label>Business name <input id="demo-business-name" /></label>
+            <label>Invoice ID <input id="demo-external-invoice-id" /></label>
+            <label>Invoice amount <input id="demo-amount-due" inputmode="decimal" /></label>
+            <label>Service/due date <input id="demo-original-due-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
+            <label class="wide">Service description <input id="demo-service-description" /></label>
+            <label>Previous call date <input id="demo-previous-call-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
+            <label>Preferred payment method <select id="demo-preferred-payment-method"><option value="none">None</option><option value="sms">Text</option><option value="email">Email</option><option value="mail_check">Mail check</option></select></label>
+            <label>Preferred email <input id="demo-preferred-email" type="email" /></label>
+            <label>Preferred phone <input id="demo-preferred-phone" type="tel" /></label>
+            <label class="wide">Follow-up reason <textarea id="demo-followup-reason" rows="2"></textarea></label>
+            <label class="wide">Prior concern/note <textarea id="demo-prior-concern-note" rows="2"></textarea></label>
+            <label class="wide">Callback details <textarea id="demo-callback-details" rows="2"></textarea></label>
+            <label class="wide">Mailing/check instructions <textarea id="demo-mailing-instructions" rows="2"></textarea></label>
+          </div>
+          <button id="demo-save-details">Save demo details</button>
+          <p class="muted">Invoice status remains one of unpaid, payment link sent, paid, disputed, manual review, or cancelled.</p>
+        </div>
+        <div id="quickbooks-status" class="setup-summary">QuickBooks status loads after dashboard data.</div>
       </section>
 
       <section class="panel setup-panel" aria-labelledby="setup-heading">

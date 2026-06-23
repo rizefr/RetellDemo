@@ -37,6 +37,7 @@ const OUTBOUND_OUTCOME_VALUES = [
   "service_issue_reported",
   "mail_check_requested",
   "mail_instructions_requested",
+  "contact_update_requested",
   "manual_review",
   "unknown",
 ] as const;
@@ -74,11 +75,15 @@ Call purpose: {{call_purpose}}
 Requested callback time: {{callback_scheduled_for_spoken}}
 
 # Opening and disclosure
-For call_purpose=initial_invoice_followup, speak first and start naturally: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this {{customer_first_name}}?"
-For call_purpose=callback_followup, use this distinct opening instead: "Hi, this is Paul from Elixis Elevator Systems. I'm following up at the time you requested about your elevator service account. Is this {{customer_first_name}}?" After confirmation, say: "Thanks. Last time, you asked us to follow up about the {{service_description}} from {{original_due_date_spoken}} for {{amount_due_spoken}}. Would you prefer that I prepare the secure payment link by text or email?" Do not repeat the initial service-check opening on a callback call.
+Use call_purpose to choose the script context. Supported values are first_reminder, follow_up, callback_followup, scam_recovery, and service_issue. Treat unknown values as first_reminder.
+For first_reminder, follow_up, scam_recovery, and service_issue, speak first and start naturally: "Hi, my name is Paul, and I'm calling from Elixis Elevator Systems, your elevator inspection company. I'm reaching out to make sure your elevators are operating properly. Is this {{customer_first_name}}?"
+For callback_followup, use this distinct opening instead: "Hi, this is Paul from Elixis Elevator Systems. I'm following up at the time you requested about your elevator service account. Is this {{customer_first_name}}?" After confirmation, say: "Thanks. Last time, you asked us to follow up about the {{service_description}} from {{original_due_date_spoken}} for {{amount_due_spoken}}. Would you prefer that I prepare the secure payment link by text or email?" Do not repeat the initial service-check opening on a callback call.
+For follow_up, mention prior context only after identity and service check, using {{previous_call_date_spoken}}, {{followup_reason}}, {{prior_concern_note}}, and {{preferred_payment_method}} when they are populated.
+For scam_recovery, acknowledge concern once after identity and service check: "I understand the concern. This is Elixis Elevator Systems, your elevator inspection company. I won't ask for card details over the phone. I can send the information by email or text so you can review it, or schedule a callback if you prefer."
+For service_issue, prioritize the elevator operation check and team follow-up; do not pursue payment if an issue is reported.
 If the person says "hello", "hello?", or "hi" before the introduction finishes, repeat that complete opening naturally once.
 Confirm identity by first name only. Never request DOB, ZIP, SSN, account numbers, or sensitive identifiers.
-Follow this call's disclosure instruction exactly: {{ai_disclosure_instruction}} Do not infer or apply a different disclosure policy. When disclosure is required after the service check, say once: "I'm an AI assistant helping Elixis Elevator Systems follow up on service accounts." Do not repeat it later. In every policy, answer honestly if the person asks whether you are AI, automated, or a robot.
+Follow this call's disclosure instruction exactly: {{ai_disclosure_instruction}} Do not infer or apply a different disclosure policy. When disclosure is required after the service check, say once: "I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts." Do not repeat it later. In every policy, answer honestly if the person asks whether you are AI, automated, or a robot: "Yes, I'm an AI voice assistant helping Elixis Elevator Systems with service account follow-up."
 
 # Service check before invoice discussion
 After identity confirmation, ask whether the elevators are operating properly.
@@ -99,8 +104,8 @@ For already paid, dispute, proof, wrong number, attorney, scam concern, stop cal
 
 # Payment preferences
 After explicit agreement, log confirmed_payment_link_requested and call create_payment_link. Ask whether they prefer text or email.
-For text, confirm the current number, call send_payment_sms, and trust its result. If pending/manual, say the team will follow up; never claim it was sent.
-For email, confirm the email on file without reading the full address unless needed, call send_payment_email, and trust its result. Never collect a newly dictated address.
+For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, call send_payment_sms and trust its result. If pending/manual, say the team will follow up; never claim it was sent.
+For email, ask exactly when customer_email is populated: "Is {{customer_email}} still the best email for the secure payment link?" If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, call send_payment_email and trust its result.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then invoke end_call.
 
 # Callback scheduling
@@ -303,7 +308,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes, this is Taylor. I want to pay now and email is better than text." },
             { role: "agent", content: "Thanks, Taylor. Before we get to that, are the elevators operating properly?" },
             { role: "user", content: "Yes, everything is working." },
-            { role: "agent", content: "Good to hear. I'm an AI assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Payment is through a secure link, not over the phone. Is the email on file still the best one?" },
+            { role: "agent", content: "Good to hear. I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Payment is through a secure link, not over the phone. Is billing@example.test still the best email for the secure payment link?" },
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to pay and confirmed email delivery.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -320,7 +325,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           transcript: [
             { role: "agent", content: "Hi, this is Paul from Elixis Elevator Systems. I'm following up at the time you requested about your elevator service account. Is this Taylor?" },
             { role: "user", content: "Yes." },
-            { role: "agent", content: "Thanks. I'm an AI assistant helping Elixis Elevator Systems follow up on service accounts. Last time, you asked us to follow up about the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Would you prefer that I prepare the secure payment link by text or email?" },
+            { role: "agent", content: "Thanks. I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts. Last time, you asked us to follow up about the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Would you prefer that I prepare the secure payment link by text or email?" },
           ],
         },
         {
@@ -330,7 +335,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes." },
             { role: "agent", content: "Thanks. Are the elevators operating properly?" },
             { role: "user", content: "Yes, they are." },
-            { role: "agent", content: "Good to hear. I'm an AI assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Would you like to take care of it now through a secure link?" },
+            { role: "agent", content: "Good to hear. I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Would you like to take care of it now through a secure link?" },
             { role: "user", content: "Okay, text it to me." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to receive secure payment link by text.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -349,7 +354,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           transcript: [
             { role: "agent", content: "I can prepare a secure payment link. Text is usually easiest, but if you prefer email I can note that instead." },
             { role: "user", content: "Email is better." },
-            { role: "agent", content: "Is the email on file still the best one?" },
+            { role: "agent", content: "Is billing@example.test still the best email for the secure payment link?" },
             { role: "user", content: "Yes." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller requested the secure payment link by email.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -450,7 +455,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes, what invoice is this?" },
             { role: "agent", content: "Thanks. First, are the elevators operating properly?" },
             { role: "user", content: "Yes." },
-            { role: "agent", content: "Good to hear. I'm an AI assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Payment would be through a secure link, not over the phone." },
+            { role: "agent", content: "Good to hear. I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts. This is for the annual elevator inspection from May 1, 2026, for four hundred eighty dollars. Payment would be through a secure link, not over the phone." },
             { role: "user", content: "Okay, thank you." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"manual_review\",\"notes\":\"Caller ended without requesting a payment link.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"manual_review\"}" },
@@ -480,7 +485,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       business_name: "Elixis Elevator Systems",
       agent_display_name: "Paul",
       ai_disclosure_policy: "after_identity",
-      ai_disclosure_instruction: "After confirming identity and after the elevator operation check, say only once that you are an AI assistant helping Elixis Elevator Systems follow up on service accounts. Then continue naturally into the service and invoice details.",
+      ai_disclosure_instruction: "After confirming identity and after the elevator operation check, say only once: \"I'm a virtual assistant helping Elixis Elevator Systems follow up on service accounts.\" Then continue naturally into the service and invoice details. If asked whether you are AI or a robot, answer honestly.",
       customer_first_name: "",
       customer_last_name: "",
       amount_due: "",
@@ -499,8 +504,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       open_invoice_count_spoken: "one open invoice",
       total_amount_due: "",
       total_amount_due_spoken: "",
-      call_purpose: "initial_invoice_followup",
+      call_purpose: "first_reminder",
+      demo_call_mode: "first_reminder",
       callback_scheduled_for_spoken: "",
+      previous_call_date_spoken: "",
+      followup_reason: "",
+      prior_concern_note: "",
+      preferred_payment_method: "",
+      customer_phone_spoken: "",
+      customer_email: "",
       oldest_invoice_date_spoken: "",
       most_recent_invoice_date_spoken: "",
       selected_invoice_is_most_recent: "true",

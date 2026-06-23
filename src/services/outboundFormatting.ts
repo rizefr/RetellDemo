@@ -53,6 +53,14 @@ export function formatOutboundInvoiceCountSpoken(count: number): string {
   return `${integerToWords(normalized)} open ${normalized === 1 ? "invoice" : "invoices"}`;
 }
 
+export function formatOutboundPhoneSpoken(value: string | null | undefined): string {
+  const input = String(value ?? "").trim();
+  const match = input.match(/^\+(\d)(\d{3})(\d{3})(\d{4})$/);
+  if (!match) return input || "phone number unavailable";
+  const speakDigits = (digits: string) => digits.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join(" ");
+  return `plus ${speakDigits(match[1])}, ${speakDigits(match[2])}, ${speakDigits(match[3])}, ${speakDigits(match[4])}`;
+}
+
 export function normalizeOutboundDate(value: string | null | undefined): string | null {
   const input = String(value ?? "").trim();
   if (!input) return null;

@@ -25,6 +25,7 @@ export const OUTBOUND_OUTCOMES = [
   "email_pending_manual",
   "email_failed",
   "email_missing",
+  "contact_update_requested",
   "manual_review",
   "unknown",
 ] as const;
@@ -55,6 +56,9 @@ export function applyOutcomePolicy(outcome: OutboundOutcome): OutcomePolicy {
   }
   if (["mail_check_requested", "mail_instructions_requested"].includes(outcome)) {
     return { pauseOutreach: false, invoiceStatus: "manual_review", scheduleFollowups: false };
+  }
+  if (outcome === "contact_update_requested") {
+    return { pauseOutreach: false, scheduleFollowups: false };
   }
   if (outcome === "confirmed_payment_link_requested") {
     return { pauseOutreach: false, invoiceStatus: "payment_link_sent", scheduleFollowups: true };

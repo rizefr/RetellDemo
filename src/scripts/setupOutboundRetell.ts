@@ -16,7 +16,7 @@ type SetupReport = {
 
 const OUTBOUND_VOICE_SETTINGS = {
   voice_model: "eleven_flash_v2_5" as const,
-  voice_speed: 0.94,
+  voice_speed: 0.88,
   voice_temperature: 1.2,
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,

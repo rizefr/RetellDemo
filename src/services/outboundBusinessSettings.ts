@@ -18,6 +18,7 @@ export type OutboundBusinessSettingsPatch = {
   email_from?: string | null;
   email_test_recipient_allowlist?: string[];
   callback_rules?: Record<string, unknown>;
+  payment_provider?: "stripe" | "quickbooks" | "manual";
 };
 
 function e164(value: string): boolean {
