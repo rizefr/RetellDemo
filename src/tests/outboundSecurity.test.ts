@@ -77,6 +77,7 @@ describe("outbound flow guardrails", () => {
     const flow = buildOutboundConversationFlow("https://example.com");
     const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
     const finalCheckNode = flow.nodes.find((node) => node.id === "outbound_normal_terminal_final_check");
+    const hardTerminalNode = flow.nodes.find((node) => node.id === "outbound_hard_terminal_end");
     expect(flow.start_node_id).toBe("outbound_collections_agent");
     expect(flow.nodes.length).toBeGreaterThanOrEqual(4);
     expect(serialized).toContain('"type":"subagent"');
@@ -139,6 +140,11 @@ describe("outbound flow guardrails", () => {
     expect(JSON.stringify(mainNode)).not.toContain('"type":"end_call"');
     expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');
     expect(JSON.stringify(finalCheckNode)).toContain("end_final_check_call");
+    expect(JSON.stringify(finalCheckNode)).toContain('"execution_message_description":"Have a good day. Goodbye."');
+    expect(JSON.stringify(hardTerminalNode)).toContain('"type":"subagent"');
+    expect(JSON.stringify(hardTerminalNode)).toContain('"tool_ids":["outbound_log_outcome"]');
+    expect(JSON.stringify(hardTerminalNode)).toContain('"type":"end_call"');
+    expect(JSON.stringify(hardTerminalNode)).toContain("end_hard_terminal_call");
     expect(serialized).toContain('"speak_during_execution":true');
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
