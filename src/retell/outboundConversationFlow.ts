@@ -97,7 +97,7 @@ Follow this call's disclosure instruction exactly: {{ai_disclosure_instruction}}
 
 # Service check before invoice discussion
 After identity confirmation, ask whether the elevators are operating properly.
-If not, ask for one concise description, call log_outcome with service_issue_reported before saying it was noted, say the team will review it, and immediately invoke end_call in the same turn. Logging that outcome creates manual review. Do not discuss or push payment. Never close a service-issue call without the tool invocation and end_call.
+If not, ask for one concise description, call log_outcome with service_issue_reported before saying it was noted, say the team will review it, then route to the normal final-check step. Logging that outcome creates manual review. Do not discuss or push payment. Never close a service-issue call before the tool invocation and final-check routing.
 If they are operating properly, use a restrained acknowledgment such as "Good to hear." Do not say "glad everything is working well," "great," or another exaggerated phrase. Apply the configured one-time disclosure, then discuss the invoice.
 
 # Invoice explanation
@@ -107,7 +107,7 @@ Payment is through a secure link, never over the phone. Never collect card or ba
 
 # Helpful objection handling
 Allow one useful clarification, then stop if they still decline.
-If they do not remember the service, repeat the service and date once and offer proof/team follow-up; log proof_requested or manual_review. If they choose proof/team follow-up or still do not recognize it after one clarification, schedule the manual follow-up if appropriate, give the default objection close, and immediately invoke end_call.
+If they do not remember the service, repeat the service and date once and offer proof/team follow-up; log proof_requested or manual_review. If they choose proof/team follow-up or still do not recognize it after one clarification, schedule the manual follow-up if appropriate, give the default objection close, then route to the normal final-check step.
 If asked which company, identify Elixis Elevator Systems and the elevator inspection service.
 If asked when they last paid, state last_payment_date_spoken only when populated; otherwise say you do not have a clear date and offer team follow-up.
 For scam concern, wrong amount, already paid, or account-history questions, use only trusted account context: open_invoice_count_spoken, total_amount_due_spoken, oldest_invoice_date_spoken, most_recent_invoice_date_spoken, and last_payment_date_spoken. If a value is blank, say you do not have that detail clearly available on this call. Never invent payment history.
@@ -121,19 +121,19 @@ After explicit agreement, log confirmed_payment_link_requested and call create_p
 For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, call send_payment_sms and trust its result. If pending/manual, say the team will follow up; never claim it was sent.
 For email, ask exactly when customer_email_spoken is populated: "Is {{customer_email_spoken}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, call send_payment_email and trust its result.
 If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
-For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then invoke end_call.
+For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then route to the normal final-check step.
 
 # Callback scheduling
-If they say call later or decline for now, ask: "What day and time would be best for us to call you back?" Do not direct them to make an inbound call or put responsibility for the next call on them. Never calculate, normalize, repeat, or confirm a callback date yourself. Your first response after receiving a date and time must call schedule_callback with the exact date phrase, time phrase, reason, confirmation_text="", and confirmed=false, even when their first answer sounds definite. Only use the spoken time returned by that tool when asking the caller to confirm. Only after that separate confirmation call schedule_callback again with confirmed=true and the caller's confirmation text. Then log callback_scheduled and invoke end_call. The tool stores a task; it never places a call.
+If they say call later or decline for now, ask: "What day and time would be best for us to call you back?" Do not direct them to make an inbound call or put responsibility for the next call on them. Never calculate, normalize, repeat, or confirm a callback date yourself. Your first response after receiving a date and time must call schedule_callback with the exact date phrase, time phrase, reason, confirmation_text="", and confirmed=false, even when their first answer sounds definite. Only use the spoken time returned by that tool when asking the caller to confirm. Only after that separate confirmation call schedule_callback again with confirmed=true and the caller's confirmation text. Then log callback_scheduled and route to the normal final-check step. The tool stores a task; it never places a call.
 
 # Human and delivery tools
 Transfer only after an explicit human request and only when request_human_transfer says a number is available. If unavailable, log human_requested and say the team will follow up.
 schedule_followup stores baseline/manual-review tasks only. It never executes calls, emails, or texts.
-If any tool fails, do not repeatedly retry and never claim success. For every terminal outcome, invoke the required logging tool before the closing sentence; saying "I'll note that" is not a substitute for the tool call. Terminal outcomes must end with end_call in the same turn after the closing sentence.
+If any tool fails, do not repeatedly retry and never claim success. For every terminal outcome, invoke the required logging tool before the closing sentence; saying "I'll note that" is not a substitute for the tool call. Normal terminal outcomes must route to the normal final-check node. Hard terminal outcomes must route directly to the hard terminal end node.
 
 # Terminal routing
 For normal terminal outcomes such as service_issue_reported, mail_check_requested, mail_instructions_requested, email_pending_manual, email_failed, email_missing, callback_scheduled, responsible_party_update_requested, named_contact_requested, contact_update_requested, manual_review after one clarification, and unavailable human transfer, route to the normal final-check step only after all required custom tool calls for the terminal outcome are complete and after the required concise status sentence.
-In the normal final-check step, ask exactly: "Is there anything else I can help you with?" If no, say exactly: "Have a good day. Goodbye." Then invoke end_call immediately in the same turn with the native end-call action after a short pause.
+In the normal final-check step, ask exactly: "Is there anything else I can help you with?" If no, say exactly: "Have a good day. Goodbye." Then transition to the native end-call node after a short pause.
 For hard terminal outcomes such as do_not_contact, attorney_represented, wrong_number, hostile requests, or a clear end request, do not ask a final-check question. Acknowledge, log/pause as needed, say a brief polite goodbye, and route directly to the hard terminal end.
 
 # Mandatory safety
@@ -218,7 +218,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       baseUrl,
       "send_payment_email",
       "/api/outbound/retell/send-payment-email",
-      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false. When sent is true, confirm delivery once and immediately invoke end_call; do not wait for another caller turn.",
+      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false. When sent is true, confirm delivery once and route to the normal final-check step.",
       {},
       [],
       {
@@ -325,13 +325,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           execution_message_type: "static_text",
           execution_message_description: "One moment. I'm going to connect you with someone who can help.",
         },
-        {
-          type: "end_call",
-          name: "end_call",
-          description:
-            "Mandatory final action after any safe closing sentence for terminal outcomes, including service_issue_reported, proof_requested, manual_review, mail_check_requested, mail_instructions_requested, do_not_contact, wrong_number, human_requested when transfer is unavailable, already_paid_claim, dispute, scam_concern, unable_to_pay, and attorney_represented. Do not leave the call open after saying thanks.",
-          speak_during_execution: false,
-        },
       ],
       finetune_conversation_examples: [
         {
@@ -350,7 +343,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
             { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
           ],
         },
         {
@@ -379,7 +371,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "agent", content: "I can note that you'd like the payment link sent. The team will follow up with the secure link. Thanks." },
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_4", arguments: "{\"reason\":\"payment_link_requested\"}" },
             { role: "tool_call_result", tool_call_id: "tool_4", content: "{\"scheduled\":true,\"task_count\":4}" },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_5", arguments: "{}" },
           ],
         },
         {
@@ -396,7 +387,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":false,\"status\":\"email_pending_manual\"}" },
             { role: "agent", content: "I'll note that you prefer email and have the team follow up with the secure link. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
           ],
         },
         {
@@ -405,7 +395,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_1", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"sent\":true,\"status\":\"email_sent\",\"message_for_agent\":\"The secure payment link was sent to the email on file.\"}" },
             { role: "agent", content: "Thanks. The secure payment link was sent to the email on file." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
         {
@@ -417,7 +406,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_2", arguments: "{\"outcome\":\"human_requested\",\"notes\":\"Caller requested a human; transfer unavailable.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"logged\":true,\"outcome\":\"human_requested\"}" },
             { role: "agent", content: "I'll have a team member follow up with you directly. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_3", arguments: "{}" },
           ],
         },
         {
@@ -428,7 +416,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"service_issue_reported\",\"notes\":\"Caller reported grinding noise and stops between floors.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"service_issue_reported\"}" },
             { role: "agent", content: "Thanks for explaining that. I'll have the team review the issue and follow up. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
         {
@@ -439,7 +426,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"service_issue_reported\",\"notes\":\"Caller reported elevator two is making a loud noise.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"service_issue_reported\"}" },
             { role: "agent", content: "Thanks for letting me know. I'll have the team review the issue and follow up. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
         {
@@ -455,7 +441,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_3", arguments: "{\"outcome\":\"callback_scheduled\",\"notes\":\"Callback confirmed for Monday, June 22 at 2:00 PM Eastern.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"logged\":true,\"outcome\":\"callback_scheduled\"}" },
             { role: "agent", content: "Thanks. The callback is scheduled for Monday at 2:00 PM Eastern." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_4", arguments: "{}" },
           ],
         },
         {
@@ -467,7 +452,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_2", arguments: "{\"outcome\":\"mail_instructions_requested\",\"notes\":\"Mailing instructions are not configured; team follow-up required.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"logged\":true,\"outcome\":\"mail_instructions_requested\"}" },
             { role: "agent", content: "I don't have the mailing instructions available on this call, so I'll have the team follow up with the correct details. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_3", arguments: "{}" },
           ],
         },
         {
@@ -480,7 +464,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_2", arguments: "{\"outcome\":\"mail_instructions_requested\",\"notes\":\"Mailing instructions are not configured; team follow-up required.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"logged\":true,\"outcome\":\"mail_instructions_requested\"}" },
             { role: "agent", content: "I don't have the mailing instructions available on this call, so I'll have the team follow up with the correct details. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_3", arguments: "{}" },
           ],
         },
         {
@@ -491,7 +474,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"wrong_number\",\"notes\":\"Person stated this is a wrong number.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"wrong_number\",\"outreach_paused\":true}" },
             { role: "agent", content: "Sorry about that. I'll have the team review the contact info. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
         {
@@ -501,7 +483,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"do_not_contact\",\"notes\":\"Caller requested that outreach stop.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"do_not_contact\",\"outreach_paused\":true}" },
             { role: "agent", content: "Understood. We'll stop calling this number. Thanks for letting us know." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
         {
@@ -557,7 +538,6 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"manual_review\",\"notes\":\"Caller ended without requesting a payment link.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"manual_review\"}" },
             { role: "agent", content: "You're welcome. Thanks." },
-            { role: "tool_call_invocation", name: "end_call", tool_call_id: "tool_2", arguments: "{}" },
           ],
         },
       ],
