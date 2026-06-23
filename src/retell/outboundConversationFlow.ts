@@ -544,31 +544,21 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
     },
     {
       id: "outbound_normal_terminal_final_check",
-      type: "conversation",
+      type: "subagent",
       name: "Normal terminal final check",
       instruction: {
         type: "prompt",
-        text: "Ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, that is all, or gives no further need, transition immediately to the native end-call node. Do not say the goodbye line in this node; the native end-call node owns the goodbye and hangup.",
+        text: "Ask exactly: \"Is there anything else I can help you with?\" If the caller asks a relevant question, answer briefly using only known call context. If you do not have the answer, say: \"I don't have that information on this call, but I'll note it for the team to follow up.\" When the caller says no, thanks, that is all, or gives no further need, say exactly: \"Have a good day. Goodbye.\" Then immediately use this node's native end_call tool. This isolated final-check node owns the goodbye and hangup; the main collections agent does not have the end_call tool.",
       },
-      edges: [
+      tools: [
         {
-          id: "outbound_final_check_done_edge",
-          destination_node_id: "outbound_terminal_end",
-          transition_condition: {
-            type: "prompt",
-            prompt: "Transition when the caller says no, no thanks, that's all, thank you, bye, goodbye, or otherwise indicates there is nothing else needed. The destination native end-call node says the goodbye line and ends the call.",
-          },
+          type: "end_call",
+          name: "end_final_check_call",
+          description:
+            "End the call only after this final-check node has asked whether anything else is needed and then said exactly: Have a good day. Goodbye.",
+          speak_during_execution: false,
         },
       ],
-      skip_response_edge: {
-        id: "outbound_final_check_done_skip_edge",
-        destination_node_id: "outbound_terminal_end",
-        transition_condition: {
-          type: "prompt",
-          prompt:
-            "Skip response and transition when the caller says no, no thanks, that's all, thank you, bye, goodbye, or otherwise indicates there is nothing else needed.",
-        },
-      },
       display_position: { x: 620, y: -120 },
     },
     {
