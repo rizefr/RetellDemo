@@ -80,6 +80,13 @@ textarea { min-width: 180px; resize: vertical; }
 .status-badge.success { background: #dff3e9; color: #0f5c42; }
 .status-badge.warning { background: #f8e7d6; color: #7b3d16; }
 .status-badge.info { background: #e2eef6; color: #28546e; }
+.feedback-badges { display: flex; flex-wrap: wrap; gap: .45rem; margin: .85rem 0 .35rem; }
+.state-badge { display: inline-flex; align-items: center; gap: .25rem; border-radius: 999px; padding: .32rem .62rem; font-size: .74rem; font-weight: 800; letter-spacing: .01em; }
+.state-badge.ready { background: #dff3e9; color: #0f5c42; }
+.state-badge.blocked { background: #fae7e7; color: #9d2727; }
+.state-badge.warning { background: #fff0d8; color: #7b3d16; }
+.state-badge.info { background: #e2eef6; color: #28546e; }
+.state-badge.neutral { background: #edf0ee; color: #435149; }
 .detail-stack { display: grid; gap: .45rem; min-width: 140px; }
 .detail-stack details summary, td details summary { cursor: pointer; color: #315b4c; font-size: .78rem; font-weight: 700; }
 details pre { max-width: min(640px, 70vw); max-height: 320px; margin: .5rem 0 0; padding: .65rem; overflow: auto; border-radius: 7px; background: #f4f6f2; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .72rem; }

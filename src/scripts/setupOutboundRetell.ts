@@ -11,6 +11,8 @@ type SetupReport = {
   outbound_agent_id: string | null;
   outbound_conversation_flow_id: string | null;
   published_version: number | string | null;
+  voice_id: string | null;
+  voice_source: "explicit_env" | "current_dashboard" | "default_fallback" | "not_updated";
   notes: string[];
 };
 
@@ -117,11 +119,28 @@ async function publishAgentVersion(agentId: string, version: number) {
   }
 }
 
+function resolveOutboundVoice(existingAgent: unknown): {
+  voiceId: string;
+  source: SetupReport["voice_source"];
+} {
+  const explicitVoice = process.env.OUTBOUND_RETELL_VOICE_ID?.trim();
+  if (explicitVoice) return { voiceId: explicitVoice, source: "explicit_env" };
+
+  const dashboardVoice =
+    typeof (existingAgent as { voice_id?: unknown }).voice_id === "string"
+      ? (existingAgent as { voice_id: string }).voice_id.trim()
+      : "";
+  if (dashboardVoice) return { voiceId: dashboardVoice, source: "current_dashboard" };
+
+  return { voiceId: "11labs-Paul", source: "default_fallback" };
+}
+
 async function updateExistingOutboundAgent(
   existing: Awaited<ReturnType<typeof retrieveExplicitOutboundAgent>>,
   flow: ReturnType<typeof buildOutboundConversationFlow>,
 ) {
   const client = getRetellClient();
+  const voice = resolveOutboundVoice(existing.agent);
   const draftAgent = await client.agent.createVersion(existing.agent.agent_id, {
     base_version: existing.agent.version,
   });
@@ -145,7 +164,7 @@ async function updateExistingOutboundAgent(
   const updatedAgent = await client.agent.update(existing.agent.agent_id, {
     version: targetAgentVersion,
     agent_name: env.OUTBOUND_RETELL_AGENT_NAME,
-    voice_id: env.OUTBOUND_RETELL_VOICE_ID,
+    voice_id: voice.voiceId,
     ...OUTBOUND_VOICE_SETTINGS,
     response_engine: {
       type: "conversation-flow",
@@ -166,7 +185,7 @@ async function updateExistingOutboundAgent(
     client.agent.retrieve(updatedAgent.agent_id),
     client.conversationFlow.retrieve(updatedFlow.conversation_flow_id),
   ]);
-  return { agent: agentReadback, flow: flowReadback };
+  return { agent: agentReadback, flow: flowReadback, voiceSource: voice.source };
 }
 
 async function writeArtifacts(report: SetupReport, flow: unknown) {
@@ -203,10 +222,13 @@ async function main() {
     outbound_agent_id: env.OUTBOUND_RETELL_AGENT_ID || null,
     outbound_conversation_flow_id: env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID || null,
     published_version: null,
+    voice_id: process.env.OUTBOUND_RETELL_VOICE_ID?.trim() || null,
+    voice_source: "not_updated",
     notes: [
       "Safe default: no Retell resources were created.",
       "Set CONFIRM_CREATE_RETELL_OUTBOUND_AGENT=true to update and publish only the explicit OUTBOUND_RETELL_AGENT_ID and OUTBOUND_RETELL_CONVERSATION_FLOW_ID.",
       "This script contains no phone-number update, phone binding, name matching, or duplicate creation operation.",
+      "Voice safety: if OUTBOUND_RETELL_VOICE_ID is not explicitly set for this run, the script preserves the current dashboard voice from Retell readback.",
     ],
   };
 
@@ -230,10 +252,18 @@ async function main() {
     outbound_agent_id: updated.agent.agent_id,
     outbound_conversation_flow_id: updated.flow.conversation_flow_id,
     published_version: updated.agent.version,
+    voice_id:
+      typeof (updated.agent as { voice_id?: unknown }).voice_id === "string"
+        ? (updated.agent as { voice_id: string }).voice_id
+        : null,
+    voice_source: updated.voiceSource,
     notes: [
       "Updated and published only the explicit outbound agent and Conversation Flow IDs.",
       "No phone binding API was called.",
       "No name matching or duplicate provider resource creation was performed.",
+      updated.voiceSource === "explicit_env"
+        ? "Voice was changed because OUTBOUND_RETELL_VOICE_ID was explicitly set for this run."
+        : "Voice was preserved from the current Retell dashboard readback because OUTBOUND_RETELL_VOICE_ID was not explicitly set.",
       "Copy outbound IDs manually from the generated env example after reviewing the report.",
     ],
   };

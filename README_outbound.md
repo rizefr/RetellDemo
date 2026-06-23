@@ -27,15 +27,15 @@ The business using it is responsible for establishing its right to contact each 
 - Retell outbound agent and Conversation Flow are published and verified for the final presentation path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V35
+  - active verified version: V36 after the Gilfoy voice publish
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - voice remains `11labs-Paul`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
+  - current demo voice is `11labs-Gilfoy`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and voicemail hangup are preserved
   - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
   - if asked whether he is AI or a robot, Paul answers honestly: “Yes, I’m an AI voice assistant helping Elixis Elevator Systems with service account follow-up.”
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `customer_phone_spoken`, and `customer_email_spoken` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
-- Retell V35 structural terminal routing uses normal final-check and hard-terminal end nodes. Retell native tests passed for service issue, mail-check/manual instructions, email success, named-contact request, and stop-calling. The terminal nodes now route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
+- Retell V35/V36 structural terminal routing uses normal final-check and hard-terminal end nodes. Retell native tests passed for service issue, mail-check/manual instructions, email success, named-contact request, and stop-calling. The terminal nodes now route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
@@ -70,6 +70,8 @@ Demo call mode is separate script context and does not change payment status:
 
 The demo-number control is temporary and separate from the persistent test-phone allowlist. It requires admin auth, test mode, max batch size `1`, an E.164 number, a warning checkbox, and the exact phrase `I AUTHORIZE THIS DEMO TEST CALL`. The authorization has a TTL and can be reused during that demo session for manually started single calls. It never applies to batch calls and never bypasses normal calling hours unless the separate after-hours override is also explicitly confirmed.
 
+Presentation Mode shows backend-derived feedback instead of generic blocked states. Common messages include invalid E.164 phone format, missing warning checkbox, incorrect confirmation phrase, expired temporary authorization, test mode off, batch size not `1`, after-hours confirmation required, ineligible invoice, paused customer, missing Retell setup, disabled SMS, email not ready, and QuickBooks not connected. The badges are informational only; the backend preflight response remains the source of truth.
+
 The demo details editor can update the fake customer and invoice variables used by Retell: name, phone, email, business name, service description, amount, due/service date, invoice ID, demo call mode, previous call date, follow-up reason, prior concern, preferred payment method, callback details, and mailing/check instructions. These changes are sent to protected backend routes and feed real Retell dynamic variables; they are not browser-only labels.
 
 ## Retell model and voice notes
@@ -77,7 +79,7 @@ The demo details editor can update the fake customer and invoice variables used 
 Current production selection:
 
 - Model: GPT-4.1
-- Voice: `11labs-Paul`
+- Voice: `11labs-Gilfoy`
 - Voice model: ElevenLabs Flash v2.5
 - Speed: `0.88`
 - First-message delay: `1000 ms`
@@ -88,7 +90,7 @@ GPT-5.1 was re-evaluated against GPT-4.1 on Retell V33 with the same native test
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
 
-If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. Do not publish from stale local assumptions after a dashboard voice experiment; pass the intended `OUTBOUND_RETELL_VOICE_ID` explicitly.
+If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. The setup script preserves the current Retell dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. To switch back to Paul, either change the voice to `11labs-Paul` in the Retell dashboard or run a confirmed publish with `OUTBOUND_RETELL_VOICE_ID=11labs-Paul`. Voice changes do not affect tools, signed request shape, dynamic variables, phone bindings, email, demo-number authorization, Stripe, or backend routes.
 
 ## Supabase setup
 

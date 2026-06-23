@@ -65,7 +65,7 @@
           <div>
             <p class="eyebrow">Presentation mode</p>
             <h2 id="presentation-heading">Demo test number and editable call context</h2>
-            <p>Use this for tomorrow’s elevator demo. Invoice status stays payment-focused; demo call mode only changes Paul’s script and context.</p>
+            <p>Prepare one controlled demo call with a temporary test number and the live backend call gates. Invoice status stays payment-focused; demo call mode only changes Paul’s script and context.</p>
           </div>
           <span id="demo-auth-status" class="count-badge">No demo number authorized</span>
         </div>
@@ -82,6 +82,8 @@
             <button id="demo-start-call" class="danger-muted" disabled>Start one demo call</button>
           </div>
         </div>
+        <div id="demo-feedback-badges" class="feedback-badges" aria-live="polite"></div>
+        <p id="demo-last-result" class="muted">Authorize a temporary test number, save demo variables, then run the backend preflight check.</p>
         <div class="demo-editor">
           <h3>Editable demo variables</h3>
           <p>These values feed the same backend dynamic variables that Retell receives. They are not frontend-only labels.</p>

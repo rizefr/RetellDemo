@@ -5,8 +5,8 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version: V35.
-- Voice and pacing: `11labs-Paul`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
+- Latest verified Retell version: V36 after the Gilfoy voice publish.
+- Voice and pacing: `11labs-Gilfoy`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was tested against GPT-4.1 on the same V33 Retell native scenarios. It did not clearly improve reliability and was slower in the observed batch, so GPT-4.1 remains the selected demo model.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
@@ -20,11 +20,13 @@ Current Retell settings to preserve for the elevator demo:
 - agent `agent_4aa8074d7eabe311109ed6da89`
 - flow `conversation_flow_bebdceabc801`
 - model GPT-4.1
-- voice `11labs-Paul`
+- voice `11labs-Gilfoy`
 - voice model ElevenLabs Flash v2.5
 - speed `0.88`
 - first-message delay `1000 ms`
 - wrapped signed tools with `args_at_root` disabled
+
+Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. To switch back to Paul, change the voice in Retell to `11labs-Paul` or run a confirmed publish with `OUTBOUND_RETELL_VOICE_ID=11labs-Paul`. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is currently cheaper per standard LLM minute than GPT-4.1, but the V33 simulation comparison did not show a demo-quality improvement. Re-test GPT-5.1 only if Retell releases a lower-latency setting or if GPT-4.1 starts missing tool/final-check behavior.
 
@@ -92,6 +94,8 @@ If the Presentation Mode button fails:
 6. Save demo variables, run preflight, and confirm the preflight response uses `destination_phone_number` from the temporary authorization.
 7. If outside hours, separately satisfy the after-hours self-test checkbox and exact phrase. Demo-number authorization does not bypass calling-window rules.
 8. Do not click start until the user explicitly approves exactly one call.
+
+The UI should show specific failure messages for invalid E.164 phone format, missing warning checkbox, wrong phrase, expired temporary authorization, test mode off, batch size not `1`, after-hours confirmation needed, ineligible invoice, paused customer, missing Retell IDs, disabled SMS, email not ready, and QuickBooks not connected. If the page only says `failed` or `blocked`, inspect the current frontend bundle and Vercel deployment.
 
 ## Future SMS Enablement
 
