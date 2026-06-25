@@ -17,25 +17,34 @@ The business using it is responsible for establishing its right to contact each 
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
 
-## Current setup status (June 23, 2026)
+## Current setup status (June 25, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
 - The outbound migrations have been applied. The isolated `public.outbound_*` tables, including `outbound_demo_call_authorizations`, exist with RLS enabled and no `anon` or `authenticated` policies/grants. `outbound_mark_invoice_paid` is detected from the deployed service-role path. Call attempts store duration and structured analysis; the paid-invoice RPC uses qualified table references.
 - The demo CSV was imported through the deployed protected API. The marked test invoice `ELV-TEST-OWN-NUMBER` is using the allowlisted test phone `+13475850249`.
 - Stripe sandbox Checkout Session creation is working from the admin/API path. An active `checkout.session.completed` webhook targets `https://elixis.agency/api/outbound/webhooks/stripe`, and its signing secret is configured in Vercel. A sandbox completion for `ELV-2026-001` marked the invoice/session paid and persisted the Stripe event. `ELV-TEST-OWN-NUMBER` remains unpaid but is currently `manual_review`; an admin must deliberately return it to an eligible unpaid status before another call preflight can pass.
-- Retell outbound agent and Conversation Flow are published and verified for the final presentation path:
+- Retell resources are organized for the elevator inspection product and the future service variant:
+  - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
+  - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
+  - active inspection name: `Elevator Inspection Collections — Sophia`
+  - active verified version: V42
+  - active voice: `11labs-Sloane`, spoken name `Sophia`, speed `0.88`, first-message delay `1000 ms`
+  - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number
+  - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
+  - preserved resources: active inspection flow, future service flow, inbound receptionist flow, single-prompt candidate agent, and patient-template flow with an agent reference
+- Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V38 after the low-volume ambient/tool-wait bridge publish
+  - active verified version: V42
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - current demo voice is `11labs-Gilfoy`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, low-volume `call-center` ambient sound, and voicemail hangup are preserved
-  - Paul speaks first, repeats the applicable introduction after an early hello/interruption, uses one restrained `virtual assistant` disclosure after the service check, and states the service, natural date, and speech-safe amount after first-name confirmation
-  - if asked whether he is AI or a robot, Paul answers honestly: “Yes, I’m an AI voice assistant helping Elixis Elevator Systems with service account follow-up.”
+  - current voice is `11labs-Sloane`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, low-volume `call-center` ambient sound, and voicemail hangup are preserved
+  - Sophia speaks first, repeats the applicable introduction after an early hello/interruption, uses the configured `virtual assistant` disclosure policy, and states the inspection type, natural date, and speech-safe amount after first-name confirmation
+  - if asked whether she is AI or a robot, Sophia answers honestly: “Yes, I’m an AI voice assistant helping {{business_name}} with invoice follow-up.”
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `customer_phone_spoken`, and `customer_email_spoken` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
-- Retell V38 structural terminal routing uses normal final-check and hard-terminal end nodes. Retell native tests passed for service issue, mail-check/manual instructions, email success, named-contact request, stop-calling, and the email tool bridge path. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
+- Retell V42 structural terminal routing uses normal final-check and hard-terminal end nodes. Playground smoke checks covered opening/hello, invoice-not-received/email setup, expected payment date, SMS-disabled text preference, dispute/wrong amount, callback scheduling, scam concern, responsible-party update, mail check, stop-calling, AI honesty, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes such as stop-calling, attorney, wrong number, hostile/clear-end requests skip the final-check and end politely.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
@@ -60,7 +69,7 @@ Invoice/payment status stays payment-focused:
 
 Demo call mode is separate script context and does not change payment status:
 
-- `first_reminder`: initial service-account check and invoice reminder
+- `first_reminder`: initial overdue inspection invoice follow-up
 - `follow_up`: later follow-up context while the invoice can remain `unpaid`
 - `callback_followup`: customer asked to be called at a specific time
 - `scam_recovery`: customer previously raised legitimacy/scam concern
@@ -79,11 +88,12 @@ The demo details editor can update the fake customer and invoice variables used 
 Current production selection:
 
 - Model: GPT-4.1
-- Voice: `11labs-Gilfoy`
+- Voice: `11labs-Sloane`
+- Spoken agent name: `Sophia`
 - Voice model: ElevenLabs Flash v2.5
 - Speed: `0.88`
 - First-message delay: `1000 ms`
-- Ambient sound: `call-center` at low volume (`0.18`) so longer tool waits have subtle office background instead of sounding like a dead line. Retell does not currently expose a keyboard-only sound effect tied only to custom-tool execution, so Paul also uses short bridge lines such as “One moment while I pull that up” before longer user-visible tool work.
+- Ambient sound: `call-center` at low volume (`0.18`) so longer tool waits have subtle office background instead of sounding like a dead line. Retell does not currently expose a keyboard-only sound effect tied only to custom-tool execution, so Sophia also uses short bridge lines such as “One moment while I pull that up” before longer user-visible tool work.
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
@@ -91,7 +101,33 @@ GPT-5.1 was re-evaluated against GPT-4.1 on Retell V33 with the same native test
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
 
-If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. The setup script preserves the current Retell dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. To switch back to Paul, either change the voice to `11labs-Paul` in the Retell dashboard or run a confirmed publish with `OUTBOUND_RETELL_VOICE_ID=11labs-Paul`. Voice changes do not affect tools, signed request shape, dynamic variables, phone bindings, email, demo-number authorization, Stripe, or backend routes.
+If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. The setup script preserves the current Retell dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. For the inspection product, keep `11labs-Sloane` unless a new voice is intentionally selected and tested. Voice changes do not affect tools, signed request shape, dynamic variables, phone bindings, email, demo-number authorization, Stripe, or backend routes.
+
+## Elevator inspection product script
+
+The active product is for elevator inspection companies collecting overdue inspection invoices. It should not ask whether elevators are operating properly, because the business is not an elevator service company.
+
+Primary opening:
+
+```text
+Hi, this is Sophia from {{business_name}}, your elevator inspection company. Is this {{customer_first_name}}?
+```
+
+After identity confirmation:
+
+```text
+Our records show the {{inspection_type}} invoice is overdue. I'm calling to follow up and make sure it was received.
+```
+
+Supported inspection types are `Category 1`, `Category 5`, `Acceptance Test`, and `Periodic Inspection`. The demo defaults to a first follow-up about 14 days after inspection, with a configurable very-overdue threshold currently defaulting to 45 days. If the invoice was not received, Sophia offers to resend by email or text; email can send through the verified backend provider, while text remains manual until SMS is enabled. If the invoice was received, Sophia asks for an estimated payment date or the reason preventing payment, then logs the expected payment date or classification without pressure.
+
+For very overdue invoices only, Sophia may use this relationship-preserving line once after ordinary clarification fails:
+
+```text
+We value our relationship and want to avoid any interruption in service or delays with future inspection filings. Can we work together to get this resolved this week?
+```
+
+Do not use that line for mildly overdue invoices, and do not imply legal consequences, threats, or unsupported filing penalties.
 
 ## Supabase setup
 
@@ -189,7 +225,7 @@ The page provides joined customers/invoices, call history, payment sessions, and
 
 ### Business and safety settings
 
-`/outbound` stores non-secret operational settings on `outbound_businesses`. This includes test mode, E.164 test allowlist, batch limit, the gated after-hours switch, requested email/SMS delivery, disclosure policy, Paul’s display name, callback/transfer numbers, timezone, mailing instructions, test email recipients, and callback rules.
+`/outbound` stores non-secret operational settings on `outbound_businesses`. This includes test mode, E.164 test allowlist, batch limit, the gated after-hours switch, requested email/SMS delivery, disclosure policy, Sophia’s display name, product type, default inspection type, follow-up timing, very-overdue threshold, callback/transfer numbers, timezone, mailing instructions, test email recipients, and callback rules.
 
 Provider credentials remain in Vercel. A database toggle cannot make email or SMS effective unless the matching server-side capability is configured. Disabling test mode requires `ENABLE PRODUCTION OUTBOUND MODE`; raising the batch limit above one requires `INCREASE OUTBOUND BATCH LIMIT`. Both changes are audit logged. The after-hours override still requires its separate checkbox and exact per-call phrase.
 
@@ -219,14 +255,14 @@ Normal demo operation no longer requires the CSV import CLI: upload the file, va
 
 The browser never decides call eligibility. Select one invoice or pending callback task, run **Preflight**, review the backend result, satisfy the normal window or the tightly gated after-hours self-test confirmation, then use the single-call action. The page calls the protected `/api/outbound/calls/preflight` and `/api/outbound/calls/start` routes and refreshes calls, events, customers, and callbacks after the result.
 
-For a callback task, Paul receives `call_purpose=callback_followup` and the trusted requested time from the stored task. He opens with the requested-time follow-up script instead of the initial service-check script. The same test-mode, allowlist, calling-window, after-hours, admin, and one-item gates still apply. The system does not ask customers to call the office or rely on inbound callbacks.
+For a callback task, Sophia receives `call_purpose=callback_followup` and the trusted requested time from the stored task. She opens with the requested-time follow-up script instead of the initial invoice-received script. The same test-mode, allowlist, calling-window, after-hours, admin, and one-item gates still apply. The system does not ask customers to call the office or rely on inbound callbacks.
 
 #### CSV uploads
 
 - **Customer invoice CSV** defines who to contact and the invoice/account context. Download it from **Customer template**. Required columns are `customer_id,first_name,last_name,phone_number,email,mailing_address,timezone,amount_due,original_due_date,service_description,invoice_id,business_name,status,outreach_paused,notes`.
 - Optional customer columns are `last_payment_date,open_invoice_count,total_amount_due,payment_contact_preference,callback_preferred_time,payment_mailing_instructions`. Count/total values are validation hints; database-derived invoice totals remain authoritative.
-- **Business setup CSV** defines how Paul behaves. Download it from **Business template**. It covers business identity, timezone, callback/transfer numbers, disclosure policy, mailing instructions, sender, and requested delivery states.
-- Phones must be E.164. Dates may be `YYYY-MM-DD` or `YYYYMMDD`; the UI and Paul present them naturally. Dollar values store as cents. Validate/dry-run before import. Blank notes do not erase notes, paid invoices do not reopen, and stable business/customer/invoice IDs update rather than duplicate history.
+- **Business setup CSV** defines how Sophia behaves. Download it from **Business template**. It covers business identity, product type, default inspection type, follow-up timing, timezone, callback/transfer numbers, disclosure policy, mailing instructions, sender, payment provider, and requested delivery states.
+- Phones must be E.164. Dates may be `YYYY-MM-DD` or `YYYYMMDD`; the UI and Sophia present them naturally. Dollar values store as cents. Validate/dry-run before import. Blank notes do not erase notes, paid invoices do not reopen, and stable business/customer/invoice IDs update rather than duplicate history.
 
 #### Controlled email test
 
@@ -236,11 +272,11 @@ For a callback task, Paul receives `call_purpose=callback_followup` and the trus
 4. Put that same address on the selected fake/test customer. The Retell email tool uses only the trusted customer and invoice from signed call metadata and the on-file address.
 5. After explicit payment-link agreement, send one test through the normal email tool, confirm the `email_sent` event in **Events and debug**, then confirm delivery in the controlled inbox.
 
-If any check fails, leave the allowlist empty. The endpoint returns `email_pending_manual`, and Paul must not claim delivery. SMS remains disabled/manual until a separate Retell SMS-capability rollout; `sms_pending_manual` is expected and the CSV/business settings already preserve the future preference.
+If any check fails, leave the allowlist empty. The endpoint returns `email_pending_manual`, and Sophia must not claim delivery. SMS remains disabled/manual until a separate Retell SMS-capability rollout; `sms_pending_manual` is expected and the CSV/business settings already preserve the future preference.
 
 #### QuickBooks foundation
 
-The current demo uses Stripe for exact-amount Checkout Sessions. A business can choose `stripe`, `quickbooks`, or `manual` as its payment provider in settings, but QuickBooks is scaffold-only until a real business authorizes its QuickBooks Online company.
+The current demo uses Stripe for exact-amount Checkout Sessions. A business can choose `stripe`, `quickbooks_read_only`, `quickbooks_payment_link_enabled`, or `manual` as its payment provider in settings. The legacy `quickbooks` value is treated as read-only compatibility. QuickBooks is scaffold-only until a real business authorizes its QuickBooks Online company and a token-storage/payment-link policy is approved.
 
 Configured routes:
 
@@ -250,7 +286,7 @@ Configured routes:
 - `POST /api/outbound/quickbooks/disconnect`
 - `POST /api/outbound/quickbooks/invoice-link`
 
-The connect route builds an Intuit OAuth URL when `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, and `QUICKBOOKS_REDIRECT_URI` are configured. The callback/token exchange and invoice/payment-link creation intentionally return scaffold responses until a client’s QuickBooks credentials, company authorization, token storage policy, and payment-link behavior are approved. Retell must not claim a QuickBooks link was sent unless the provider is connected and the backend returns a real link.
+The connect route builds an Intuit OAuth URL with the accounting scope when `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, and `QUICKBOOKS_REDIRECT_URI` are configured. The callback/token exchange and invoice/payment-link creation intentionally return scaffold responses until a client’s QuickBooks credentials, company authorization, token storage policy, and payment-link behavior are approved. Retell must not claim a QuickBooks link was sent unless the provider is connected in payment-enabled mode and the backend returns a real link.
 
 ## Stripe setup
 
@@ -328,21 +364,21 @@ Configure voicemail detection with action `hangup`. The setup payload also reque
 
 Dynamic variables:
 
-`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `amount_due_spoken`, `original_due_date`, `original_due_date_spoken`, `original_due_date_display`, `service_description`, `invoice_id`, `invoice_id_spoken`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `open_invoice_count_spoken`, `total_amount_due`, `total_amount_due_spoken`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `call_purpose`, `demo_call_mode`, `previous_call_date_spoken`, `followup_reason`, `prior_concern_note`, `preferred_payment_method`, `customer_phone_spoken`, `customer_email`, `customer_email_display`, `customer_email_spoken`, `callback_scheduled_for_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`.
+`business_name`, `agent_display_name`, `ai_disclosure_policy`, `ai_disclosure_instruction`, `customer_first_name`, `customer_last_name`, `amount_due`, `amount_due_spoken`, `original_due_date`, `original_due_date_spoken`, `original_due_date_display`, `inspection_type`, `expected_payment_date_spoken`, `days_after_inspection_first_call`, `very_overdue_threshold_days`, `very_overdue`, `service_description`, `invoice_id`, `invoice_id_spoken`, `payment_link`, `attempt_number`, `business_callback_number`, `human_transfer_number`, `timezone`, `open_invoice_count`, `open_invoice_count_spoken`, `total_amount_due`, `total_amount_due_spoken`, `oldest_invoice_date_spoken`, `most_recent_invoice_date_spoken`, `selected_invoice_is_most_recent`, `last_payment_date_spoken`, `call_purpose`, `demo_call_mode`, `previous_call_date_spoken`, `followup_reason`, `prior_concern_note`, `preferred_payment_method`, `customer_phone_spoken`, `customer_email`, `customer_email_display`, `customer_email_spoken`, `callback_scheduled_for_spoken`, `email_on_file`, `mailing_instructions_available`, `payment_mailing_instructions`, `payment_provider`, `quickbooks_connected`, `manual_payment_followup_required`.
 
-The upgraded flow introduces Paul with a service-first opening, natural spoken dates, configurable `after_identity|on_request|opening` AI disclosure, elevator service-issue/manual-review handling, one helpful objection clarification, account-level invoice context, mail-check handling, and a signed `schedule-callback` tool. Callback phrases are normalized in the recipient timezone, confirmed before storage, and never auto-executed.
+The upgraded flow introduces Sophia with an inspection-invoice opening, natural spoken dates, configurable `after_identity|on_request|opening` AI disclosure, inspection-report/manual-review handling, one helpful objection clarification, account-level invoice context, mail-check handling, expected-payment-date notes, and a signed `schedule-callback` tool. Callback phrases are normalized in the recipient timezone, confirmed before storage, and never auto-executed.
 
 Presentation speech rules:
 
 - Dates sent to Retell use `May 20, twenty twenty-six` style phrasing. Display dates can still use `May 20, 2026`.
 - U.S. phone numbers sent to Retell omit “plus one” and are spoken as area code, exchange, and line number.
 - Emails sent to Retell use spoken-safe text such as `elixisagency at gmail dot com`; dashboard and email bodies still use the normal display address.
-- Paul uses “virtual assistant” once after identity/service check when the policy requires disclosure. If asked whether he is AI or a robot, he answers honestly.
-- If asked “How are you?”, Paul replies briefly and continues the call.
-- If payment is refused, Paul asks once: “May I ask the reason, so I can note it correctly for the team?” He classifies the answer and stops after one clarification.
-- If the caller is no longer responsible for payments, Paul asks who handles payments now, collects name/phone/email if offered, confirms the details, logs `responsible_party_update_requested`, and creates manual follow-up. He does not transfer by default.
-- If the caller asks for Mike, Sarah, or another named person, Paul logs `named_contact_requested` and creates manual follow-up instead of transferring by default.
-- For scam concern, wrong amount, already paid, and last-payment questions, Paul uses only trusted account context. If the data is unavailable, he says so and offers details/team follow-up. He never invents payment history.
+- Sophia uses “virtual assistant” once after identity confirmation when the policy requires disclosure. If asked whether she is AI or a robot, she answers honestly.
+- If asked “How are you?”, Sophia replies briefly and continues the call.
+- If payment is refused, Sophia asks once: “May I ask the reason, so I can note it correctly for the team?” She classifies the answer and stops after one clarification.
+- If the caller is no longer responsible for payments, Sophia asks who handles payments now, collects name/phone/email if offered, confirms the details, logs `responsible_party_update_requested`, and creates manual follow-up. She does not transfer by default.
+- If the caller asks for Mike, Sarah, or another named person, Sophia logs `named_contact_requested` and creates manual follow-up instead of transferring by default.
+- For scam concern, wrong amount, already paid, and last-payment questions, Sophia uses only trusted account context. If the data is unavailable, she says so and offers details/team follow-up. She never invents payment history.
 - Normal terminal paths use the final-check sequence. Hard terminal paths such as stop-calling, attorney, wrong number, hostile requests, or clear-end requests acknowledge, log/pause as needed, and end without the extra “anything else” question.
 
 Set `HUMAN_TRANSFER_NUMBER` only after verifying ownership and live transfer behavior. If absent, the tool logs `human_requested` and the agent must end with a team-follow-up message.
