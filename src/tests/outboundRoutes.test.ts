@@ -136,6 +136,17 @@ describe("outbound webhook contracts", () => {
     expect(callbackMigration).toContain("'callback_scheduled'");
     expect(callbackMigration).toContain("enable row level security");
     expect(callbackMigration).not.toMatch(/^create policy/gm);
+    const inspectionMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260624_outbound_inspection_productization.sql"),
+      "utf8",
+    );
+    expect(inspectionMigration).toContain("product_type");
+    expect(inspectionMigration).toContain("default_inspection_type");
+    expect(inspectionMigration).toContain("expected_payment_date");
+    expect(inspectionMigration).toContain("'quickbooks_read_only'");
+    expect(inspectionMigration).toContain("enable row level security");
+    expect(inspectionMigration).toContain("revoke all on public.outbound_businesses from anon, authenticated");
+    expect(inspectionMigration).not.toMatch(/^create policy/gm);
   });
 
   it("accepts a signed Retell webhook and rejects an invalid signature", async () => {

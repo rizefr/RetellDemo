@@ -56,7 +56,7 @@ export function outboundAiDisclosureInstruction(policy: unknown, businessName = 
   if (policy === "on_request") {
     return "Do not mention or volunteer AI status unless the person explicitly asks whether you are AI, automated, or a robot. If asked, answer honestly.";
   }
-  return `After confirming identity and after the elevator operation check, say only once: "I'm a virtual assistant helping ${safeBusinessName} follow up on service accounts." Then continue naturally into the service and invoice details. If asked whether you are AI or a robot, answer honestly.`;
+  return `After confirming identity, say only once: "I'm a virtual assistant helping ${safeBusinessName} with invoice follow-up." Then continue naturally into the inspection invoice details. If asked whether you are AI or a robot, answer honestly.`;
 }
 
 function demoCallMode(value: unknown): string {
@@ -284,7 +284,14 @@ export async function startOutboundCall(
     context.invoice.preferred_payment_method || context.customer.payment_contact_preference || "none",
   );
   const paymentProvider = String(context.business.payment_provider || "stripe");
-  const quickBooksConnected = Boolean(context.business.quickbooks_connected);
+  const quickBooksConnected =
+    Boolean(context.business.quickbooks_connected) &&
+    ["quickbooks", "quickbooks_payment_link_enabled"].includes(paymentProvider);
+  const inspectionType = String(context.invoice.inspection_type || context.business.default_inspection_type || "Category 1");
+  const daysAfterInspection = Number(context.business.days_after_inspection_first_call ?? 14);
+  const veryOverdueThreshold = Number(context.business.very_overdue_threshold_days ?? 45);
+  const dueDate = DateTime.fromISO(String(context.invoice.original_due_date || ""), { zone: "utc" });
+  const overdueDays = dueDate.isValid ? Math.max(0, Math.floor((now.getTime() - dueDate.toJSDate().getTime()) / 86_400_000)) : 0;
   const dynamicVariables = {
     business_name: String(context.business.business_name),
     customer_first_name: String(context.customer.first_name),
@@ -305,7 +312,7 @@ export async function startOutboundCall(
     business_callback_number: String(context.business.callback_number || env.BUSINESS_CALLBACK_NUMBER || ""),
     human_transfer_number: String(context.business.human_transfer_number || env.HUMAN_TRANSFER_NUMBER || ""),
     timezone: String(context.customer.timezone || context.business.default_timezone || "America/New_York"),
-    agent_display_name: String(context.business.agent_display_name || "Paul"),
+    agent_display_name: String(context.business.agent_display_name || "Sophia"),
     ai_disclosure_policy: String(context.business.ai_disclosure_policy || "after_identity"),
     ai_disclosure_instruction: outboundAiDisclosureInstruction(
       context.business.ai_disclosure_policy,
@@ -335,6 +342,11 @@ export async function startOutboundCall(
       "",
     ),
     previous_call_date_spoken: formatOutboundDateSpoken(String(context.invoice.previous_call_date || ""), ""),
+    expected_payment_date_spoken: formatOutboundDateSpoken(String(context.invoice.expected_payment_date || ""), ""),
+    inspection_type: inspectionType,
+    days_after_inspection_first_call: String(daysAfterInspection),
+    very_overdue_threshold_days: String(veryOverdueThreshold),
+    very_overdue: String(overdueDays >= veryOverdueThreshold),
     followup_reason: String(context.invoice.followup_reason || ""),
     prior_concern_note: String(context.invoice.prior_concern_note || ""),
     preferred_payment_method: preferredPaymentMethod,
@@ -347,7 +359,11 @@ export async function startOutboundCall(
     payment_mailing_instructions: String(context.business.payment_mailing_instructions || ""),
     payment_provider: paymentProvider,
     quickbooks_connected: String(quickBooksConnected),
-    manual_payment_followup_required: String(paymentProvider === "manual" || (paymentProvider === "quickbooks" && !quickBooksConnected)),
+    manual_payment_followup_required: String(
+      paymentProvider === "manual" ||
+        paymentProvider === "quickbooks_read_only" ||
+        (["quickbooks", "quickbooks_payment_link_enabled"].includes(paymentProvider) && !quickBooksConnected),
+    ),
   };
 
   try {

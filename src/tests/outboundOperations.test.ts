@@ -196,7 +196,11 @@ describe("outbound browser operation safety", () => {
     expect(createPhoneCall).toHaveBeenCalledWith(
       expect.objectContaining({
         retell_llm_dynamic_variables: expect.objectContaining({
-          agent_display_name: "Paul",
+          agent_display_name: "Sophia",
+          inspection_type: "Category 1",
+          days_after_inspection_first_call: "14",
+          very_overdue_threshold_days: "45",
+          expected_payment_date_spoken: "",
           original_due_date_spoken: "May 20, twenty twenty-six",
           original_due_date_display: "May 20, 2026",
           amount_due_spoken: "one hundred fifty dollars",
@@ -235,6 +239,7 @@ describe("outbound browser operation safety", () => {
           currency: "usd",
           original_due_date: "2026-05-20",
           service_description: "annual elevator inspection",
+          inspection_type: "Category 5",
           demo_call_mode: "follow_up",
           previous_call_date: "2026-06-19",
           followup_reason: "customer asked for a later follow-up",
@@ -255,6 +260,10 @@ describe("outbound browser operation safety", () => {
         business: {
           id: "00000000-0000-4000-8000-000000000001",
           business_name: "Hudson Lift Services",
+          agent_display_name: "Sophia",
+          product_type: "elevator_inspection",
+          days_after_inspection_first_call: 14,
+          very_overdue_threshold_days: 45,
           default_timezone: "America/New_York",
           ai_disclosure_policy: "after_identity",
         },
@@ -295,6 +304,10 @@ describe("outbound browser operation safety", () => {
         to_number: "+15551234567",
         retell_llm_dynamic_variables: expect.objectContaining({
           business_name: "Hudson Lift Services",
+          agent_display_name: "Sophia",
+          inspection_type: "Category 5",
+          days_after_inspection_first_call: "14",
+          very_overdue_threshold_days: "45",
           call_purpose: "follow_up",
           demo_call_mode: "follow_up",
           customer_phone_spoken: "five five five, one two three, four five six seven",

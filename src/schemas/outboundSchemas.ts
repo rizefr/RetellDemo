@@ -113,7 +113,12 @@ export const businessSettingsPatchSchema = z
     email_from: z.string().max(300).nullable().optional(),
     email_test_recipient_allowlist: z.array(z.string().email()).max(25).optional(),
     callback_rules: z.record(z.string(), z.unknown()).optional(),
-    payment_provider: z.enum(["stripe", "quickbooks", "manual"]).optional(),
+    product_type: z.enum(["elevator_inspection", "elevator_service"]).optional(),
+    default_inspection_type: z.enum(["Category 1", "Category 5", "Acceptance Test", "Periodic Inspection"]).optional(),
+    days_after_inspection_first_call: z.number().int().min(0).max(365).optional(),
+    very_overdue_threshold_days: z.number().int().min(1).max(365).optional(),
+    retell_voice_id: z.string().max(100).nullable().optional(),
+    payment_provider: z.enum(["stripe", "quickbooks", "quickbooks_read_only", "quickbooks_payment_link_enabled", "manual"]).optional(),
     production_mode_confirmation: z.string().max(100).optional(),
     batch_limit_confirmation: z.string().max(100).optional(),
   })
@@ -174,6 +179,8 @@ export const demoDetailsPatchSchema = z
     preferred_email: z.string().email().or(z.literal("")).optional(),
     preferred_phone_number: z.string().regex(/^\+[1-9]\d{7,14}$/).or(z.literal("")).optional(),
     payment_mailing_instructions: z.string().max(2000).nullable().optional(),
+    inspection_type: z.enum(["Category 1", "Category 5", "Acceptance Test", "Periodic Inspection"]).optional(),
+    expected_payment_date: z.string().min(8).max(20).nullable().optional(),
   })
   .strict();
 

@@ -79,7 +79,7 @@ describe("outbound AI disclosure instruction", () => {
   it("turns each configured policy into one unambiguous per-call instruction", () => {
     expect(outboundAiDisclosureInstruction("on_request")).toContain("Do not mention or volunteer AI status");
     expect(outboundAiDisclosureInstruction("opening")).toContain("near the opening");
-    expect(outboundAiDisclosureInstruction("after_identity")).toContain("after the elevator operation check");
+    expect(outboundAiDisclosureInstruction("after_identity")).toContain("After confirming identity");
     expect(outboundAiDisclosureInstruction("after_identity")).toContain("only once");
     expect(outboundAiDisclosureInstruction("after_identity")).toContain("virtual assistant");
     expect(outboundAiDisclosureInstruction("after_identity")).not.toContain("AI assistant helping Elixis Elevator Systems follow up on service accounts. Then continue");
@@ -193,12 +193,32 @@ describe("downloadable setup templates", () => {
     expect(customers).toContain("customer_id,first_name,last_name,phone_number");
     expect(customers).toContain("last_payment_date,open_invoice_count,total_amount_due");
     expect(business).toContain("business_name,industry,default_timezone,business_callback_number");
-    expect(business).toContain("agent_display_name,ai_disclosure_policy,payment_mailing_instructions");
+    expect(business).toContain("agent_display_name,product_type,default_inspection_type");
+    expect(business).toContain("ai_disclosure_policy,payment_provider,payment_mailing_instructions");
     expect(parseOutboundBusinessCsv(business).errors).toEqual([]);
     expect(parseOutboundBusinessCsv(business).rows[0]).toMatchObject({
       business_name: "Elixis Elevator Systems",
-      agent_display_name: "Paul",
+      agent_display_name: "Sophia",
       ai_disclosure_policy: "after_identity",
+      product_type: "elevator_inspection",
+      days_after_inspection_first_call: 14,
+      very_overdue_threshold_days: 45,
+      payment_provider: "stripe",
     });
+  });
+
+  it("accepts future-ready payment provider modes without enabling QuickBooks writes", () => {
+    expect(
+      validateOutboundBusinessSettingsPatch(
+        { payment_provider: "quickbooks_read_only" },
+        {},
+      ).payment_provider,
+    ).toBe("quickbooks_read_only");
+    expect(
+      validateOutboundBusinessSettingsPatch(
+        { payment_provider: "quickbooks_payment_link_enabled" },
+        {},
+      ).payment_provider,
+    ).toBe("quickbooks_payment_link_enabled");
   });
 });

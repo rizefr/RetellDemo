@@ -268,7 +268,11 @@ async function renderSettings() {
   const business = selectedBusiness();
   if (!business) return;
   document.getElementById("setting-business-name").value = business.business_name || "";
-  document.getElementById("setting-agent-name").value = business.agent_display_name || "Paul";
+  document.getElementById("setting-agent-name").value = business.agent_display_name || "Sophia";
+  document.getElementById("setting-product-type").value = business.product_type || "elevator_inspection";
+  document.getElementById("setting-default-inspection-type").value = business.default_inspection_type || "Category 1";
+  document.getElementById("setting-inspection-followup-days").value = business.days_after_inspection_first_call ?? 14;
+  document.getElementById("setting-very-overdue-days").value = business.very_overdue_threshold_days ?? 45;
   document.getElementById("setting-timezone").value = business.default_timezone || "America/New_York";
   document.getElementById("setting-disclosure").value = business.ai_disclosure_policy || "after_identity";
   document.getElementById("setting-payment-provider").value = business.payment_provider || "stripe";
@@ -306,6 +310,10 @@ async function saveSettings() {
   const payload = {
     business_name: document.getElementById("setting-business-name").value.trim(),
     agent_display_name: document.getElementById("setting-agent-name").value.trim(),
+    product_type: document.getElementById("setting-product-type").value,
+    default_inspection_type: document.getElementById("setting-default-inspection-type").value,
+    days_after_inspection_first_call: Number(document.getElementById("setting-inspection-followup-days").value),
+    very_overdue_threshold_days: Number(document.getElementById("setting-very-overdue-days").value),
     default_timezone: document.getElementById("setting-timezone").value.trim(),
     ai_disclosure_policy: document.getElementById("setting-disclosure").value,
     payment_provider: document.getElementById("setting-payment-provider").value,
@@ -351,6 +359,8 @@ function populateDemoEditor(invoice) {
   document.getElementById("demo-external-invoice-id").value = invoice.invoice_id || "";
   document.getElementById("demo-amount-due").value = invoice.amount_due_cents === undefined ? "" : (Number(invoice.amount_due_cents) / 100).toFixed(2);
   document.getElementById("demo-original-due-date").value = invoice.original_due_date || "";
+  document.getElementById("demo-inspection-type").value = invoice.inspection_type || business.default_inspection_type || "Category 1";
+  document.getElementById("demo-expected-payment-date").value = invoice.expected_payment_date || "";
   document.getElementById("demo-service-description").value = invoice.service_description || "";
   document.getElementById("demo-previous-call-date").value = invoice.previous_call_date || "";
   document.getElementById("demo-preferred-payment-method").value = invoice.preferred_payment_method || customer.payment_contact_preference || "none";
@@ -446,6 +456,8 @@ async function saveDemoDetails() {
         email: document.getElementById("demo-customer-email").value.trim(),
         business_name: document.getElementById("demo-business-name").value.trim(),
         service_description: document.getElementById("demo-service-description").value.trim(),
+        inspection_type: document.getElementById("demo-inspection-type").value,
+        expected_payment_date: document.getElementById("demo-expected-payment-date").value.trim() || null,
         amount_due: document.getElementById("demo-amount-due").value.trim(),
         original_due_date: document.getElementById("demo-original-due-date").value.trim(),
         external_invoice_id: document.getElementById("demo-external-invoice-id").value.trim(),
