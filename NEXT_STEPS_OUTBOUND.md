@@ -5,8 +5,10 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version: V38 after the low-volume ambient/tool-wait bridge publish.
-- Voice and pacing: `11labs-Gilfoy`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
+- Latest verified Retell version: V42 after the elevator-inspection Sophia/Sloane publish.
+- Active product resource: `Elevator Inspection Collections — Sophia`, voice `11labs-Sloane`, spoken name `Sophia`.
+- Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
+- Voice and pacing: `11labs-Sloane`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was tested against GPT-4.1 on the same V33 Retell native scenarios. It did not clearly improve reliability and was slower in the observed batch, so GPT-4.1 remains the selected demo model.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
@@ -20,21 +22,22 @@ Current Retell settings to preserve for the elevator demo:
 - agent `agent_4aa8074d7eabe311109ed6da89`
 - flow `conversation_flow_bebdceabc801`
 - model GPT-4.1
-- voice `11labs-Gilfoy`
+- voice `11labs-Sloane`
+- spoken name `Sophia`
 - voice model ElevenLabs Flash v2.5
 - speed `0.88`
 - first-message delay `1000 ms`
 - ambient sound `call-center` at low volume `0.18`
 - wrapped signed tools with `args_at_root` disabled
 
-Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. To switch back to Paul, change the voice in Retell to `11labs-Paul` or run a confirmed publish with `OUTBOUND_RETELL_VOICE_ID=11labs-Paul`. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
+Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. Keep the inspection product on `11labs-Sloane` unless a new voice is intentionally selected and tested. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
 Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is currently cheaper per standard LLM minute than GPT-4.1, but the V33 simulation comparison did not show a demo-quality improvement. Re-test GPT-5.1 only if Retell releases a lower-latency setting or if GPT-4.1 starts missing tool/final-check behavior.
 
 ## QuickBooks Future Connection
 
-QuickBooks is scaffolded only. Do not create live QuickBooks payment links until a business authorizes its QuickBooks Online company and the token-storage policy is reviewed. Stripe remains the default provider for the elevator demo.
+QuickBooks is scaffolded only. Do not create live QuickBooks payment links until a business authorizes its QuickBooks Online company and the token-storage policy is reviewed. Stripe remains the default provider for the elevator inspection demo.
 
 Required env vars:
 
@@ -50,17 +53,32 @@ After receiving a client’s QuickBooks account details:
 1. Create or select the Intuit app in the client-approved workspace.
 2. Add the production callback URL.
 3. Store client ID/secret in Vercel, not in browser settings.
-4. Use `/api/outbound/quickbooks/connect` to start OAuth.
-5. Implement token exchange/storage for the returned `code` and `realmId`.
-6. Read back connection status in `/outbound`.
-7. Implement invoice lookup/payment-link creation for the connected realm.
-8. Update Retell wording so Paul says “QuickBooks payment link” only when the backend returns a real link.
+4. Confirm the business wants `quickbooks_read_only` discovery/sync mode or `quickbooks_payment_link_enabled` mode.
+5. Use `/api/outbound/quickbooks/connect` to start OAuth.
+6. Implement token exchange/storage for the returned `code` and `realmId`.
+7. Read back connection status in `/outbound`.
+8. Map the client’s inspection types from QuickBooks invoice fields: Category 1, Category 5, Acceptance Test, Periodic Inspection, or their local naming.
+9. Implement invoice lookup/payment-link creation for the connected realm only after explicit approval.
+10. Update Retell wording so Sophia says “QuickBooks payment link” only when the backend returns a real link.
 
 Future implementation prompt:
 
 ```text
 Complete the QuickBooks Online connection for the existing outbound B2B invoice demo. Preserve Stripe as fallback, preserve all Retell safety gates, implement Intuit OAuth token exchange/storage for the approved business only, fetch or create invoice-specific QuickBooks payment links, keep no verbal card collection, and verify with QuickBooks sandbox before any production business account.
 ```
+
+## Future Client Intake Checklist
+
+For an elevator inspection company, collect:
+
+1. Business display name and preferred outbound caller name.
+2. Inspection types used in invoices: Category 1, Category 5, Acceptance Test, Periodic Inspection, and any local labels.
+3. Normal first follow-up timing after inspection; the demo default is 14 days.
+4. Very-overdue threshold; the demo default is 45 days.
+5. Whether they send payment links through Stripe, QuickBooks, manual invoices, or another provider.
+6. Sender email/domain and whether Resend or another email provider is approved.
+7. SMS preference and Retell SMS subscription/number readiness, if they want text later.
+8. QuickBooks company/realm access, Intuit app client ID/secret, redirect URI, sandbox vs production, desired scopes, invoice fields, and payment-link workflow.
 
 ## If Resend Or Email Fails
 
