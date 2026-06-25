@@ -485,6 +485,7 @@ button {
 }
 
 .agency-console,
+.payment-console,
 .service-hero-panel,
 .visibility-panel {
   border: 1px solid var(--line);
@@ -497,7 +498,8 @@ button {
   backdrop-filter: blur(18px);
 }
 
-.agency-console {
+.agency-console,
+.payment-console {
   overflow: hidden;
 }
 
@@ -623,6 +625,147 @@ button {
   flex: 0 0 auto;
   color: var(--gold-400);
   margin-top: 0.22rem;
+}
+
+.payment-console-body {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.invoice-card,
+.call-flow-card,
+.dashboard-strip article,
+.problem-grid article,
+.use-case-grid article,
+.comparison-card,
+.systems-panel article,
+.founder-card,
+.founder-story,
+.faq-list details {
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+}
+
+.invoice-card,
+.call-flow-card {
+  border-radius: 24px;
+  padding: 22px;
+}
+
+.invoice-card {
+  background:
+    linear-gradient(145deg, rgba(199,156,90,0.11), rgba(255,255,255,0.04)),
+    radial-gradient(circle at 86% 0%, rgba(58,125,255,0.16), transparent 16rem);
+}
+
+.invoice-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.invoice-card-top span,
+.mini-label,
+.dashboard-strip span,
+.problem-grid span,
+.systems-panel span {
+  color: rgba(222,182,117,0.88);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.invoice-card-top strong {
+  color: var(--ivory-100);
+  font-size: clamp(2.2rem, 4vw, 3.55rem);
+  letter-spacing: -0.075em;
+  line-height: 0.92;
+}
+
+.invoice-card p,
+.call-flow-card p,
+.dashboard-strip small {
+  color: var(--silver-300);
+}
+
+.invoice-card p {
+  margin: 8px 0 18px;
+}
+
+.invoice-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.invoice-status-grid span {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 12px;
+  color: rgba(248,244,235,0.78);
+  background: rgba(2,9,20,0.22);
+  line-height: 1.42;
+}
+
+.invoice-status-grid b {
+  display: block;
+  color: var(--gold-400);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.call-flow-card ol {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.call-flow-card li {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.call-flow-card strong {
+  color: var(--ivory-100);
+  font-weight: 650;
+}
+
+.call-flow-card span {
+  color: var(--silver-300);
+}
+
+.dashboard-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dashboard-strip article {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.dashboard-strip strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--ivory-100);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.dashboard-strip small {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .demo-console,
@@ -1092,6 +1235,82 @@ button {
   margin-top: auto;
 }
 
+.problem-grid,
+.use-case-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.problem-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.problem-grid article,
+.use-case-grid article {
+  border-radius: 24px;
+  padding: 24px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.problem-grid article:first-child {
+  grid-column: span 2;
+  background:
+    linear-gradient(145deg, rgba(199,156,90,0.1), rgba(255,255,255,0.04)),
+    radial-gradient(circle at 90% 0%, rgba(58,125,255,0.12), transparent 16rem);
+}
+
+.problem-grid article:hover,
+.use-case-grid article:hover,
+.systems-panel article:hover,
+.founder-card:hover,
+.founder-story:hover,
+.faq-list details:hover,
+.comparison-card:hover {
+  border-color: rgba(222,182,117,0.28);
+  background-color: rgba(255,255,255,0.06);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+  transform: translateY(-3px);
+}
+
+.problem-grid h3,
+.use-case-grid strong {
+  color: var(--ivory-100);
+}
+
+.problem-grid h3 {
+  margin: 1rem 0 0.65rem;
+  font-size: 1.18rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
+}
+
+.problem-grid p {
+  margin: 0;
+  color: var(--silver-300);
+  line-height: 1.7;
+}
+
+.use-case-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.use-case-grid article {
+  min-height: 210px;
+  display: grid;
+  align-content: space-between;
+}
+
+.use-case-grid strong {
+  font-size: 1.08rem;
+  font-weight: 650;
+}
+
+.use-case-grid span {
+  color: var(--silver-300);
+  line-height: 1.68;
+}
+
 .text-link {
   display: inline-flex;
   align-items: center;
@@ -1172,6 +1391,201 @@ button {
 .proof-list a {
   color: var(--gold-400);
   text-underline-offset: 0.18em;
+}
+
+.comparison-section {
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 22% 36%, rgba(58,125,255,0.16), transparent 25rem),
+    radial-gradient(circle at 82% 60%, rgba(199,156,90,0.12), transparent 22rem);
+}
+
+.comparison-grid,
+.about-grid,
+.faq-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(22px, 4vw, 42px);
+  align-items: stretch;
+}
+
+.comparison-card {
+  border-radius: 30px;
+  padding: clamp(24px, 3.2vw, 38px);
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.comparison-card-active {
+  border-color: rgba(222,182,117,0.28);
+  background:
+    linear-gradient(145deg, rgba(199,156,90,0.11), rgba(255,255,255,0.045)),
+    radial-gradient(circle at 90% 0%, rgba(58,125,255,0.14), transparent 16rem);
+}
+
+.comparison-card h2 {
+  margin: 0;
+  color: var(--ivory-100);
+  font-size: clamp(2rem, 3.6vw, 3.35rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1.04;
+}
+
+.comparison-card ul {
+  display: grid;
+  gap: 12px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comparison-card li {
+  display: flex;
+  gap: 10px;
+  color: var(--silver-300);
+  line-height: 1.65;
+}
+
+.comparison-card li::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin-top: 0.55rem;
+  border-radius: 999px;
+  background: var(--gold-400);
+  box-shadow: 0 0 18px rgba(222,182,117,0.35);
+}
+
+.systems-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.systems-panel article {
+  border-radius: 24px;
+  padding: 22px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.systems-panel strong {
+  display: block;
+  margin-top: 0.7rem;
+  color: var(--ivory-100);
+  font-size: 1.14rem;
+  line-height: 1.35;
+}
+
+.systems-panel p {
+  margin: 0.7rem 0 0;
+  color: var(--silver-300);
+  line-height: 1.68;
+}
+
+.about-grid {
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
+  align-items: center;
+}
+
+.founder-card,
+.founder-story {
+  border-radius: 30px;
+  padding: clamp(24px, 3.2vw, 36px);
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.founder-card {
+  background:
+    linear-gradient(145deg, rgba(199,156,90,0.12), rgba(255,255,255,0.04)),
+    radial-gradient(circle at 90% 8%, rgba(58,125,255,0.14), transparent 16rem);
+}
+
+.founder-card h2,
+.founder-story h2 {
+  margin: 1rem 0 0;
+  color: var(--ivory-100);
+  font-size: clamp(2.2rem, 4vw, 3.8rem);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+}
+
+.founder-card p,
+.founder-story p {
+  color: var(--silver-300);
+  line-height: 1.75;
+}
+
+.founder-contact {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.founder-contact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gold-400);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.founder-contact span {
+  color: rgba(248,244,235,0.7);
+  font-size: 0.92rem;
+}
+
+.founder-story p {
+  margin: 1.15rem 0 0;
+}
+
+.faq-grid {
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+}
+
+.faq-list {
+  display: grid;
+  gap: 12px;
+}
+
+.faq-list details {
+  border-radius: 20px;
+  padding: 0 20px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.faq-list summary {
+  cursor: pointer;
+  color: var(--ivory-100);
+  font-weight: 650;
+  list-style: none;
+  padding: 18px 0;
+}
+
+.faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-list summary::after {
+  content: "+";
+  float: right;
+  color: var(--gold-400);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-left: 16px;
+}
+
+.faq-list details[open] summary::after {
+  content: "-";
+}
+
+.faq-list p {
+  margin: 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 0 0 18px;
+  color: var(--silver-300);
+  line-height: 1.72;
 }
 
 .service-hero-panel,
@@ -1514,6 +1928,12 @@ button {
   line-height: 1.65;
 }
 
+.booking-link-panel p a {
+  color: var(--gold-400);
+  font-weight: 700;
+  text-underline-offset: 0.18em;
+}
+
 .cal-inline {
   min-height: 720px;
   overflow: hidden;
@@ -1705,7 +2125,10 @@ button {
   .audit-grid,
   .final-grid,
   .process-grid,
-  .proof-grid {
+  .proof-grid,
+  .comparison-grid,
+  .about-grid,
+  .faq-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1727,8 +2150,14 @@ button {
   .service-grid,
   .primary-service-grid,
   .support-service-grid,
-  .collections-timeline {
+  .collections-timeline,
+  .problem-grid,
+  .use-case-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .problem-grid article:first-child {
+    grid-column: span 2;
   }
 
   .support-service-grid {
@@ -1800,8 +2229,17 @@ button {
   .primary-service-grid,
   .collections-timeline,
   .data-list,
-  .proof-list article {
+  .proof-list article,
+  .problem-grid,
+  .use-case-grid,
+  .invoice-status-grid,
+  .dashboard-strip,
+  .call-flow-card li {
     grid-template-columns: 1fr;
+  }
+
+  .problem-grid article:first-child {
+    grid-column: auto;
   }
 
   .agency-console-top,
@@ -1867,6 +2305,18 @@ button {
     align-items: stretch;
     flex-direction: column;
     padding: 22px;
+  }
+
+  .comparison-card,
+  .founder-card,
+  .founder-story {
+    border-radius: 24px;
+  }
+
+  .faq-list summary::after {
+    float: none;
+    display: inline-block;
+    margin-left: 10px;
   }
 
   .retell-dialog iframe {
