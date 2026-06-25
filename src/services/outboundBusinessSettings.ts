@@ -18,7 +18,12 @@ export type OutboundBusinessSettingsPatch = {
   email_from?: string | null;
   email_test_recipient_allowlist?: string[];
   callback_rules?: Record<string, unknown>;
-  payment_provider?: "stripe" | "quickbooks" | "manual";
+  product_type?: "elevator_inspection" | "elevator_service";
+  default_inspection_type?: "Category 1" | "Category 5" | "Acceptance Test" | "Periodic Inspection";
+  days_after_inspection_first_call?: number;
+  very_overdue_threshold_days?: number;
+  retell_voice_id?: string | null;
+  payment_provider?: "stripe" | "quickbooks" | "quickbooks_read_only" | "quickbooks_payment_link_enabled" | "manual";
 };
 
 function e164(value: string): boolean {
@@ -43,6 +48,22 @@ export function validateOutboundBusinessSettingsPatch(
   }
   if (patch.test_phone_allowlist?.some((phone) => !e164(phone))) {
     throw new Error("Every test allowlist phone number must use E.164 format.");
+  }
+  if (
+    patch.days_after_inspection_first_call !== undefined &&
+    (!Number.isInteger(patch.days_after_inspection_first_call) ||
+      patch.days_after_inspection_first_call < 0 ||
+      patch.days_after_inspection_first_call > 365)
+  ) {
+    throw new Error("Days after inspection before first call must be an integer from 0 through 365.");
+  }
+  if (
+    patch.very_overdue_threshold_days !== undefined &&
+    (!Number.isInteger(patch.very_overdue_threshold_days) ||
+      patch.very_overdue_threshold_days < 1 ||
+      patch.very_overdue_threshold_days > 365)
+  ) {
+    throw new Error("Very-overdue threshold must be an integer from 1 through 365.");
   }
   if (patch.callback_number && !e164(patch.callback_number)) throw new Error("Callback number must use E.164 format.");
   if (patch.human_transfer_number && !e164(patch.human_transfer_number)) {

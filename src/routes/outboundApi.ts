@@ -342,6 +342,15 @@ outboundApiRouter.patch("/demo-details", async (req, res) => {
     const normalizedPreviousCallDate =
       input.previous_call_date === null ? null : input.previous_call_date ? normalizeOutboundDate(input.previous_call_date) : undefined;
     if (input.previous_call_date && !normalizedPreviousCallDate) throw new Error("Previous call date must be YYYY-MM-DD or YYYYMMDD.");
+    const normalizedExpectedPaymentDate =
+      input.expected_payment_date === null
+        ? null
+        : input.expected_payment_date
+          ? normalizeOutboundDate(input.expected_payment_date)
+          : undefined;
+    if (input.expected_payment_date && !normalizedExpectedPaymentDate) {
+      throw new Error("Expected payment date must be YYYY-MM-DD or YYYYMMDD.");
+    }
     const updated = await updateOutboundDemoDetails({
       businessId: input.business_id,
       customerId: input.customer_id,
@@ -365,6 +374,8 @@ outboundApiRouter.patch("/demo-details", async (req, res) => {
         amount_due_cents: parseDollarsToCents(input.amount_due),
         original_due_date: normalizedOriginalDueDate,
         service_description: input.service_description,
+        inspection_type: input.inspection_type,
+        expected_payment_date: normalizedExpectedPaymentDate,
         demo_call_mode: input.demo_call_mode,
         previous_call_date: normalizedPreviousCallDate,
         followup_reason: input.followup_reason,

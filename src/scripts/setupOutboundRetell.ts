@@ -134,7 +134,7 @@ function resolveOutboundVoice(existingAgent: unknown): {
       : "";
   if (dashboardVoice) return { voiceId: dashboardVoice, source: "current_dashboard" };
 
-  return { voiceId: "11labs-Paul", source: "default_fallback" };
+  return { voiceId: "11labs-Sloane", source: "default_fallback" };
 }
 
 async function updateExistingOutboundAgent(
