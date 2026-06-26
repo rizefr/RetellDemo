@@ -10,7 +10,7 @@
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
 - Voice and pacing: `11labs-Sloane`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was tested against GPT-4.1 on the same V33 Retell native scenarios. It did not clearly improve reliability and was slower in the observed batch, so GPT-4.1 remains the selected demo model.
-- Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths log/pause as needed and end directly.
+- Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths are limited to explicit do-not-contact, attorney, wrong number, or hostile requests and end directly. Polite goodbyes must not be classified as do-not-contact.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
 - Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
 - SMS remains disabled/manual. QuickBooks remains scaffold-only.
@@ -32,8 +32,11 @@ Current Retell settings to preserve for the elevator demo:
 
 Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. Keep the inspection product on `11labs-Sloane` unless a new voice is intentionally selected and tested. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
 Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
+Use one bridge line for a whole payment-link delivery sequence. Do not say a second “one moment” line between creating the payment link and sending email or SMS.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is currently cheaper per standard LLM minute than GPT-4.1, but the V33 simulation comparison did not show a demo-quality improvement. Re-test GPT-5.1 only if Retell releases a lower-latency setting or if GPT-4.1 starts missing tool/final-check behavior.
+
+See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
 
 ## QuickBooks Future Connection
 

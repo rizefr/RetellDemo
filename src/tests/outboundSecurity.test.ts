@@ -102,7 +102,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("email_missing");
     expect(serialized).toContain("Elixis Elevator Systems");
     expect(serialized).toContain("Hi, this is {{agent_display_name}} from {{business_name}}, your elevator inspection company. Is this {{customer_first_name}}?");
-    expect(serialized).toContain("Our records show the {{inspection_type}} invoice is overdue");
+    expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
     expect(serialized).toContain("Do you have an estimated payment date, or is there anything preventing payment right now?");
     expect(serialized).toContain("We value our relationship and want to avoid any interruption in service or delays with future inspection filings");
@@ -141,9 +141,9 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Do not leave a confirmed email preference as a future team delivery when send_payment_email is available");
     expect(serialized).toContain("\\\"sent\\\":true");
     expect(serialized).toContain("\\\"status\\\":\\\"email_sent\\\"");
-    expect(serialized).toContain("I sent the secure payment link to {{customer_email_spoken}}");
+    expect(serialized).toContain("I sent the secure payment link to {{customer_email_spoken_slow}}");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
-    expect(serialized).toContain("State the service, natural due date, and selected balance before any payment tool");
+    expect(serialized).toContain("State the inspection type, inspection date, and selected balance before any payment tool");
     expect(serialized).toContain("amount_due_spoken");
     expect(serialized).toContain("total_amount_due_spoken");
     expect(serialized).toContain("invoice_id_spoken");
@@ -169,8 +169,15 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Payment provider: {{payment_provider}}");
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
     expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
-    expect(serialized).toContain("Is {{customer_email_spoken}} still the best email for the secure payment link?");
-    expect(serialized).toContain("Is elixisagency at gmail dot com still the best email for the secure payment link?");
+    expect(serialized).toContain("Customer email spoken slowly");
+    expect(serialized).toContain("Is {{customer_email_spoken_slow}} still the best email for the secure payment link?");
+    expect(serialized).toContain("Is e-l-i-x-i-s agency at gmail dot com still the best email for the secure payment link?");
+    expect(serialized).toContain("Use one bridge line for the whole payment-link delivery sequence");
+    expect(serialized).not.toContain("One moment while I send that.");
+    expect(serialized).toContain("Inspection date: {{inspection_date_spoken}}");
+    expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
+    expect(serialized).toContain("Do not treat goodbye, bye, no thanks, that's all, have a good day, or a polite call ending as do_not_contact.");
+    expect(serialized).toContain("Only explicit opt-out phrases such as stop calling, don't call me again, or remove me from your call list trigger do_not_contact.");
     expect(serialized).toContain("May I ask the reason, so I can note it correctly for the team?");
     expect(serialized).toContain("I'm doing well, thanks for asking.");
     expect(serialized).toContain("Who is the best person for payments now?");
