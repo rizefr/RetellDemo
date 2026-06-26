@@ -134,6 +134,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"human_unavailable_terminal_example"');
     expect(serialized).toContain("your next action must be the schedule_callback tool");
     expect(serialized).toContain('"id":"outbound_normal_terminal_final_check"');
+    expect(serialized).toContain('"id":"outbound_polite_final_check_end_edge"');
     expect(serialized).toContain('"id":"outbound_hard_terminal_end"');
     expect(serialized).toContain("Is there anything else I can help you with?");
     expect(serialized).toContain("Have a good day. Goodbye");
@@ -179,6 +180,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("Do not treat goodbye, bye, no thanks, that's all, have a good day, or a polite call ending as do_not_contact.");
     expect(serialized).toContain("Only explicit opt-out phrases such as stop calling, don't call me again, or remove me from your call list trigger do_not_contact.");
+    expect(serialized).toContain("the caller replies with no, goodbye, bye, no thanks, that's all, or another polite no-further-help ending");
     expect(serialized).toContain("May I ask the reason, so I can note it correctly for the team?");
     expect(serialized).toContain("I'm doing well, thanks for asking.");
     expect(serialized).toContain("Who is the best person for payments now?");

@@ -311,6 +311,14 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           },
         },
         {
+          id: "outbound_polite_final_check_end_edge",
+          destination_node_id: "outbound_terminal_end",
+          transition_condition: {
+            type: "prompt",
+            prompt: "Transition here only when the immediately preceding assistant turn already asked exactly \"Is there anything else I can help you with?\" and the caller replies with no, goodbye, bye, no thanks, that's all, or another polite no-further-help ending. Do not use for explicit stop-calling, wrong number, attorney, or hostile requests.",
+          },
+        },
+        {
           id: "outbound_hard_terminal_edge",
           destination_node_id: "outbound_hard_terminal_end",
           transition_condition: {
