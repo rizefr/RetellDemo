@@ -159,6 +159,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("This isolated final-check node owns defensive terminal logging, the goodbye, and hangup");
     expect(JSON.stringify(mainNode)).toContain("end_polite_final_check_call");
     expect(JSON.stringify(mainNode)).toContain("Use only after the assistant has already asked: Is there anything else I can help you with?");
+    expect(JSON.stringify(mainNode)).toContain("end_hard_terminal_call_from_main");
+    expect(JSON.stringify(mainNode)).toContain("Use only after explicit do-not-contact, attorney represented, wrong number, or hostile/abusive hard terminal outcome has already been acknowledged and logged.");
     expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');
     expect(JSON.stringify(finalCheckNode)).toContain("end_final_check_call");
     expect(JSON.stringify(finalCheckNode)).toContain('"tool_ids":["outbound_log_outcome"]');

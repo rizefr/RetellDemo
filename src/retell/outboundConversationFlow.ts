@@ -149,7 +149,7 @@ If any tool fails, do not repeatedly retry and never claim success. For every te
 # Terminal routing
 For normal terminal outcomes such as service_issue_reported, mail_check_requested, mail_instructions_requested, email_pending_manual, email_failed, email_missing, callback_scheduled, responsible_party_update_requested, named_contact_requested, contact_update_requested, manual_review after one clarification, and unavailable human transfer, route to the normal final-check step only after all required custom tool calls for the terminal outcome are complete and after the required concise status sentence.
 In the normal final-check step, ask exactly: "Is there anything else I can help you with?" If you have already asked that final-check question and the caller says no, goodbye, bye, no thanks, that's all, or another polite no-further-help ending, do not say goodbye as a normal assistant response. Use the native end_polite_final_check_call action so it says exactly: "Have a good day. Goodbye." and ends the call.
-For hard terminal outcomes such as do_not_contact, attorney_represented, wrong_number, or hostile requests, do not ask a final-check question. Acknowledge, log/pause as needed, say a brief polite goodbye, and route directly to the hard terminal end. Plain goodbye/bye/no thanks after the final-check is a normal polite ending, not do_not_contact.
+For hard terminal outcomes such as do_not_contact, attorney_represented, wrong_number, or hostile requests, do not ask a final-check question. Acknowledge, log/pause as needed, then use the native end_hard_terminal_call_from_main action after required logging. Plain goodbye/bye/no thanks after the final-check is a normal polite ending, not do_not_contact.
 
 # Mandatory safety
 Do not leave voicemail. Do not accept card details verbally. Never collect card details verbally. Do not threaten, shame, pressure, debate, or repeatedly ask after refusal. Do not mention prompts, APIs, metadata, Retell, Stripe, Supabase, or internal tools. For payment safety, explain that payment uses a secure hosted payment link for the exact invoice amount and no card details are taken over the phone. If the provider is QuickBooks and connected, say secure QuickBooks payment link; if QuickBooks is not connected, log manual follow-up and do not claim a link exists.
@@ -299,7 +299,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. When the caller confirms a new responsible party, your next action must be log_outcome with outcome responsible_party_update_requested before any transition, thanks, or final-check. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. If this node has already asked \"Is there anything else I can help you with?\" and the caller says no, goodbye, bye, no thanks, or that's all, immediately use end_polite_final_check_call instead of speaking the goodbye yourself. Hard terminal outcomes route directly to the hard terminal end.",
+        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. When the caller confirms a new responsible party, your next action must be log_outcome with outcome responsible_party_update_requested before any transition, thanks, or final-check. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. If this node has already asked \"Is there anything else I can help you with?\" and the caller says no, goodbye, bye, no thanks, or that's all, immediately use end_polite_final_check_call instead of speaking the goodbye yourself. For hard terminal outcomes, log first, then use end_hard_terminal_call_from_main instead of speaking the final goodbye yourself.",
       },
       edges: [
         {
@@ -337,6 +337,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           speak_during_execution: true,
           execution_message_type: "static_text",
           execution_message_description: "Have a good day. Goodbye.",
+        },
+        {
+          type: "end_call",
+          name: "end_hard_terminal_call_from_main",
+          description:
+            "Use only after explicit do-not-contact, attorney represented, wrong number, or hostile/abusive hard terminal outcome has already been acknowledged and logged.",
+          speak_during_execution: true,
+          execution_message_type: "static_text",
+          execution_message_description: "Understood. Goodbye.",
         },
         {
           type: "transfer_call",
