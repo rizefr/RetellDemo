@@ -3,9 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>document.documentElement.classList.add("js");</script>
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="description" content="Book an Elixis AI Audit to identify the business workflow most worth improving first." />
+    <meta name="description" content="Book an Elixis AI Audit to identify the first workflow worth automating, from payment outreach to AI receptionist intake and custom systems." />
     <title>Book an AI Audit | Elixis Agency</title>
+    <link rel="canonical" href="https://elixis.agency/booking/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Book an AI Audit | Elixis Agency" />
+    <meta property="og:description" content="Start with one workflow, clear guardrails, and a practical automation plan before anything goes live." />
+    <meta property="og:url" content="https://elixis.agency/booking/" />
+    <meta property="og:image" content="https://elixis.agency/images/elixis-logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Book an AI Audit | Elixis Agency" />
+    <meta name="twitter:description" content="A focused consultation for payment outreach, call intake, visibility, or custom workflow automation." />
     <link rel="icon" href="/images/elixis-phoenix.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,169 +26,18 @@
     <link href="/styles.css" rel="stylesheet" />
     <script src="/site-config.js?v=elixis-services-20260618" defer></script>
     <script src="/site.js?v=elixis-services-20260618" defer></script>
-    <style>
-      body {
-        min-height: 100dvh;
-      }
-
-      .booking-page-shell {
-        width: min(100% - 32px, 1100px);
-        margin: 0 auto;
-        padding: 20px 0 32px;
-      }
-
-      .booking-page-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        min-height: 64px;
-      }
-
-      .booking-page-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        color: var(--ivory-100);
-        font-size: 0.9rem;
-        font-weight: 700;
-        text-decoration: none;
-      }
-
-      .booking-page-brand img {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        object-fit: cover;
-        box-shadow: 0 0 28px rgba(199, 156, 90, 0.2);
-      }
-
-      .booking-page-back {
-        color: rgba(248, 244, 235, 0.72);
-        font-size: 0.86rem;
-        font-weight: 600;
-        text-decoration: none;
-      }
-
-      .booking-page-back:hover {
-        color: var(--gold-400);
-      }
-
-      .booking-page-nav {
-        display: flex;
-        align-items: center;
-        gap: 22px;
-      }
-
-      .booking-page-nav .services-popover {
-        right: 0;
-        left: auto;
-      }
-
-      .booking-page-heading {
-        max-width: 720px;
-        margin: 32px auto 26px;
-        text-align: center;
-      }
-
-      .booking-page-heading h1 {
-        margin: 0;
-        font-size: clamp(2.25rem, 4.7vw, 4rem);
-        font-weight: 700;
-        letter-spacing: -0.045em;
-        line-height: 1.04;
-      }
-
-      .booking-page-heading p {
-        margin: 16px auto 0;
-        color: var(--silver-300);
-        line-height: 1.8;
-      }
-
-      .booking-page-panel {
-        overflow: hidden;
-        border: 1px solid var(--line);
-        border-radius: 28px;
-        padding: 12px;
-        background:
-          linear-gradient(145deg, rgba(7, 20, 39, 0.8), rgba(3, 10, 21, 0.92)),
-          radial-gradient(circle at 78% 18%, rgba(58, 125, 255, 0.18), transparent 20rem);
-        box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38);
-      }
-
-      .booking-page-panel .cal-inline {
-        min-height: 720px;
-      }
-
-      .booking-page-fallback {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px;
-        color: var(--silver-300);
-        font-size: 0.86rem;
-      }
-
-      @media (max-width: 640px) {
-        .booking-page-shell {
-          width: min(100% - 20px, 1100px);
-          padding-top: 10px;
-        }
-
-        .booking-page-header {
-          min-height: 56px;
-        }
-
-        .booking-page-nav {
-          gap: 12px;
-        }
-
-        .booking-page-nav .services-popover {
-          position: fixed;
-          top: 70px;
-          right: 10px;
-          left: 10px;
-          width: auto;
-          transform: none;
-        }
-
-        .booking-page-heading {
-          margin-top: 26px;
-        }
-
-        .booking-page-heading p {
-          font-size: 0.95rem;
-        }
-
-        .booking-page-panel {
-          border-radius: 20px;
-          padding: 6px;
-        }
-
-        .booking-page-panel .cal-inline {
-          min-height: 780px;
-        }
-
-        .booking-page-fallback {
-          align-items: stretch;
-          flex-direction: column;
-          text-align: center;
-        }
-      }
-    </style>
   </head>
   <body>
     <div class="page-shell">
-      <main class="booking-page-shell">
-        <header class="booking-page-header">
-          <a class="booking-page-brand" href="/" aria-label="Return to Elixis Agency">
-            <img src="/images/elixis-phoenix.png" alt="" width="240" height="216" />
+      <header class="site-header">
+        <nav class="section-wrap nav-shell" aria-label="Primary navigation">
+          <a href="/" class="brand-link" aria-label="Elixis Agency home">
+            <img src="/images/elixis-phoenix.png" class="brand-mark" alt="" />
             <span>Elixis Agency</span>
           </a>
-          <div class="booking-page-nav">
-            <details class="services-menu booking-services-menu">
-              <summary class="booking-page-back service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+          <div class="nav-links">
+            <details class="services-menu">
+              <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
               <div class="services-popover" aria-label="Elixis AI services">
                 <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
                 <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
@@ -186,13 +45,67 @@
                 <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
               </div>
             </details>
-            <a class="booking-page-back" href="/">Home</a>
+            <a class="nav-link" href="/#how-it-works">How it works</a>
+            <a class="nav-link" href="/#about">Founder</a>
           </div>
-        </header>
+          <a href="/booking/" class="button button-primary nav-cta" aria-current="page">Book an AI Audit</a>
+          <button data-menu-button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+          </button>
+        </nav>
+        <div data-mobile-menu class="section-wrap mobile-menu hidden">
+          <details class="services-menu services-menu-mobile">
+            <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
+            <div class="services-popover" aria-label="Elixis AI services">
+              <a href="/collections/"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
+              <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
+              <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
+              <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+            </div>
+          </details>
+          <a class="nav-link" href="/#how-it-works">How it works</a>
+          <a class="nav-link" href="/#about">Founder</a>
+          <a href="/booking/" class="button button-primary" aria-current="page">Book an AI Audit</a>
+        </div>
+      </header>
+
+      <main class="booking-page-shell">
 
         <section class="booking-page-heading" aria-labelledby="booking-page-title">
+          <p class="kicker">First step · Elixis AI Audit</p>
           <h1 id="booking-page-title">Book an AI Audit</h1>
-          <p>We’ll identify whether Elixis Collect, Intake, Visibility, or a custom Elixis System is the best first move for your business.</p>
+          <p>We identify the first workflow worth improving, define the guardrails, and decide whether Elixis Collect, Intake, Visibility, or a custom Elixis System is the right starting point.</p>
+        </section>
+
+        <section class="booking-audit-grid" aria-label="What the AI Audit covers">
+          <article>
+            <span>01</span>
+            <h2>Find the workflow with the clearest payoff</h2>
+            <p>Bring unpaid invoices, missed-call issues, lead capture gaps, service routing problems, or a repetitive admin process. We will focus on the part that wastes the most time first.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h2>Define what stays human</h2>
+            <p>The goal is not to replace your team or rebuild everything at once. We set scripts, pause rules, escalation paths, and review points before any workflow goes live.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h2>Pressure-test fit, cost, and complexity</h2>
+            <p>We look at data sources, integrations, call volume, customer expectations, and operational risk so the first system is practical instead of overbuilt.</p>
+          </article>
+        </section>
+
+        <section class="booking-objection-panel" aria-labelledby="audit-questions">
+          <div>
+            <p class="kicker">What we will clarify</p>
+            <h2 id="audit-questions">A useful audit answers the questions owners usually have before automation.</h2>
+          </div>
+          <div class="audit-question-grid">
+            <article><strong>Will this replace staff?</strong><span>No. The first system should support your team and surface exceptions clearly.</span></article>
+            <article><strong>Do we need a full rebuild?</strong><span>No. We start with one workflow and expand only if the first test proves useful.</span></article>
+            <article><strong>Can customers test it safely?</strong><span>Scripts, call paths, and edge cases are reviewed before live use.</span></article>
+            <article><strong>What if our system is unusual?</strong><span>Custom workflow mapping is available when Collect or Intake is not the right fit.</span></article>
+          </div>
         </section>
 
         <section class="booking-page-panel" aria-label="Elixis Agency booking calendar">
@@ -209,6 +122,27 @@
           </div>
         </section>
       </main>
+
+      <footer class="footer">
+        <div class="section-wrap footer-grid">
+          <div>
+            <a href="/" class="brand-link"><img src="/images/elixis-phoenix.png" class="brand-mark" alt="" /><span>Elixis Agency</span></a>
+            <p>Elixis AI systems for payment follow-up, customer intake, visibility, and custom business workflows.</p>
+          </div>
+          <div><h3>Services</h3><a href="/collections/">Elixis Collect</a><a href="/demo/">Elixis Intake</a><a href="/ai-seo/">Elixis Visibility</a><a href="/#custom-workflows">Elixis Systems</a><a href="/booking/">Start with an AI Audit</a></div>
+          <div class="footer-contact">
+            <h3>Contact</h3>
+            <span>Contact phone</span>
+            <a href="tel:+18603851624" data-config-href="CONTACT_PHONE">+1 (860) 385-1624</a>
+            <span>Agency email</span>
+            <a href="mailto:help@elixis.agency">help@elixis.agency</a>
+            <span>Founder email</span>
+            <a href="mailto:elr234@cornell.edu">elr234@cornell.edu</a>
+            <a href="https://cal.com/elixisagency/15min" data-config-href="BOOKING_URL" target="_blank" rel="noreferrer">Open booking page</a>
+          </div>
+        </div>
+        <div class="section-wrap footer-bottom">© 2026 Elixis Agency. All rights reserved.</div>
+      </footer>
     </div>
   </body>
 </html>
