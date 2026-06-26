@@ -75,6 +75,44 @@ export function formatOutboundEmailSpoken(value: string | null | undefined): str
     .trim();
 }
 
+function spellEmailLocalToken(token: string): string {
+  if (!token) return "";
+  if (/^\d+$/.test(token)) return token.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join("-");
+  if (/^[a-z]+$/.test(token)) {
+    if (token.endsWith("agency") && token.length > "agency".length) {
+      const prefix = token.slice(0, -"agency".length);
+      return `${prefix.split("").join("-")} agency`;
+    }
+    return token.split("").join("-");
+  }
+  return token;
+}
+
+export function formatOutboundEmailSpokenSlow(value: string | null | undefined): string {
+  const input = String(value ?? "").trim().toLowerCase();
+  if (!input) return "email unavailable";
+  const [local, domain = ""] = input.split("@");
+  const spokenLocal = local
+    .split(/([._+-])/)
+    .filter(Boolean)
+    .map((part) => {
+      if (part === ".") return "dot";
+      if (part === "_") return "underscore";
+      if (part === "+") return "plus";
+      if (part === "-") return "dash";
+      return spellEmailLocalToken(part);
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const spokenDomain = domain
+    .replace(/\./g, " dot ")
+    .replace(/-/g, " dash ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [spokenLocal || "email", spokenDomain ? `at ${spokenDomain}` : ""].filter(Boolean).join(" ");
+}
+
 export function normalizeOutboundDate(value: string | null | undefined): string | null {
   const input = String(value ?? "").trim();
   if (!input) return null;

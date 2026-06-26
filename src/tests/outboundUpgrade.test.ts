@@ -3,6 +3,7 @@ import {
   formatOutboundDate,
   formatOutboundDateSpoken,
   formatOutboundEmailSpoken,
+  formatOutboundEmailSpokenSlow,
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
@@ -71,6 +72,15 @@ describe("outbound speech-safe invoice formatting", () => {
     expect(formatOutboundEmailSpoken("elixisagency@gmail.com")).toBe("elixisagency at gmail dot com");
     expect(formatOutboundEmailSpoken("billing.team+demo@elixis.agency")).toBe(
       "billing dot team plus demo at elixis dot agency",
+    );
+  });
+
+  it("formats email addresses for deliberate letter-by-letter confirmation", () => {
+    expect(formatOutboundEmailSpokenSlow("elixisagency@gmail.com")).toBe(
+      "e-l-i-x-i-s agency at gmail dot com",
+    );
+    expect(formatOutboundEmailSpokenSlow("billing.team+demo@elixis.agency")).toBe(
+      "b-i-l-l-i-n-g dot t-e-a-m plus d-e-m-o at elixis dot agency",
     );
   });
 });

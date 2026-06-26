@@ -23,6 +23,7 @@ import {
   formatOutboundDateSpoken,
   formatOutboundDateTime,
   formatOutboundEmailSpoken,
+  formatOutboundEmailSpokenSlow,
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
@@ -288,6 +289,7 @@ export async function startOutboundCall(
     Boolean(context.business.quickbooks_connected) &&
     ["quickbooks", "quickbooks_payment_link_enabled"].includes(paymentProvider);
   const inspectionType = String(context.invoice.inspection_type || context.business.default_inspection_type || "Category 1");
+  const inspectionDateRaw = String(context.invoice.inspection_date || context.invoice.original_due_date || "");
   const daysAfterInspection = Number(context.business.days_after_inspection_first_call ?? 14);
   const veryOverdueThreshold = Number(context.business.very_overdue_threshold_days ?? 45);
   const dueDate = DateTime.fromISO(String(context.invoice.original_due_date || ""), { zone: "utc" });
@@ -304,6 +306,8 @@ export async function startOutboundCall(
     original_due_date: String(context.invoice.original_due_date),
     original_due_date_spoken: formatOutboundDateSpoken(String(context.invoice.original_due_date)),
     original_due_date_display: formatOutboundDate(String(context.invoice.original_due_date)),
+    inspection_date_spoken: formatOutboundDateSpoken(inspectionDateRaw),
+    inspection_date_display: formatOutboundDate(inspectionDateRaw),
     service_description: String(context.invoice.service_description),
     invoice_id: String(context.invoice.invoice_id),
     invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.invoice_id)),
@@ -354,6 +358,7 @@ export async function startOutboundCall(
     customer_email: preferredEmail,
     customer_email_display: preferredEmail,
     customer_email_spoken: formatOutboundEmailSpoken(preferredEmail),
+    customer_email_spoken_slow: formatOutboundEmailSpokenSlow(preferredEmail),
     email_on_file: String(Boolean(preferredEmail)),
     mailing_instructions_available: String(Boolean(context.business.payment_mailing_instructions)),
     payment_mailing_instructions: String(context.business.payment_mailing_instructions || ""),
