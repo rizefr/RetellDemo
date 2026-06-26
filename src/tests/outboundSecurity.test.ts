@@ -75,6 +75,7 @@ describe("outbound flow guardrails", () => {
       "utf8",
     );
     const envConfig = fs.readFileSync(path.resolve(process.cwd(), "src/config/env.ts"), "utf8");
+    const envExample = fs.readFileSync(path.resolve(process.cwd(), ".env.example"), "utf8");
     const flow = buildOutboundConversationFlow("https://example.com");
     const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
     const finalCheckNode = flow.nodes.find((node) => node.id === "outbound_normal_terminal_final_check");
@@ -197,6 +198,9 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).toContain('ambient_sound: "call-center"');
     expect(setupScript).toContain("ambient_sound_volume: 0.18");
     expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
+    expect(envConfig).toContain('OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Sophia")');
+    expect(envExample).toContain("OUTBOUND_RETELL_AGENT_NAME=Elevator Inspection Collections — Sophia");
+    expect(envExample).not.toContain("OUTBOUND_RETELL_AGENT_NAME=Outbound B2B Invoice Collections Demo");
     expect(setupScript).toContain("preserves the current dashboard voice");
     expect(setupScript).toContain("current_dashboard");
   });
