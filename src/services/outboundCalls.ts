@@ -54,7 +54,7 @@ export function outboundAiDisclosureInstruction(policy: unknown, businessName = 
   if (policy === "opening") {
     return "Disclose naturally near the opening that you are an AI voice assistant.";
   }
-  if (policy === "on_request") {
+  if (policy === "on_request" || !policy) {
     return "Do not mention or volunteer AI status unless the person explicitly asks whether you are AI, automated, or a robot. If asked, answer honestly.";
   }
   return `After confirming identity, say only once: "I'm a virtual assistant helping ${safeBusinessName} with invoice follow-up." Then continue naturally into the inspection invoice details. If asked whether you are AI or a robot, answer honestly.`;
@@ -290,12 +290,16 @@ export async function startOutboundCall(
     ["quickbooks", "quickbooks_payment_link_enabled"].includes(paymentProvider);
   const inspectionType = String(context.invoice.inspection_type || context.business.default_inspection_type || "Category 1");
   const inspectionDateRaw = String(context.invoice.inspection_date || context.invoice.original_due_date || "");
+  const accountCompanyName =
+    String(context.customer.account_company_name || "").trim() ||
+    "the business account connected with this number";
   const daysAfterInspection = Number(context.business.days_after_inspection_first_call ?? 14);
   const veryOverdueThreshold = Number(context.business.very_overdue_threshold_days ?? 45);
   const dueDate = DateTime.fromISO(String(context.invoice.original_due_date || ""), { zone: "utc" });
   const overdueDays = dueDate.isValid ? Math.max(0, Math.floor((now.getTime() - dueDate.toJSDate().getTime()) / 86_400_000)) : 0;
   const dynamicVariables = {
     business_name: String(context.business.business_name),
+    account_company_name: accountCompanyName,
     customer_first_name: String(context.customer.first_name),
     customer_last_name: String(context.customer.last_name),
     amount_due: money(Number(context.invoice.amount_due_cents), String(context.invoice.currency)),
@@ -317,9 +321,9 @@ export async function startOutboundCall(
     human_transfer_number: String(context.business.human_transfer_number || env.HUMAN_TRANSFER_NUMBER || ""),
     timezone: String(context.customer.timezone || context.business.default_timezone || "America/New_York"),
     agent_display_name: String(context.business.agent_display_name || "Sophia"),
-    ai_disclosure_policy: String(context.business.ai_disclosure_policy || "after_identity"),
+    ai_disclosure_policy: String(context.business.ai_disclosure_policy || "on_request"),
     ai_disclosure_instruction: outboundAiDisclosureInstruction(
-      context.business.ai_disclosure_policy,
+      context.business.ai_disclosure_policy || "on_request",
       String(context.business.business_name || ""),
     ),
     open_invoice_count: String(account.openInvoiceCount),

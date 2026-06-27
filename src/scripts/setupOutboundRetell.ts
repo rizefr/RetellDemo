@@ -25,7 +25,7 @@ const OUTBOUND_VOICE_SETTINGS = {
   enable_backchannel: true,
   begin_message_delay_ms: 1000,
   ambient_sound: "call-center" as const,
-  ambient_sound_volume: 0.18,
+  ambient_sound_volume: 0.28,
 };
 
 const OUTBOUND_POST_CALL_ANALYSIS = [

@@ -44,6 +44,7 @@ const envSchema = z.object({
   OUTBOUND_RETELL_PHONE_NUMBER_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Sophia"),
   OUTBOUND_RETELL_VOICE_ID: z.string().optional().default(""),
+  OUTBOUND_RETELL_MODEL: z.string().optional().default(""),
   OUTBOUND_RETELL_WEBHOOK_SECRET: z.string().optional().default(""),
   OUTBOUND_RETELL_SMS_ENABLED: booleanFromString.default(false),
   OUTBOUND_RETELL_SMS_CHAT_AGENT_ID: z.string().optional().default(""),

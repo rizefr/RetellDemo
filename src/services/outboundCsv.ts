@@ -21,6 +21,7 @@ export const OUTBOUND_CSV_COLUMNS = [
 ] as const;
 
 export const OUTBOUND_OPTIONAL_CSV_COLUMNS = [
+  "account_company_name",
   "last_payment_date",
   "open_invoice_count",
   "total_amount_due",
@@ -42,6 +43,7 @@ export type OutboundCsvRow = {
   external_customer_id: string;
   first_name: string;
   last_name: string;
+  account_company_name: string;
   phone_number: string;
   email: string;
   mailing_address: string;
@@ -138,6 +140,7 @@ export function parseOutboundCsv(input: string): { rows: OutboundCsvRow[]; error
       external_customer_id: record.customer_id,
       first_name: record.first_name,
       last_name: record.last_name,
+      account_company_name: record.account_company_name || "",
       phone_number: record.phone_number,
       email: record.email,
       mailing_address: record.mailing_address,

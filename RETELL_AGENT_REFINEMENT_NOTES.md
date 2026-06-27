@@ -11,6 +11,7 @@ These notes capture the live-call fixes applied to the active inspection agent s
 - Spoken name: `Sophia`
 - Model: GPT-4.1
 - Speed/start delay: `0.88`, `1000 ms`
+- Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
 
 ## Rules To Keep
 
@@ -18,6 +19,10 @@ These notes capture the live-call fixes applied to the active inspection agent s
 - Use `customer_email_spoken_slow` when confirming an email address. Example: `elixisagency@gmail.com` becomes `e-l-i-x-i-s agency at gmail dot com`.
 - Use `inspection_date_spoken` in the trust-building invoice line. If a separate inspection date is unavailable, the backend may fall back to the invoice date.
 - Do not repeat virtual-assistant disclosure after the caller has already confirmed email/text/payment delivery.
+- Do not volunteer virtual-assistant disclosure in the normal inspection invoice flow. Use it only when the caller asks if Sophia is AI/automated, when a stricter configured policy explicitly requires it, or when scam concern makes one clear disclosure useful.
+- Use the shorter opener: “Hello, I’m calling from {{business_name}}. Is this {{customer_first_name}}?” After confirmation, continue once with Sophia’s name, business name, inspection type, inspection date, and overdue context. Do not restart the opener after confirmation.
+- If the caller says they are not the named person, ask whether this is `{{account_company_name}}` before logging wrong number. If the account/company is correct, ask for the better payment contact, collect details if offered, confirm once, and log `responsible_party_update_requested`.
+- If the caller asks “what invoice” or “what is this about,” answer directly with inspection type, inspection date, amount, and overdue status. Do not repeat disclosure or the secure-link explanation unless asked about payment security.
 - Do not repeat generic secure-link explanations after the caller confirms the delivery method. Continue with the action.
 - Use one bridge line for a payment-link delivery sequence. Say one short line such as “One moment while I pull that up,” then run the payment-link and email/text tools back-to-back.
 - Do not say a second bridge line such as “One moment while I send that” between `create_payment_link` and `send_payment_email`.
@@ -37,6 +42,7 @@ Use business-specific knowledge as context, not as authority over trusted invoic
 Initial knowledge topics:
 
 - Business name and description.
+- Account/company name for wrong-person confirmation.
 - Inspection types: Category 1, Category 5, Acceptance Test, Periodic Inspection.
 - Why the business is calling.
 - How payment links work.

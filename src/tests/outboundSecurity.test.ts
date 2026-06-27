@@ -102,13 +102,15 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("email_pending_manual");
     expect(serialized).toContain("email_missing");
     expect(serialized).toContain("Elixis Elevator Systems");
-    expect(serialized).toContain("Hi, this is {{agent_display_name}} from {{business_name}}, your elevator inspection company. Is this {{customer_first_name}}?");
+    expect(serialized).toContain("Hello, I'm calling from {{business_name}}. Is this {{customer_first_name}}?");
+    expect(serialized).toContain("Nice to meet you, {{customer_first_name}}. I'm {{agent_display_name}}, calling from {{business_name}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
     expect(serialized).toContain("Do you have an estimated payment date, or is there anything preventing payment right now?");
     expect(serialized).toContain("We value our relationship and want to avoid any interruption in service or delays with future inspection filings");
-    expect(serialized).toContain("I'm a virtual assistant helping {{business_name}} with invoice follow-up");
-    expect(serialized).toContain("This is {{business_name}}, your elevator inspection company");
+    expect(serialized).toContain("Do not mention virtual assistant or AI status automatically in the normal flow.");
+    expect(serialized).toContain("Is this {{account_company_name}}?");
+    expect(serialized).toContain("company/account confirmed");
     expect(serialized).toContain("inspection_type");
     expect(serialized).toContain("days_after_inspection_first_call");
     expect(serialized).toContain("very_overdue_threshold_days");
@@ -150,7 +152,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("total_amount_due_spoken");
     expect(serialized).toContain("invoice_id_spoken");
     expect(serialized).toContain("open_invoice_count_spoken");
-    expect(serialized).toContain("I'm a virtual assistant helping {{business_name}} with invoice follow-up");
+    expect(serialized).toContain("Yes, I'm an AI voice assistant connected to {{business_name}}'s account records to help with invoice follow-up.");
     expect(serialized).toContain("I'm following up at the time you requested about your elevator inspection invoice");
     expect(serialized).toContain("Do not direct them to make an inbound call");
     expect(serialized).not.toMatch(/call us back later|please call the office/i);
@@ -202,7 +204,8 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).toContain("voice_speed: 0.88");
     expect(setupScript).toContain("begin_message_delay_ms: 1000");
     expect(setupScript).toContain('ambient_sound: "call-center"');
-    expect(setupScript).toContain("ambient_sound_volume: 0.18");
+    expect(setupScript).toContain("ambient_sound_volume: 0.28");
+    expect(envConfig).toContain('OUTBOUND_RETELL_MODEL: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Sophia")');
     expect(envExample).toContain("OUTBOUND_RETELL_AGENT_NAME=Elevator Inspection Collections — Sophia");

@@ -362,6 +362,7 @@ outboundApiRouter.patch("/demo-details", async (req, res) => {
       customerPatch: {
         first_name: input.first_name,
         last_name: input.last_name,
+        account_company_name: blankToNull(input.account_company_name),
         phone_number: input.phone_number,
         email: blankToNull(input.email),
         preferred_email: blankToNull(input.preferred_email),
