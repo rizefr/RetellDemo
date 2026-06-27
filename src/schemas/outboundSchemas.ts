@@ -163,6 +163,7 @@ export const demoDetailsPatchSchema = z
     invoice_id: uuidSchema,
     first_name: z.string().min(1).max(100).optional(),
     last_name: z.string().min(1).max(100).optional(),
+    account_company_name: z.string().max(200).nullable().optional(),
     phone_number: z.string().regex(/^\+[1-9]\d{7,14}$/).optional(),
     email: z.string().email().or(z.literal("")).optional(),
     business_name: z.string().min(1).max(200).optional(),
