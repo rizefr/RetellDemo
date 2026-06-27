@@ -5,11 +5,11 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version before this refinement pass: V49. Re-read Retell after publishing the next version and update this line.
+- Latest verified Retell version after the live-call refinement: V53.
 - Active product resource: `Elevator Inspection Collections — Sophia`, voice `11labs-Sloane`, spoken name `Sophia`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
 - Voice and pacing: `11labs-Sloane`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
-- GPT-5.1 should be re-tested against GPT-4.1 after the wrong-person/disclosure refinement. Keep GPT-4.1 unless GPT-5.1 is equal or better on wrong-person handling, invoice-detail continuation, tool calls, final-check/end-call, and latency.
+- GPT-5.1 was re-tested against GPT-4.1 during the wrong-person/disclosure refinement. It was available and cheaper per Retell voice-agent minute, but the tested V51 batch was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in payment-refusal and service-issue paths. Keep GPT-4.1 unless a future Retell/model update clearly fixes those issues.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths are limited to explicit do-not-contact, attorney, wrong number, or hostile requests and end directly. Polite goodbyes must not be classified as do-not-contact.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
 - Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
@@ -34,7 +34,16 @@ Voice maintenance rule: the setup script preserves the current dashboard voice u
 Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
 Use one bridge line for a whole payment-link delivery sequence. Do not say a second “one moment” line between creating the payment link and sending email or SMS.
 
-Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 has been available in the SDK model list and should be compared with this refined prompt before any model switch. Do not keep GPT-4.1 by habit; keep it only if GPT-5.1 is slower, more verbose, less reliable with tools/final-checks, or otherwise worse for the demo.
+Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Sophia comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
+
+## Live-Call Refinement Notes From V53
+
+- Opening is intentionally shorter: “Hello, I’m calling from {{business_name}}. Is this {{customer_first_name}}?”
+- Normal calls should not volunteer virtual-assistant disclosure. Sophia answers honestly when asked whether she is AI, and may disclose when scam concern makes it helpful.
+- If the caller is not the named person, Sophia asks whether this is the account/company before ending. If the company is correct, she asks for the better payment contact or AP contact and logs `responsible_party_update_requested`.
+- If the caller asks what invoice or why they are getting the call, Sophia answers with inspection type, inspection date, and amount instead of restarting the opening or disclosure.
+- If the caller reports a service issue or says the inspection report looks wrong, Sophia must collect one concise issue description before logging `service_issue_reported`.
+- Polite “bye” remains a normal final-check ending. Explicit “stop calling,” “remove me from your call list,” and equivalent opt-out language are the do-not-contact path.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
 
