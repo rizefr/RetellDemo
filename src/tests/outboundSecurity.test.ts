@@ -143,6 +143,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
     expect(serialized).toContain("When sent is true, confirm delivery once and route to the normal final-check step");
     expect(serialized).toContain("Do not leave a confirmed email preference as a future team delivery when send_payment_email is available");
+    expect(serialized).toContain("If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms.");
+    expect(serialized).toContain('"id":"payment_link_failure_terminal_example"');
     expect(serialized).toContain("\\\"sent\\\":true");
     expect(serialized).toContain("\\\"status\\\":\\\"email_sent\\\"");
     expect(serialized).toContain("I sent the secure payment link to {{customer_email_spoken_slow}}");

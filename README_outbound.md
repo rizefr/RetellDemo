@@ -17,7 +17,7 @@ The business using it is responsible for establishing its right to contact each 
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
 
-## Current setup status (June 27, 2026)
+## Current setup status (June 29, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
@@ -28,7 +28,7 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
   - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
   - active inspection name: `Elevator Inspection Collections — Sophia`
-  - active verified version: V53
+  - active verified version: V55
   - active voice: `11labs-Sloane`, spoken name `Sophia`, speed `0.88`, first-message delay `1000 ms`
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
@@ -36,16 +36,19 @@ The business using it is responsible for establishing its right to contact each 
 - Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V53
+  - active verified version: V55
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
   - current voice is `11labs-Sloane`; the presentation speed is `0.88` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `0.28`, and voicemail hangup are preserved
   - Sophia speaks first with a short business-first opening, avoids repeating the opener after identity confirmation, and states the inspection type, natural date, and speech-safe amount from trusted backend variables
   - the active inspection demo uses on-request disclosure: Sophia does not volunteer “virtual assistant” in normal flow, but answers honestly if asked whether she is AI or if scam concern makes disclosure useful
-  - the live-call refinement in V53 shortened the opener, added company/account confirmation when the named person is wrong, removed forced disclosure from normal invoice-continuation paths, and requires service-issue detail before logging `service_issue_reported`
+  - the V53 live-call refinement shortened the opener, added company/account confirmation when the named person is wrong, removed forced disclosure from normal invoice-continuation paths, and requires service-issue detail before logging `service_issue_reported`
+  - the V55 refinement removed the remaining unsafe payment-link failure path: if `create_payment_link` fails, Sophia logs `payment_link_issue`, does not call email/SMS delivery tools, and does not claim delivery. It also tightened named-contact requests so `named_contact_requested` is logged before Sophia promises follow-up.
   - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `inspection_date_spoken`, `customer_phone_spoken`, `customer_email_spoken`, and `customer_email_spoken_slow` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
-- Retell V53 structural terminal routing uses normal final-check and hard-terminal end nodes. Playground smoke checks covered opening/hello, small talk, wrong-person/company confirmation, wrong company, invoice detail questions, scam concern, AI honesty, payment refusal, email delivery, SMS-disabled text preference, service issue detail capture, callback scheduling, named contact requests, responsible-party update, stop-calling, final goodbye, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes are limited to explicit stop-calling, attorney, wrong number, or hostile requests. Polite “bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings and must not be treated as do-not-contact.
+- Retell deprecated list API usage has been removed from repository code. Scripts that need inventory now use `src/retell/retellList.ts`: `POST /v2/list-agents` with `filter_criteria.channel = "voice"` and paginated `items`, and `GET /v2/list-phone-numbers` with paginated `items`. Source tests fail if legacy `GET /list-agents`, legacy `GET /list-phone-numbers`, `client.agent.list()`, `client.phoneNumber.list()`, or `pagination_key_version` reappear in `src`.
+- Retell V55 structural terminal routing uses normal final-check and hard-terminal end nodes. Playground smoke checks covered opening/hello, small talk, wrong-person/company confirmation, wrong company, invoice detail questions, scam concern, AI honesty, payment refusal, email delivery, payment-link failure, SMS-disabled text preference, service issue detail capture, callback scheduling, named contact requests, responsible-party update, stop-calling, final goodbye, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Hard terminal outcomes are limited to explicit stop-calling, attorney, wrong number, or hostile requests. Polite “bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings and must not be treated as do-not-contact.
+- A broad V55 Playground suite covered 42 identity, invoice, payment, trust/compliance, tool, and terminal scenarios. Strict automated checks passed 39/42. The remaining three were manually reviewed and accepted as expected clarifying behavior: spelling `a-p@example.com` aloud, asking when payment might be possible after cash-flow refusal, and asking for concise service-issue detail before logging. No blocking scenario failures remained after V55.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
@@ -98,13 +101,15 @@ Current production selection:
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
-GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Sophia prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for V53.
+GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Sophia prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for V55.
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
 
 If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. The setup script preserves the current Retell dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. For the inspection product, keep `11labs-Sloane` unless a new voice is intentionally selected and tested. Voice changes do not affect tools, signed request shape, dynamic variables, phone bindings, email, demo-number authorization, Stripe, or backend routes.
 
 Retell-specific call-quality rules that should be reused by the future service copy are documented in `RETELL_AGENT_REFINEMENT_NOTES.md`.
+
+The full active Sophia inspection flow is mapped in `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. Use that file before debugging Retell behavior; it lists dynamic variable sources, custom tools, terminal routes, normal and hard endings, `/outbound` connector paths, known limitations, and the current Retell API inventory rule.
 
 ## Elevator inspection product script
 
