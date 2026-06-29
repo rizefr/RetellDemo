@@ -3,6 +3,7 @@ import path from "node:path";
 import { env } from "../config/env";
 import { buildConversationFlowConfig, conversationFlowNodeGuide } from "../retell/conversationFlow";
 import { getRetellClient } from "../retell/retellClient";
+import { listRetellPhoneNumbersV2, listRetellVoiceAgentsV2 } from "../retell/retellList";
 import { validateSetupEnv } from "../services/envValidation";
 
 type AnyRecord = Record<string, any>;
@@ -436,8 +437,8 @@ async function main() {
     client.agent.retrieve(env.RETELL_AGENT_ID) as Promise<AnyRecord>,
     client.conversationFlow.retrieve(env.RETELL_CONVERSATION_FLOW_ID) as Promise<AnyRecord>,
     client.phoneNumber.retrieve(env.RETELL_PHONE_NUMBER) as Promise<AnyRecord>,
-    client.phoneNumber.list() as Promise<unknown>,
-    client.agent.list() as Promise<unknown>,
+    listRetellPhoneNumbersV2({ apiKey: env.RETELL_API_KEY }),
+    listRetellVoiceAgentsV2({ apiKey: env.RETELL_API_KEY }),
   ]);
 
   report.canonical_agent_version_before = agentBefore.version;

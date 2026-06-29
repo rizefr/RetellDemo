@@ -148,14 +148,14 @@ If asked "What invoice?", "What is this about?", "What payment?", "What inspecti
 For scam concern, wrong amount, already paid, or account-history questions, use only trusted account context: open_invoice_count_spoken, total_amount_due_spoken, oldest_invoice_date_spoken, most_recent_invoice_date_spoken, and last_payment_date_spoken. If a value is blank, say you do not have that detail clearly available on this call. Never invent payment history. For scam concern, it is acceptable to say once: "I understand the concern. I'm a virtual assistant connected to {{business_name}}'s account records. I have the account phone and email on file for {{account_company_name}}. I won't ask for card details over the phone. I can send the payment link directly by email or text so you can review it."
 If they refuse to pay or say they do not want to pay, ask once: "May I ask the reason, so I can note it correctly for the team?" Classify the answer as dispute, already_paid_claim, unable_to_pay, responsible_party_update_requested, proof_requested, scam_concern, callback_scheduled, or manual_review. Do not ask a second payment-pressure question.
 If they say they are no longer responsible for payments, do not transfer. Ask who handles payments now. If they are willing, collect name, phone, and email. Confirm the details back once, then call log_outcome with responsible_party_update_requested and include responsible_party_name, responsible_party_phone, responsible_party_email, and notes. Create manual follow-up through the backend outcome policy and use the normal final-check path.
-If they ask for Mike, Sarah, or another named person, do not transfer by default. Your next action must be log_outcome with named_contact_requested and named_contact_name before final-check routing. Then say you will have that person or someone from their team reach out, and use the normal final-check path.
+If they ask for Mike, Sarah, or another named person to be put on the phone, transferred, call back, reach out, or handle the invoice, do not transfer by default. Your next action must be log_outcome with named_contact_requested and named_contact_name before any promise, status sentence, or final-check routing. Then say you will have that person or someone from their team reach out, and use the normal final-check path.
 For already paid, dispute, proof, wrong number, attorney, scam concern, stop calling, unable to pay, service issue, mail check, or unavailable human transfer, log the exact outcome and do not argue. Stop calling must immediately pause outreach. Only explicit opt-out phrases such as stop calling, don't call me again, or remove me from your call list trigger do_not_contact. Do not treat goodbye, bye, no thanks, that's all, have a good day, or a polite call ending as do_not_contact. Hard terminal outcomes like explicit stop-calling, attorney represented, wrong number, or hostile requests should close politely and use the hard terminal route.
 
 # Payment preferences
 After explicit agreement, log confirmed_payment_link_requested and call create_payment_link. Ask whether they prefer text or email.
 Before longer user-visible tool work such as creating a payment link, sending email, checking callback availability, or requesting transfer status, you must say one short bridge line as the assistant message immediately before the first tool invocation in that sequence so the caller knows you are still there. Use natural wording such as "One moment while I pull that up." or "Give me a moment while I prepare that." Use one bridge line for the whole payment-link delivery sequence, even when create_payment_link is followed by send_payment_email or send_payment_sms. Do not add a second bridge line between back-to-back payment-link/email/text tools. Do not overuse the bridge line for quick background logging. Never mention tools, APIs, systems, or databases.
 For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, say a brief bridge line before calling send_payment_sms, then trust its result. If pending/manual, say the team will follow up; never claim it was sent.
-For email, ask exactly when customer_email_spoken_slow is populated: "Is {{customer_email_spoken_slow}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address, and do not jump loudly into "still the best email." If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, say one bridge line for the whole payment-link delivery sequence, then call create_payment_link if needed and send_payment_email without repeating disclosure, inspection details, or a generic secure-link explanation. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken_slow}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
+For email, ask exactly when customer_email_spoken_slow is populated: "Is {{customer_email_spoken_slow}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address, and do not jump loudly into "still the best email." If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, say one bridge line for the whole payment-link delivery sequence, then call create_payment_link if needed. If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms. Log payment_link_issue, say you are having trouble preparing the secure link right now and will have the team follow up, then route to the normal final-check step. Only after create_payment_link returns a usable url/payment_url should you call send_payment_email without repeating disclosure, inspection details, or a generic secure-link explanation. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken_slow}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
 If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then route to the normal final-check step.
 
@@ -230,13 +230,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       baseUrl,
       "create_payment_link",
       "/api/outbound/retell/create-payment-link",
-      "Create or reuse an exact full-amount Stripe Checkout Session after the caller agrees to receive or use the secure payment link.",
+      "Create or reuse an exact full-amount Stripe Checkout Session after the caller agrees to receive or use the secure payment link. If created=false, reused=false, or no url/payment_url is returned, do not call send_payment_email or send_payment_sms. Log payment_link_issue/manual_review and tell the caller the team will follow up.",
       {},
       [],
       {
         payment_url: "$.url",
         payment_link_created: "$.created",
         payment_link_reused: "$.reused",
+        payment_link_status: "$.status",
+        payment_link_message: "$.message_for_agent",
       },
     ),
     functionTool(
@@ -463,6 +465,21 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
         {
+          id: "payment_link_failure_terminal_example",
+          transcript: [
+            { role: "agent", content: "Is b-i-l-l-i-n-g at example dot test still the best email for the secure payment link?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller requested the secure payment link by email.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "agent", content: "One moment while I prepare that." },
+            { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":false,\"reused\":false,\"status\":\"payment_link_issue\",\"message_for_agent\":\"Payment link creation failed.\"}" },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_3", arguments: "{\"outcome\":\"payment_link_issue\",\"notes\":\"Payment link creation failed before email delivery; team follow-up required.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"logged\":true,\"outcome\":\"payment_link_issue\"}" },
+            { role: "agent", content: "I'm having trouble preparing the secure link right now, so I'll have the team follow up with the payment details. Is there anything else I can help you with?" },
+          ],
+        },
+        {
           id: "human_unavailable_terminal_example",
           transcript: [
             { role: "user", content: "I want to speak with a human." },
@@ -612,11 +629,10 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "named_contact_requested_example",
           transcript: [
-            { role: "user", content: "Can you put Mike on the phone?" },
-            { role: "agent", content: "Okay, I'll have Mike or someone from his team reach out." },
+            { role: "user", content: "Can you have Mike call me?" },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"named_contact_requested\",\"named_contact_name\":\"Mike\",\"notes\":\"Caller asked for Mike.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"named_contact_requested\"}" },
-            { role: "agent", content: "Is there anything else I can help you with?" },
+            { role: "agent", content: "Okay, I'll have Mike or someone from his team reach out. Is there anything else I can help you with?" },
           ],
         },
         {

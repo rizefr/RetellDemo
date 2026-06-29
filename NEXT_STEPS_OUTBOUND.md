@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the live-call refinement: V53.
+- Latest verified Retell version after the live-call/deprecation refinement: V55.
 - Active product resource: `Elevator Inspection Collections — Sophia`, voice `11labs-Sloane`, spoken name `Sophia`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
 - Voice and pacing: `11labs-Sloane`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
@@ -36,7 +36,15 @@ Use one bridge line for a whole payment-link delivery sequence. Do not say a sec
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Sophia comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
 
-## Live-Call Refinement Notes From V53
+## Retell API Maintenance
+
+The repo has been migrated away from Retell deprecated legacy list APIs. Do not use SDK `client.agent.list()` or legacy `GET /list-agents`; use `listRetellVoiceAgentsV2` from `src/retell/retellList.ts`, which calls `POST /v2/list-agents`, sets `filter_criteria.channel` to `voice`, reads `items`, and paginates with `pagination_key` and `has_more`. Do not use SDK `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`; use `listRetellPhoneNumbersV2`, which calls `GET /v2/list-phone-numbers` and reads paginated `items`.
+
+Never send `pagination_key_version`. The focused test `src/tests/retellListApi.test.ts` guards source code against the deprecated strings and old SDK list methods. If Retell SDK later exposes first-class non-deprecated list helpers, replace the local helpers only after this guard still passes.
+
+The active Sophia inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. Review it before changing Retell routes, dynamic variables, tools, or `/outbound` connector behavior.
+
+## Live-Call Refinement Notes Through V55
 
 - Opening is intentionally shorter: “Hello, I’m calling from {{business_name}}. Is this {{customer_first_name}}?”
 - Normal calls should not volunteer virtual-assistant disclosure. Sophia answers honestly when asked whether she is AI, and may disclose when scam concern makes it helpful.
@@ -44,6 +52,9 @@ Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is availa
 - If the caller asks what invoice or why they are getting the call, Sophia answers with inspection type, inspection date, and amount instead of restarting the opening or disclosure.
 - If the caller reports a service issue or says the inspection report looks wrong, Sophia must collect one concise issue description before logging `service_issue_reported`.
 - Polite “bye” remains a normal final-check ending. Explicit “stop calling,” “remove me from your call list,” and equivalent opt-out language are the do-not-contact path.
+- If `create_payment_link` fails, Sophia must not call email/SMS delivery tools and must not claim the secure link was sent. She logs `payment_link_issue` and routes to manual follow-up/final-check.
+- If the caller asks for a named person to call, handle the invoice, or be put on the phone, Sophia logs `named_contact_requested` before promising that person or their team will follow up.
+- The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
 

@@ -2,6 +2,8 @@
 
 These notes capture the live-call fixes applied to the active inspection agent so the future service agent can reuse them without re-discovering the same edge cases.
 
+For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. It maps Sophia's dynamic variables, tools, `/outbound` connector paths, normal and hard terminal routes, known limitations, and Retell API list-endpoint migration rules.
+
 ## Active Inspection Agent
 
 - Agent: `Elevator Inspection Collections — Sophia`
@@ -24,6 +26,7 @@ These notes capture the live-call fixes applied to the active inspection agent s
 - If the caller says they are not the named person, ask whether this is `{{account_company_name}}` before logging wrong number. If the account/company is correct, ask for the better payment contact, collect details if offered, confirm once, and log `responsible_party_update_requested`.
 - If the caller asks “what invoice” or “what is this about,” answer directly with inspection type, inspection date, amount, and overdue status. Do not repeat disclosure or the secure-link explanation unless asked about payment security.
 - Do not repeat generic secure-link explanations after the caller confirms the delivery method. Continue with the action.
+- If payment-link creation fails before email/text delivery, do not call delivery tools and do not claim delivery. Log `payment_link_issue`, say the team will follow up with payment details, and route to final-check.
 - Use one bridge line for a payment-link delivery sequence. Say one short line such as “One moment while I pull that up,” then run the payment-link and email/text tools back-to-back.
 - Do not say a second bridge line such as “One moment while I send that” between `create_payment_link` and `send_payment_email`.
 - Separate polite goodbye from do-not-contact intent. “Bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings, not opt-outs.
@@ -33,7 +36,9 @@ These notes capture the live-call fixes applied to the active inspection agent s
 - If payment is refused, ask one non-pushy clarification: “May I ask the reason, so I can note it correctly for the team?” Then classify and stop.
 - If the caller says they are no longer responsible for payments, collect the new responsible party name, phone, and email only if they are willing. Do not transfer by default.
 - If the caller asks for a named person, log `named_contact_requested` and say that person or someone from their team will follow up.
+- For named-contact requests, log before promising the follow-up. This avoids call summaries that show a follow-up promise without the backing event.
 - For service/inspection issues, collect a concise description, log `service_issue_reported`, create manual review/follow-up, and do not push payment unless the caller brings payment back up.
+- For Retell inventory scripts, do not use deprecated SDK `client.agent.list()` or legacy `GET /list-agents`, and do not use `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`. Use the local versioned helpers in `src/retell/retellList.ts`, and keep the deprecation guard test passing.
 
 ## Knowledge Base Foundation
 
