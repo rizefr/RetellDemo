@@ -8,6 +8,7 @@ import {
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
+  formatOutboundNameSpoken,
   formatOutboundPhoneSpokenChunked,
   formatOutboundPhoneSpoken,
   formatOutboundYearSpoken,
@@ -39,8 +40,16 @@ describe("outbound natural date formatting", () => {
 
   it("formats spoken years and dates without saying two thousand twenty six", () => {
     expect(formatOutboundYearSpoken(2026)).toBe("twenty twenty-six");
-    expect(formatOutboundDateSpoken("20260520")).toBe("May 20, twenty twenty-six");
-    expect(formatOutboundDateSpoken("2026-05-20")).toBe("May 20, twenty twenty-six");
+    expect(formatOutboundDateSpoken("20260520")).toBe("May twentieth, twenty twenty-six");
+    expect(formatOutboundDateSpoken("2026-05-20")).toBe("May twentieth, twenty twenty-six");
+  });
+
+  it("uses ordinal day names for spoken dates", () => {
+    expect(formatOutboundDateSpoken("2026-05-01")).toBe("May first, twenty twenty-six");
+    expect(formatOutboundDateSpoken("2026-05-02")).toBe("May second, twenty twenty-six");
+    expect(formatOutboundDateSpoken("2026-05-03")).toBe("May third, twenty twenty-six");
+    expect(formatOutboundDateSpoken("2026-05-21")).toBe("May twenty-first, twenty twenty-six");
+    expect(formatOutboundDateSpoken("2026-05-31")).toBe("May thirty-first, twenty twenty-six");
   });
 });
 
@@ -88,10 +97,10 @@ describe("outbound speech-safe invoice formatting", () => {
 
   it("formats email addresses for deliberate letter-by-letter confirmation", () => {
     expect(formatOutboundEmailSpokenSlow("elixisagency@gmail.com")).toBe(
-      "e-l-i-x-i-s agency at gmail dot com",
+      "e l i x i s agency, at gmail, dot com",
     );
     expect(formatOutboundEmailSpokenSlow("billing.team+demo@elixis.agency")).toBe(
-      "b-i-l-l-i-n-g dot t-e-a-m plus d-e-m-o at elixis dot agency",
+      "b i l l i n g, dot, t e a m, plus, d e m o, at elixis, dot agency",
     );
   });
 
@@ -102,6 +111,13 @@ describe("outbound speech-safe invoice formatting", () => {
     expect(formatOutboundEmailSpokenPhonetic("billing.team+demo@elixis.agency")).toBe(
       "b as in Bravo, i as in India, l as in Lima, l as in Lima, i as in India, n as in November, g as in Golf, dot, t as in Tango, e as in Echo, a as in Alpha, m as in Mike, plus, d as in Delta, e as in Echo, m as in Mike, o as in Oscar, at elixis dot agency",
     );
+  });
+
+  it("normalizes all-caps names for spoken Retell variables", () => {
+    expect(formatOutboundNameSpoken("YELENA")).toBe("Yelena");
+    expect(formatOutboundNameSpoken("RAYKHMAN")).toBe("Raykhman");
+    expect(formatOutboundNameSpoken("PINNACLE ELEVATOR SYSTEMS")).toBe("Pinnacle Elevator Systems");
+    expect(formatOutboundNameSpoken("AP")).toBe("AP");
   });
 });
 

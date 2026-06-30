@@ -74,13 +74,16 @@ export const retellToolEnvelopeSchema = z.object({
   args: z.record(z.string(), z.unknown()).default({}),
 });
 
+const nullableToolString = (schema: z.ZodType<string>) =>
+  z.preprocess((value) => (value === null ? undefined : value), schema.optional().default(""));
+
 export const logOutcomeArgsSchema = z.object({
   outcome: outboundOutcomeSchema,
-  notes: z.string().max(5000).optional().default(""),
-  responsible_party_name: z.string().max(200).optional().default(""),
-  responsible_party_phone: z.string().regex(/^\+[1-9]\d{7,14}$/).or(z.literal("")).optional().default(""),
-  responsible_party_email: z.string().email().or(z.literal("")).optional().default(""),
-  named_contact_name: z.string().max(200).optional().default(""),
+  notes: nullableToolString(z.string().max(5000)),
+  responsible_party_name: nullableToolString(z.string().max(200)),
+  responsible_party_phone: nullableToolString(z.string().regex(/^\+[1-9]\d{7,14}$/).or(z.literal(""))),
+  responsible_party_email: nullableToolString(z.string().email().or(z.literal(""))),
+  named_contact_name: nullableToolString(z.string().max(200)),
 });
 
 export const scheduleFollowupArgsSchema = z.object({

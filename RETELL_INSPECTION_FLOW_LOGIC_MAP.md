@@ -7,13 +7,13 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Sophia
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V56 after the Sophia voice/confirmation polish. Read back Retell before any publish.
+- Latest repo-documented verified version: V57 after the Sophia audio-stability/tool-call fix. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Sloane`
 - Spoken agent name: `Sophia`
-- Speed: `0.86`
-- First-message delay: `1000 ms`
-- Ambient sound: `call-center`, volume `0.28`
+- Speed: `0.89`
+- First-message delay: `1150 ms`
+- Ambient sound: `call-center`, volume `0.5`
 - Outbound phone: `+19842075346`
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
 
@@ -26,9 +26,12 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 | Variable | Source | Notes |
 | --- | --- | --- |
 | `business_name` | `outbound_businesses.business_name` | Default fallback exists only for empty development cases. Normal calls should have a business name. |
+| `business_name_spoken` | `business_name` through `formatOutboundNameSpoken` | Avoids all-caps or awkward source spelling in the opening. |
 | `account_company_name` | `outbound_customers.account_company_name` | Falls back to "the business account connected with this number". Used for wrong-person company confirmation. |
+| `account_company_name_spoken` | `account_company_name` through `formatOutboundNameSpoken` | Used for wrong-person/company confirmation. |
 | `agent_display_name` | `outbound_businesses.agent_display_name` | Defaults to Sophia. |
 | `customer_first_name`, `customer_last_name` | `outbound_customers` | Identity confirmation uses first name only. |
+| `customer_first_name_spoken`, `customer_last_name_spoken` | customer names through `formatOutboundNameSpoken` | Prevents all-caps names such as `YELENA` from being shouted or pitched oddly. |
 | `customer_phone_spoken` | effective destination phone | Formatted by `formatOutboundPhoneSpoken`; raw E.164 is not spoken directly. |
 | `customer_phone_spoken_chunked` | effective destination phone | Used on repeat/correction, for example “area code three four seven, then five eight five, then zero two four nine.” |
 | `customer_email_display` | preferred email, then customer email | Normal display value. |
@@ -45,6 +48,7 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 | `call_purpose`, `demo_call_mode` | follow-up task or invoice/demo authorization | Script mode is separate from invoice payment status. |
 | `payment_provider` | business setting | Stripe is current default. QuickBooks remains scaffold-only. |
 | `quickbooks_connected`, `manual_payment_followup_required` | business QuickBooks status/provider setting | Prevents claiming unsupported QuickBooks payment links. |
+| `sms_effective` | server runtime business settings | False while Retell SMS remains disabled/manual; prevents creating payment links for a text path that cannot send automatically. |
 | `mailing_instructions_available`, `payment_mailing_instructions` | business setting | Only stated if configured. |
 | `callback_scheduled_for_spoken` | selected callback follow-up task | Used by callback-follow-up calls. |
 
@@ -66,17 +70,17 @@ All custom tools are wrapped Retell requests signed by Retell. Backend endpoints
 
 ### Opening
 
-Default opening: `Hello, I'm calling from {{business_name}}. Is this {{customer_first_name}}?`
+Default opening: `Hello, I'm calling from {{business_name_spoken}}. Is this {{customer_first_name_spoken}}?`
 
 After identity confirmation, Sophia states her name, business, inspection type, inspection date, and overdue context. She does not volunteer virtual-assistant disclosure in the normal path.
 
 ### Wrong Person
 
-If the caller is not the named person, Sophia asks whether this is `{{account_company_name}}`. If yes, she asks for the better payment/AP contact, collects details if offered, confirms once, logs `responsible_party_update_requested`, creates manual-review context through outcome policy, and routes to final-check. If not the company/account, she logs `wrong_number` and hard-ends.
+If the caller is not the named person, Sophia asks whether this is `{{account_company_name_spoken}}`. If yes, she asks for the better payment/AP contact, collects details if offered, confirms once, logs `responsible_party_update_requested`, creates manual-review context through outcome policy, and routes to final-check. If not the company/account, she logs `wrong_number` and hard-ends.
 
 ### Invoice Received
 
-Sophia asks for an estimated payment date or what is preventing payment. If a date is given, she notes/stores it. If a reason is given, she classifies it without pressure.
+Sophia says `Good to hear. Would you like to take care of it now?` She does not repeat the inspection type, date, amount, or secure-link explanation unless the caller asks for invoice/payment details. If payment is declined, she asks one reason and classifies it without pressure. If a date is given, she notes/stores it.
 
 ### Invoice Not Received
 
@@ -88,7 +92,9 @@ For "what invoice", "what inspection", "why am I getting this call", Sophia answ
 
 ### Payment Preference
 
-After explicit agreement, Sophia logs `confirmed_payment_link_requested`, creates/reuses the exact Stripe link, asks text/email, confirms the spoken-safe contact value, then sends email or logs SMS manual. She uses one bridge line for the payment tool sequence. If payment-link creation fails, she logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+After explicit agreement, Sophia asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, she sends through the backend only after on-file email confirmation. For SMS-disabled text, she logs the confirmed request and calls the SMS fallback tool without creating a Stripe link first; the expected result is manual/pending. If the caller switches from text to email, Sophia confirms the email before sending. She uses one short bridge line for the payment tool sequence. If payment-link creation fails, she logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+
+`log_outcome` accepts optional unused string fields as `null` from Retell and normalizes them to blanks. This prevents a model-generated payload like `responsible_party_name:null` from causing a 400 when the outcome is unrelated to responsible-party updates.
 
 ### Payment Refusal
 

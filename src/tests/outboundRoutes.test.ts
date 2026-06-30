@@ -348,6 +348,69 @@ describe("outbound webhook contracts", () => {
     vi.resetModules();
   });
 
+  it("accepts Retell log_outcome optional fields when the model sends nulls", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-tool-api-key";
+    const recordOutboundOutcome = vi.fn().mockResolvedValue({ outreachPaused: false, invoiceStatus: null, followups: [] });
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: { id: "00000000-0000-4000-8000-000000000003", status: "unpaid" },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: { id: "00000000-0000-4000-8000-000000000001" },
+        }),
+        recordOutboundOutcome,
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "log_outcome",
+      args: {
+        outcome: "confirmed_payment_link_requested",
+        notes: "Caller agreed to pay and confirmed text delivery to the number on file.",
+        responsible_party_name: null,
+        responsible_party_phone: null,
+        responsible_party_email: null,
+        named_contact_name: null,
+      },
+      call: {
+        call_id: "call_with_null_optional_fields",
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-tool-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body.outcome).toBe("confirmed_payment_link_requested");
+    expect(recordOutboundOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: "confirmed_payment_link_requested",
+        notes: "Caller agreed to pay and confirmed text delivery to the number on file.",
+      }),
+    );
+    vi.doUnmock("../services/outboundRepository");
+    vi.resetModules();
+  });
+
   it("rejects signed root-only Retell tool args because trusted call metadata is absent", async () => {
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "retell-tool-api-key";

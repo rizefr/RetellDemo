@@ -12,13 +12,13 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Voice: `11labs-Sloane`
 - Spoken name: `Sophia`
 - Model: GPT-4.1
-- Speed/start delay: `0.86`, `1000 ms`
+- Speed/start delay: `0.89`, `1150 ms`
 - Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
 
 ## Rules To Keep
 
 - Use backend speech-safe variables for anything read aloud. Do not let Retell infer raw dates, phone numbers, email addresses, invoice IDs, or cents.
-- Use `customer_email_spoken_slow` on the first email confirmation. Example: `elixisagency@gmail.com` becomes `e-l-i-x-i-s agency at gmail dot com`.
+- Use `customer_email_spoken_slow` on the first email confirmation. Example: `elixisagency@gmail.com` becomes `e l i x i s agency, at gmail, dot com`.
 - If the caller asks Sophia to repeat the email, says it is wrong, or sounds confused, use `customer_email_spoken_phonetic` on the second readback instead of waiting for more failures. Example: “e as in Echo, l as in Lima, i as in India...”.
 - Use `customer_phone_spoken` on the first phone confirmation. If the caller asks Sophia to repeat or correct the phone number, use `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
 - If the caller corrects an email or phone number, repeat the corrected value slowly, confirm once, log `contact_update_requested`, and do not claim delivery to the corrected value unless the backend tool explicitly returns `sent:true`.
@@ -30,8 +30,12 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - If the caller asks “what invoice” or “what is this about,” answer directly with inspection type, inspection date, amount, and overdue status. Do not repeat disclosure or the secure-link explanation unless asked about payment security.
 - Do not repeat generic secure-link explanations after the caller confirms the delivery method. Continue with the action.
 - If payment-link creation fails before email/text delivery, do not call delivery tools and do not claim delivery. Log `payment_link_issue`, say the team will follow up with payment details, and route to final-check.
-- Use one bridge line for a payment-link delivery sequence. Say one short line such as “One moment while I pull that up,” then run the payment-link and email/text tools back-to-back.
+- Use one complete short bridge line for a payment-link delivery sequence. Prefer “One moment.” Then run the payment-link and email/text tools back-to-back.
 - Do not say a second bridge line such as “One moment while I send that” between `create_payment_link` and `send_payment_email`.
+- Spoken customer and business names should use `customer_first_name_spoken`, `customer_last_name_spoken`, `business_name_spoken`, and `account_company_name_spoken` so all-caps source data does not create pitch or volume spikes.
+- Spoken dates should use ordinal wording such as “May twentieth, twenty twenty-six.”
+- Retell may send unused optional tool arguments as `null`; backend schemas should accept null optional strings and normalize them to blanks instead of returning 400.
+- While SMS is disabled/manual, do not create a payment link before the SMS fallback tool and do not switch to email without confirming the email first.
 - Separate polite goodbye from do-not-contact intent. “Bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings, not opt-outs.
 - Only explicit phrases like “stop calling,” “don’t call me again,” or “remove me from your call list” should trigger `do_not_contact`.
 - Normal terminal paths route to the final-check node: “Is there anything else I can help you with?” Then the native end-call action says “Have a good day. Goodbye.”

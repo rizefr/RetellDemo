@@ -28,22 +28,23 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
   - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
   - active inspection name: `Elevator Inspection Collections — Sophia`
-  - active verified version: V56 after the Sophia voice/confirmation polish publish
-  - active voice: `11labs-Sloane`, spoken name `Sophia`, speed `0.86`, first-message delay `1000 ms`
+  - active verified version: V57 after the Sophia audio-stability/tool-call fix publish
+  - active voice: `11labs-Sloane`, spoken name `Sophia`, speed `0.89`, first-message delay `1150 ms`
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
   - preserved resources: active inspection flow, future service flow, inbound receptionist flow, single-prompt candidate agent, and patient-template flow with an agent reference
 - Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V56 after the Sophia voice/confirmation polish publish
+  - active verified version: V57 after the Sophia audio-stability/tool-call fix publish
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - current voice is `11labs-Sloane`; the presentation speed is `0.86` with a `1000 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `0.28`, and voicemail hangup are preserved
+  - current voice is `11labs-Sloane`; the presentation speed is `0.89` with a `1150 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `0.5`, and voicemail hangup are preserved
   - Sophia speaks first with a short business-first opening, avoids repeating the opener after identity confirmation, and states the inspection type, natural date, and speech-safe amount from trusted backend variables
   - the active inspection demo uses on-request disclosure: Sophia does not volunteer “virtual assistant” in normal flow, but answers honestly if asked whether she is AI or if scam concern makes disclosure useful
   - the V53 live-call refinement shortened the opener, added company/account confirmation when the named person is wrong, removed forced disclosure from normal invoice-continuation paths, and requires service-issue detail before logging `service_issue_reported`
   - the V55 refinement removed the remaining unsafe payment-link failure path: if `create_payment_link` fails, Sophia logs `payment_link_issue`, does not call email/SMS delivery tools, and does not claim delivery. It also tightened named-contact requests so `named_contact_requested` is logged before Sophia promises follow-up.
-  - server-generated `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `inspection_date_spoken`, `customer_phone_spoken`, `customer_phone_spoken_chunked`, `customer_email_spoken`, `customer_email_spoken_slow`, and `customer_email_spoken_phonetic` prevent currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
+  - server-generated `business_name_spoken`, `account_company_name_spoken`, `customer_first_name_spoken`, `customer_last_name_spoken`, `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `inspection_date_spoken`, `customer_phone_spoken`, `customer_phone_spoken_chunked`, `customer_email_spoken`, `customer_email_spoken_slow`, and `customer_email_spoken_phonetic` prevent all-caps names, currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
+  - the V57 audio-stability fix accepts Retell `log_outcome` optional string fields when the model sends `null`, preventing 400s like `ERR_BAD_REQUEST` on unused responsible-party/named-contact fields. The SMS-disabled path no longer creates a Stripe payment link before confirming SMS delivery capability, and it never switches to email without confirming the email first.
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
 - Retell deprecated list API usage has been removed from repository code. Scripts that need inventory now use `src/retell/retellList.ts`: `POST /v2/list-agents` with `filter_criteria.channel = "voice"` and paginated `items`, and `GET /v2/list-phone-numbers` with paginated `items`. Source tests fail if legacy `GET /list-agents`, legacy `GET /list-phone-numbers`, `client.agent.list()`, `client.phoneNumber.list()`, or `pagination_key_version` reappear in `src`.
@@ -95,13 +96,13 @@ Current production selection:
 - Voice: `11labs-Sloane`
 - Spoken agent name: `Sophia`
 - Voice model: ElevenLabs Flash v2.5 (`eleven_flash_v2_5`)
-- Speed: `0.86`
-- First-message delay: `1000 ms`
-- Ambient sound: `call-center` at moderate low volume (`0.28`) so longer tool waits have subtle office background instead of sounding like a dead line. Retell docs expose ambient categories, not a keyboard-only effect tied only to custom-tool execution, so Sophia uses one short bridge line such as “One moment while I pull that up” for the whole payment-link delivery sequence. Do not repeat a second bridge line between `create_payment_link` and `send_payment_email`.
+- Speed: `0.89`
+- First-message delay: `1150 ms`
+- Ambient sound: `call-center` at moderate volume (`0.5`) so longer tool waits have audible but professional office background instead of sounding like a dead line. Retell docs expose ambient categories, not a keyboard-only effect tied only to custom-tool execution, so Sophia uses one complete short bridge line such as “One moment.” for the whole payment-link delivery sequence. Do not repeat a second bridge line between `create_payment_link` and `send_payment_email`.
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
-GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Sophia prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for the V56 polish.
+GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Sophia prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for the V57 polish.
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
 
@@ -127,7 +128,7 @@ After identity confirmation:
 Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm calling to follow up and make sure it was received.
 ```
 
-Supported inspection types are `Category 1`, `Category 5`, `Acceptance Test`, and `Periodic Inspection`. The demo defaults to a first follow-up about 14 days after inspection, with a configurable very-overdue threshold currently defaulting to 45 days. If the invoice was not received, Sophia offers to resend by email or text; email can send through the verified backend provider, while text remains manual until SMS is enabled. If the invoice was received, Sophia asks for an estimated payment date or the reason preventing payment, then logs the expected payment date or classification without pressure.
+Supported inspection types are `Category 1`, `Category 5`, `Acceptance Test`, and `Periodic Inspection`. The demo defaults to a first follow-up about 14 days after inspection, with a configurable very-overdue threshold currently defaulting to 45 days. If the invoice was not received, Sophia offers to resend by email or text; email can send through the verified backend provider, while text remains manual until SMS is enabled. If the invoice was received, Sophia asks whether they would like to take care of it now without repeating invoice details. If they decline, she asks one non-pushy reason or estimated payment date, then logs the expected payment date or classification without pressure.
 
 For very overdue invoices only, Sophia may use this relationship-preserving line once after ordinary clarification fails:
 
@@ -378,9 +379,9 @@ The upgraded flow introduces Sophia with a shorter inspection-invoice opening, n
 
 Presentation speech rules:
 
-- Dates sent to Retell use `May 20, twenty twenty-six` style phrasing. Display dates can still use `May 20, 2026`.
+- Dates sent to Retell use ordinal phrasing like `May twentieth, twenty twenty-six`. Display dates can still use `May 20, 2026`.
 - U.S. phone numbers sent to Retell omit “plus one” and are spoken as area code, exchange, and line number. If the caller asks Sophia to repeat or correct the number, she uses the chunked value, for example “area code three four seven, then five eight five, then zero two four nine.”
-- Emails sent to Retell use spoken-safe text such as `elixisagency at gmail dot com`; dashboard and email bodies still use the normal display address. First email confirmation uses the slow spoken value. If the caller asks Sophia to repeat, says it is wrong, or seems confused, the second readback uses the phonetic value, for example “e as in Echo, l as in Lima...” instead of waiting for repeated failures.
+- Emails sent to Retell use spoken-safe text such as `e l i x i s agency, at gmail, dot com`; dashboard and email bodies still use the normal display address. First email confirmation uses the slow spoken value. If the caller asks Sophia to repeat, says it is wrong, or seems confused, the second readback uses the phonetic value, for example “e as in Echo, l as in Lima...” instead of waiting for repeated failures.
 - In the active inspection demo Sophia does not volunteer “virtual assistant” in the normal flow. If asked whether she is AI or a robot, she answers honestly. If scam concern is raised, she may disclose once while explaining she is connected to the business account records and will not ask for card details by phone.
 - If the caller says they are not the named person, Sophia asks whether this is the account/company on file before logging wrong number. If the company/account is correct, she asks for the better payment contact and logs `responsible_party_update_requested`.
 - If asked “How are you?”, Sophia replies briefly and continues the call.

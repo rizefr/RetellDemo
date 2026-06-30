@@ -5,6 +5,29 @@ const SMALL_NUMBERS = [
   "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
 ] as const;
 const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"] as const;
+const ORDINALS: Record<number, string> = {
+  1: "first",
+  2: "second",
+  3: "third",
+  4: "fourth",
+  5: "fifth",
+  6: "sixth",
+  7: "seventh",
+  8: "eighth",
+  9: "ninth",
+  10: "tenth",
+  11: "eleventh",
+  12: "twelfth",
+  13: "thirteenth",
+  14: "fourteenth",
+  15: "fifteenth",
+  16: "sixteenth",
+  17: "seventeenth",
+  18: "eighteenth",
+  19: "nineteenth",
+  20: "twentieth",
+  30: "thirtieth",
+};
 
 function integerToWords(value: number): string {
   const number = Math.max(0, Math.trunc(value));
@@ -24,6 +47,14 @@ function integerToWords(value: number): string {
     }
   }
   return String(number);
+}
+
+function ordinalToWords(value: number): string {
+  const normalized = Math.max(1, Math.min(31, Math.trunc(value)));
+  if (ORDINALS[normalized]) return ORDINALS[normalized];
+  const tens = Math.floor(normalized / 10) * 10;
+  const ones = normalized % 10;
+  return `${TENS[Math.floor(tens / 10)]}-${ORDINALS[ones]}`;
 }
 
 export function formatOutboundMoneySpoken(amountCents: number, currency = "usd"): string {
@@ -88,13 +119,13 @@ export function formatOutboundEmailSpoken(value: string | null | undefined): str
 
 function spellEmailLocalToken(token: string): string {
   if (!token) return "";
-  if (/^\d+$/.test(token)) return token.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join("-");
+  if (/^\d+$/.test(token)) return token.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join(" ");
   if (/^[a-z]+$/.test(token)) {
     if (token.endsWith("agency") && token.length > "agency".length) {
       const prefix = token.slice(0, -"agency".length);
-      return `${prefix.split("").join("-")} agency`;
+      return `${prefix.split("").join(" ")} agency`;
     }
-    return token.split("").join("-");
+    return token.split("").join(" ");
   }
   return token;
 }
@@ -113,15 +144,15 @@ export function formatOutboundEmailSpokenSlow(value: string | null | undefined):
       if (part === "-") return "dash";
       return spellEmailLocalToken(part);
     })
-    .join(" ")
+    .join(", ")
     .replace(/\s+/g, " ")
     .trim();
   const spokenDomain = domain
-    .replace(/\./g, " dot ")
+    .replace(/\./g, ", dot ")
     .replace(/-/g, " dash ")
     .replace(/\s+/g, " ")
     .trim();
-  return [spokenLocal || "email", spokenDomain ? `at ${spokenDomain}` : ""].filter(Boolean).join(" ");
+  return [spokenLocal || "email", spokenDomain ? `at ${spokenDomain}` : ""].filter(Boolean).join(", ");
 }
 
 const PHONETIC_ALPHABET: Record<string, string> = {
@@ -225,7 +256,22 @@ export function formatOutboundDateSpoken(value: string | null | undefined, fallb
   const normalized = normalizeOutboundDate(value);
   if (!normalized) return fallback;
   const parsed = DateTime.fromISO(normalized, { zone: "utc" });
-  return `${parsed.toFormat("LLLL d")}, ${formatOutboundYearSpoken(parsed.year)}`;
+  return `${parsed.toFormat("LLLL")} ${ordinalToWords(parsed.day)}, ${formatOutboundYearSpoken(parsed.year)}`;
+}
+
+export function formatOutboundNameSpoken(value: string | null | undefined): string {
+  const input = String(value ?? "").trim().replace(/\s+/g, " ");
+  if (!input) return "";
+  return input
+    .split(" ")
+    .map((part) => {
+      if (/^[A-Z]{2,4}$/.test(part)) return part;
+      if (/^[A-Z][A-Z'-]+$/.test(part)) {
+        return part.charAt(0) + part.slice(1).toLowerCase();
+      }
+      return part;
+    })
+    .join(" ");
 }
 
 export function formatOutboundDateTime(
