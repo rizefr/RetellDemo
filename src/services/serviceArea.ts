@@ -14,6 +14,8 @@ export interface ServiceAreaResult {
   message_for_agent: string;
 }
 
+type ServiceAreaLookupInput = Partial<CheckServiceAreaInput>;
+
 function configuredServiceArea(): string {
   const match = elijahPestControlKnowledgeBase.match(/^Service Area:\s*(.*)$/m);
   return match?.[1]?.trim().toLowerCase() ?? "";
@@ -37,7 +39,7 @@ function normalizeZip(zip: string | null | undefined): string | null {
   return digits.length === 5 ? digits : null;
 }
 
-function parseAddress(input: CheckServiceAreaInput) {
+function parseAddress(input: ServiceAreaLookupInput) {
   const address = input.address || input.property_address || input.property_street || "";
   const text = [address, input.city, input.state, input.zip_code, input.property_city, input.property_state, input.property_zip]
     .filter(Boolean)
@@ -224,7 +226,7 @@ function configuredAreaResult(parsed: ReturnType<typeof parseAddress>, location?
   return maybeResult(parsed, "location_not_clearly_listed");
 }
 
-export async function checkServiceArea(input: CheckServiceAreaInput): Promise<ServiceAreaResult> {
+export async function checkServiceArea(input: ServiceAreaLookupInput): Promise<ServiceAreaResult> {
   const parsed = parseAddress(input);
   const geocoded = parsed.normalized_address ? await geocodeAddress(parsed.normalized_address) : null;
   const enriched = geocoded
