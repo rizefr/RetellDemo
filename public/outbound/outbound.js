@@ -267,6 +267,7 @@ async function renderSettings() {
   if (previous && [...select.options].some((option) => option.value === previous)) select.value = previous;
   const business = selectedBusiness();
   if (!business) return;
+  document.getElementById("header-business-name").textContent = business.business_name || "Configured business";
   document.getElementById("setting-business-name").value = business.business_name || "";
   document.getElementById("setting-agent-name").value = business.agent_display_name || "Sophia";
   document.getElementById("setting-product-type").value = business.product_type || "elevator_inspection";
