@@ -4,7 +4,9 @@ Production backend URL: `https://elixis.agency`
 
 This registry separates Retell native tools from custom backend webhooks. Retell native tools do not have webhook URLs in this backend; they are configured inside Retell and verified by Retell readback plus live/batch testing.
 
-Current phone-bound agent: `agent_16b324c0e55f21c0a5f914c169`, version `13`.
+Current phone-bound inbound agent: `agent_16b324c0e55f21c0a5f914c169`, version `26` via `latest_published`.
+
+The inbound LLM does not attach `send_booking_sms`; SMS remains a backend route for future/other-agent use only.
 
 ## Retell Native Tools
 
@@ -22,7 +24,7 @@ Native Cal.com tools do not expose a backend “during execution feedback” web
 | Tool | Method | Production URL | Expected success shape | Safe failure wording | Status |
 | --- | --- | --- | --- | --- | --- |
 | `create_lead` | POST | `https://elixis.agency/tools/create-lead` | `{ success, persisted, lead_id, caller_phone, alternate_phone, message_for_agent }` | Continue politely and offer transfer/follow-up. | PASS |
-| `send_booking_sms` | POST | `https://elixis.agency/tools/send-booking-sms` | Simulated mode returns `{ success:true, sms_sent:false, sms_simulated:true, message_for_agent }` | Say the request was saved; do not say a text was sent. | PASS |
+| `send_booking_sms` | POST | `https://elixis.agency/tools/send-booking-sms` | Simulated mode returns `{ success:true, sms_sent:false, sms_simulated:true, message_for_agent }` | Backend-only for inbound; Paul should save a follow-up request instead of offering SMS booking. | PASS / NOT ATTACHED TO INBOUND |
 | `check_service_area` | POST | `https://elixis.agency/tools/check-service-area` | `{ status:"in_area"|"maybe"|"outside_area", message_for_agent }` | Capture the lead and say the team can confirm coverage. | PASS |
 | `log_transfer_request` | POST | `https://elixis.agency/tools/transfer-call` | `{ success, transfer_number_configured, message_for_agent }` | Capture callback/follow-up if Retell transfer fails. | PASS |
 | diagnostic `check_availability_cal` | POST | `https://elixis.agency/tools/candidate/check-availability-cal` | `{ success, enabled, provider, available, slots, message_for_agent }` | Use native Retell Cal.com tools as primary; this route is diagnostic/fallback only. | PASS |

@@ -23,7 +23,9 @@
     "test:retell-sop": "tsx src/scripts/runRetellSopBatch.ts",
     "retell:sop-batch": "npm run test:retell-sop",
     "set:demo-url": "node scripts/setDemoUrl.mjs",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "finalize:inbound": "node scripts/finalize-inbound-agent.mjs",
+    "test:inbound-retell-smoke": "node scripts/run-inbound-smoke-batch.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",

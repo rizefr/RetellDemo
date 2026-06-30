@@ -1,6 +1,8 @@
 import express from "express";
 import path from "node:path";
 import { healthRouter } from "./routes/health";
+import { inboundApiRouter } from "./routes/inboundApi";
+import { inboundPageRouter } from "./routes/inboundPage";
 import { outboundApiRouter } from "./routes/outboundApi";
 import { outboundPageRouter } from "./routes/outboundPage";
 import { outboundRetellToolsRouter } from "./routes/outboundRetellTools";
@@ -32,8 +34,11 @@ export function createApp() {
 
   app.use("/health", healthRouter);
   app.use("/tools", toolsRouter);
+  app.use("/api/inbound", inboundApiRouter);
   app.use("/api/outbound", outboundApiRouter);
+  app.use(inboundPageRouter);
   app.use(outboundPageRouter);
+  app.use("/inbound-assets", express.static(path.join(process.cwd(), "public", "inbound")));
   app.use("/outbound-assets", express.static(path.join(process.cwd(), "public", "outbound")));
   app.use(express.static(path.join(process.cwd(), "public")));
 

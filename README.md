@@ -2,7 +2,11 @@
 
 Retell AI receptionist demo for pest-control companies. The current demo business is Elijah's Pest Control.
 
-This README focuses on the Retell agent assets, backend tool endpoints, webhook handling, Supabase storage, SMS booking-link flow with safe simulation, future calendar adapters, tests, and setup scripts. Website-specific notes live in [`README_WEBSITE.md`](./README_WEBSITE.md).
+This README focuses on the Retell agent assets, backend tool endpoints, webhook handling, Supabase storage, SMS booking-link flow with safe simulation, future calendar adapters, tests, and setup scripts. Website-specific notes live in [`README_WEBSITE.md`](./README_WEBSITE.md). Inbound operations, `/inbound` admin, and live receptionist rollback notes live in [`README_INBOUND.md`](./README_INBOUND.md).
+
+## Live Inbound Operations
+
+The current live inbound receptionist is `agent_16b324c0e55f21c0a5f914c169` on phone `+18887809963`, with `11labs-Gilfoy`, `eleven_flash_v2_5`, spoken name Paul, Retell native Cal.com booking, and no normal SMS booking offer. The protected admin surface is `/inbound` and requires `INBOUND_ADMIN_TOKEN`.
 
 ## What It Does
 
