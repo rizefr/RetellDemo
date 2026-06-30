@@ -23,11 +23,13 @@ import {
   formatOutboundDateSpoken,
   formatOutboundDateTime,
   formatOutboundEmailSpoken,
+  formatOutboundEmailSpokenPhonetic,
   formatOutboundEmailSpokenSlow,
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
   formatOutboundPhoneSpoken,
+  formatOutboundPhoneSpokenChunked,
 } from "./outboundFormatting";
 import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
 
@@ -359,10 +361,12 @@ export async function startOutboundCall(
     prior_concern_note: String(context.invoice.prior_concern_note || ""),
     preferred_payment_method: preferredPaymentMethod,
     customer_phone_spoken: formatOutboundPhoneSpoken(effectivePhoneNumber),
+    customer_phone_spoken_chunked: formatOutboundPhoneSpokenChunked(effectivePhoneNumber),
     customer_email: preferredEmail,
     customer_email_display: preferredEmail,
     customer_email_spoken: formatOutboundEmailSpoken(preferredEmail),
     customer_email_spoken_slow: formatOutboundEmailSpokenSlow(preferredEmail),
+    customer_email_spoken_phonetic: formatOutboundEmailSpokenPhonetic(preferredEmail),
     email_on_file: String(Boolean(preferredEmail)),
     mailing_instructions_available: String(Boolean(context.business.payment_mailing_instructions)),
     payment_mailing_instructions: String(context.business.payment_mailing_instructions || ""),

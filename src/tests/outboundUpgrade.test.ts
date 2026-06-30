@@ -3,10 +3,12 @@ import {
   formatOutboundDate,
   formatOutboundDateSpoken,
   formatOutboundEmailSpoken,
+  formatOutboundEmailSpokenPhonetic,
   formatOutboundEmailSpokenSlow,
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
+  formatOutboundPhoneSpokenChunked,
   formatOutboundPhoneSpoken,
   formatOutboundYearSpoken,
   normalizeOutboundDate,
@@ -68,6 +70,15 @@ describe("outbound speech-safe invoice formatting", () => {
     expect(formatOutboundPhoneSpoken("+442071838750")).toBe("four four two zero seven one eight three eight seven five zero");
   });
 
+  it("formats phone numbers for repeat confirmation in clear chunks", () => {
+    expect(formatOutboundPhoneSpokenChunked("+13475850249")).toBe(
+      "area code three four seven, then five eight five, then zero two four nine",
+    );
+    expect(formatOutboundPhoneSpokenChunked("+442071838750")).toBe(
+      "four four two zero seven one eight three eight seven five zero",
+    );
+  });
+
   it("formats email addresses for slow spoken confirmation", () => {
     expect(formatOutboundEmailSpoken("elixisagency@gmail.com")).toBe("elixisagency at gmail dot com");
     expect(formatOutboundEmailSpoken("billing.team+demo@elixis.agency")).toBe(
@@ -81,6 +92,15 @@ describe("outbound speech-safe invoice formatting", () => {
     );
     expect(formatOutboundEmailSpokenSlow("billing.team+demo@elixis.agency")).toBe(
       "b-i-l-l-i-n-g dot t-e-a-m plus d-e-m-o at elixis dot agency",
+    );
+  });
+
+  it("formats email addresses with phonetic spelling for the second repeat", () => {
+    expect(formatOutboundEmailSpokenPhonetic("elixisagency@gmail.com")).toBe(
+      "e as in Echo, l as in Lima, i as in India, x as in X-ray, i as in India, s as in Sierra, agency, at gmail dot com",
+    );
+    expect(formatOutboundEmailSpokenPhonetic("billing.team+demo@elixis.agency")).toBe(
+      "b as in Bravo, i as in India, l as in Lima, l as in Lima, i as in India, n as in November, g as in Golf, dot, t as in Tango, e as in Echo, a as in Alpha, m as in Mike, plus, d as in Delta, e as in Echo, m as in Mike, o as in Oscar, at elixis dot agency",
     );
   });
 });

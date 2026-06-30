@@ -5,10 +5,10 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the live-call/deprecation refinement: V55.
+- Latest verified Retell version after the Sophia voice/confirmation polish: V56.
 - Active product resource: `Elevator Inspection Collections — Sophia`, voice `11labs-Sloane`, spoken name `Sophia`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
-- Voice and pacing: `11labs-Sloane`, speed `0.88`, `1000 ms` first-message delay, GPT-4.1.
+- Voice and pacing: `11labs-Sloane`, speed `0.86`, `1000 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was re-tested against GPT-4.1 during the wrong-person/disclosure refinement. It was available and cheaper per Retell voice-agent minute, but the tested V51 batch was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in payment-refusal and service-issue paths. Keep GPT-4.1 unless a future Retell/model update clearly fixes those issues.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths are limited to explicit do-not-contact, attorney, wrong number, or hostile requests and end directly. Polite goodbyes must not be classified as do-not-contact.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
@@ -24,8 +24,8 @@ Current Retell settings to preserve for the elevator demo:
 - model GPT-4.1
 - voice `11labs-Sloane`
 - spoken name `Sophia`
-- voice model ElevenLabs Flash v2.5
-- speed `0.88`
+- voice model ElevenLabs Flash v2.5 (`eleven_flash_v2_5`)
+- speed `0.86`
 - first-message delay `1000 ms`
 - ambient sound `call-center` at moderate low volume `0.28`
 - wrapped signed tools with `args_at_root` disabled
@@ -35,6 +35,8 @@ Retell does not expose keyboard-only audio tied exactly to custom-tool execution
 Use one bridge line for a whole payment-link delivery sequence. Do not say a second “one moment” line between creating the payment link and sending email or SMS.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Sophia comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
+
+Retell docs and SDK types currently expose multiple ElevenLabs model IDs, including Flash, Turbo, Multilingual, and v3 variants. The active Sophia inspection demo stays on `eleven_flash_v2_5` unless a native simulation comparison shows another Sloane-compatible model is clearly more natural at the first line without harming latency, interruption handling, or tool reliability.
 
 ## Retell API Maintenance
 
@@ -55,6 +57,15 @@ The active Sophia inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_M
 - If `create_payment_link` fails, Sophia must not call email/SMS delivery tools and must not claim the secure link was sent. She logs `payment_link_issue` and routes to manual follow-up/final-check.
 - If the caller asks for a named person to call, handle the invoice, or be put on the phone, Sophia logs `named_contact_requested` before promising that person or their team will follow up.
 - The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
+
+## V56 Voice And Confirmation Polish
+
+- Sophia is slightly slower at speed `0.86`; keep the `1000 ms` first-message delay unless Retell readback or real-call evidence shows it is too slow.
+- First email confirmation uses `customer_email_spoken_slow`.
+- If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
+- First phone confirmation uses `customer_phone_spoken`.
+- If the caller asks to repeat or correct the phone number, Sophia uses `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
+- If the caller gives a corrected email or phone number, Sophia confirms it once, logs `contact_update_requested`, and only claims delivery if the backend tool explicitly returns `sent:true`.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
 

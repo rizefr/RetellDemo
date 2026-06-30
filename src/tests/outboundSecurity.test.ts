@@ -180,8 +180,15 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
     expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
     expect(serialized).toContain("Customer email spoken slowly");
+    expect(serialized).toContain("Customer email spoken phonetic");
+    expect(serialized).toContain("Customer phone spoken in chunks");
     expect(serialized).toContain("Is {{customer_email_spoken_slow}} still the best email for the secure payment link?");
     expect(serialized).toContain("Is e-l-i-x-i-s agency at gmail dot com still the best email for the secure payment link?");
+    expect(serialized).toContain("If the caller asks you to repeat the email, says it is wrong, or sounds confused, the second readback must use {{customer_email_spoken_phonetic}}");
+    expect(serialized).toContain("If the caller asks you to repeat the phone number or corrects it, use {{customer_phone_spoken_chunked}}");
+    expect(serialized).toContain('"id":"email_second_readback_phonetic_example"');
+    expect(serialized).toContain('"id":"email_correction_contact_update_example"');
+    expect(serialized).toContain('"id":"phone_correction_contact_update_example"');
     expect(serialized).toContain("Use one bridge line for the whole payment-link delivery sequence");
     expect(serialized).not.toContain("One moment while I send that.");
     expect(serialized).toContain("Inspection date: {{inspection_date_spoken}}");
@@ -204,7 +211,7 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain('return { voiceId: "11labs-Sloane", source: "default_fallback" }');
-    expect(setupScript).toContain("voice_speed: 0.88");
+    expect(setupScript).toContain("voice_speed: 0.86");
     expect(setupScript).toContain("begin_message_delay_ms: 1000");
     expect(setupScript).toContain('ambient_sound: "call-center"');
     expect(setupScript).toContain("ambient_sound_volume: 0.28");

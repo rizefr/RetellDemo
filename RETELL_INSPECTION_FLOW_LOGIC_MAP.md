@@ -7,11 +7,11 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Sophia
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V55. Read back Retell before any publish.
+- Latest repo-documented verified version: V56 after the Sophia voice/confirmation polish. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Sloane`
 - Spoken agent name: `Sophia`
-- Speed: `0.88`
+- Speed: `0.86`
 - First-message delay: `1000 ms`
 - Ambient sound: `call-center`, volume `0.28`
 - Outbound phone: `+19842075346`
@@ -30,8 +30,10 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 | `agent_display_name` | `outbound_businesses.agent_display_name` | Defaults to Sophia. |
 | `customer_first_name`, `customer_last_name` | `outbound_customers` | Identity confirmation uses first name only. |
 | `customer_phone_spoken` | effective destination phone | Formatted by `formatOutboundPhoneSpoken`; raw E.164 is not spoken directly. |
+| `customer_phone_spoken_chunked` | effective destination phone | Used on repeat/correction, for example “area code three four seven, then five eight five, then zero two four nine.” |
 | `customer_email_display` | preferred email, then customer email | Normal display value. |
-| `customer_email_spoken`, `customer_email_spoken_slow` | preferred email, then customer email | Speech-safe email confirmation. |
+| `customer_email_spoken`, `customer_email_spoken_slow` | preferred email, then customer email | Speech-safe first email confirmation. |
+| `customer_email_spoken_phonetic` | preferred email, then customer email | Used on the second email repeat/confusion/correction path, for example “e as in Echo, l as in Lima...”. |
 | `inspection_type` | invoice inspection type, then business default | Supports Category 1, Category 5, Acceptance Test, Periodic Inspection. |
 | `inspection_date_spoken`, `inspection_date_display` | invoice inspection date, then original due date | Date is never invented. |
 | `original_due_date_spoken`, `original_due_date_display` | invoice original due date | Natural date formatting. |
