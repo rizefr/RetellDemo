@@ -6,6 +6,13 @@ const INBOUND_LLM_ID = "llm_e8bb285e8cb0fc562f06e2395a78";
 const DEMO_PEST_KB_ID = "knowledge_base_5c6a5b20b1a9ed4f";
 
 type AnyRecord = Record<string, any>;
+type InboundToolStatus = {
+  name: string;
+  type: string | null;
+  url: string | null;
+  event_type_id: string | number | null;
+  native: boolean;
+};
 
 function appBaseUrl(detectedBaseUrl: string): string {
   return (env.APP_BASE_URL || detectedBaseUrl).replace(/\/$/, "");
@@ -37,10 +44,10 @@ async function retellRequest<T = AnyRecord>(endpoint: string): Promise<{ ok: boo
   }
 }
 
-function publicTools(llm: AnyRecord | null) {
+function publicTools(llm: AnyRecord | null): InboundToolStatus[] {
   return (llm?.general_tools ?? []).map((tool: AnyRecord) => ({
     name: tool.name,
-    type: tool.type,
+    type: tool.type ?? null,
     url: tool.url ?? null,
     event_type_id: tool.event_type_id ?? null,
     native: !tool.url,
