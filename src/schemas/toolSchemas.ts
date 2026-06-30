@@ -43,6 +43,12 @@ export const checkServiceAreaSchema = z.object({
   zip_code: z.string().trim().nullable().default(null),
   city: z.string().trim().nullable().default(null),
   state: z.string().trim().nullable().default(null),
+  address: z.string().trim().nullable().default(null),
+  property_address: z.string().trim().nullable().default(null),
+  property_street: z.string().trim().nullable().default(null),
+  property_city: z.string().trim().nullable().default(null),
+  property_state: z.string().trim().nullable().default(null),
+  property_zip: z.string().trim().nullable().default(null),
 });
 
 export const transferCallSchema = z.object({

@@ -7,6 +7,9 @@ const checksList = document.querySelector("#checks");
 const callRows = document.querySelector("#call-rows");
 const leadRows = document.querySelector("#lead-rows");
 const endpointList = document.querySelector("#endpoint-list");
+const callDebug = document.querySelector("#call-debug");
+const lastUpdated = document.querySelector("#last-updated");
+let refreshTimer = null;
 
 function text(value, fallback = "Not set") {
   if (value === null || value === undefined || value === "") return escapeHtml(fallback);
@@ -60,19 +63,21 @@ function renderCalls(calls) {
           (call) => `
           <tr>
             ${cell(formatTime(call.created_at))}
+            <td><span class="status-pill">${text(call.status_label || "Pending analysis", "")}</span><br /><small>${text(`${call.event_count || 1} event${(call.event_count || 1) === 1 ? "" : "s"}`, "")}</small></td>
             ${cell(call.caller_phone)}
             ${cell(call.caller_name)}
             ${cell(call.pest_issue)}
             ${cell(call.property_address)}
+            ${cell(call.service_area_or_zip)}
             ${cell(call.appointment_status)}
             ${cell(call.transfer_status)}
             ${cell(call.outcome)}
-            ${cell(call.summary)}
+            ${cell(call.summary || "Pending analysis")}
           </tr>
         `,
         )
         .join("")
-    : `<tr><td colspan="9">No inbound call events found yet.</td></tr>`;
+    : `<tr><td colspan="11">No meaningful inbound call summaries yet. Raw blank/partial webhook events are hidden by default.</td></tr>`;
 }
 
 function renderLeads(leads) {
@@ -86,6 +91,7 @@ function renderLeads(leads) {
             ${cell(lead.caller_phone)}
             ${cell(lead.pest_issue)}
             ${cell(lead.property_address || [lead.property_city, lead.property_zip].filter(Boolean).join(" "))}
+            ${cell(lead.service_area || lead.zip_code || lead.property_zip)}
             ${cell(lead.preferred_datetime)}
             ${cell(lead.preferred_booking_method)}
             ${cell(lead.call_summary)}
@@ -93,7 +99,7 @@ function renderLeads(leads) {
         `,
         )
         .join("")
-    : `<tr><td colspan="8">No inbound leads found yet.</td></tr>`;
+    : `<tr><td colspan="9">No inbound leads found yet.</td></tr>`;
 }
 
 function curlFor(url, method = "GET") {
@@ -144,6 +150,7 @@ async function loadStatus() {
     return;
   }
   const status = await response.json();
+  lastUpdated.textContent = `Updated ${formatTime(status.checked_at)}`;
   summary.className = `setup-summary ${status.ready ? "ready" : "warning"}`;
   summary.textContent = status.ready
     ? `Ready. Checked ${formatTime(status.checked_at)}.`
@@ -160,6 +167,8 @@ async function loadStatus() {
     ["Voice", status.retell.agent?.voice_id],
     ["Model", status.retell.agent?.voice_model],
     ["Speed", status.retell.agent?.voice_speed],
+    ["Volume", status.retell.agent?.volume],
+    ["Backchannel", status.retell.agent?.enable_backchannel ? `on @ ${status.retell.agent?.backchannel_frequency}` : "off"],
     ["Interrupt", status.retell.agent?.interruption_sensitivity],
     ["Background", `${text(status.retell.agent?.ambient_sound)} @ ${text(status.retell.agent?.ambient_sound_volume)}`],
   ]);
@@ -178,6 +187,7 @@ async function loadStatus() {
   ]);
   renderChecks(status.checks);
   renderCalls(status.recent.calls);
+  callDebug.textContent = `${status.recent.calls.length} summarized call${status.recent.calls.length === 1 ? "" : "s"} shown. ${status.recent.hidden_blank_call_event_count || 0} blank/partial webhook event${(status.recent.hidden_blank_call_event_count || 0) === 1 ? "" : "s"} hidden from this table.`;
   renderLeads(status.recent.leads);
   renderEndpoints(status);
 }
@@ -188,7 +198,17 @@ document.querySelector("#logout").addEventListener("click", async () => {
   location.reload();
 });
 
-loadStatus().catch((error) => {
+function scheduleRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    loadStatus().catch((error) => {
+      summary.className = "setup-summary warning";
+      summary.textContent = error instanceof Error ? error.message : "Inbound dashboard failed to refresh.";
+    });
+  }, 8000);
+}
+
+loadStatus().then(scheduleRefresh).catch((error) => {
   summary.className = "setup-summary warning";
   summary.textContent = error instanceof Error ? error.message : "Inbound dashboard failed to load.";
 });

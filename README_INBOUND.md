@@ -5,15 +5,18 @@ This project’s live inbound receptionist is the single-prompt Retell agent for
 ## Current Live Configuration
 
 - Phone-bound agent: `agent_16b324c0e55f21c0a5f914c169`
+- Published version: `29` via `latest_published`
 - LLM: `llm_e8bb285e8cb0fc562f06e2395a78`
 - Backend: `https://elixis.agency`
 - Webhook: `https://elixis.agency/retell/webhook`
 - Model: `gpt-4.1`
 - Voice ID: `11labs-Gilfoy`
+- Voice model: `eleven_flash_v2_5`
 - Spoken receptionist name: Paul
 - KB: `Demo Pest KB` / `knowledge_base_5c6a5b20b1a9ed4f`
 - Booking: over the phone through Retell native Cal.com tools
 - SMS booking: not offered in the normal inbound flow
+- Backchanneling: disabled because live testing found it robotic/poorly timed
 
 ## Admin Page
 
@@ -37,7 +40,8 @@ The dashboard shows:
 - Voice ID/model and behavior settings
 - KB and native Cal.com tool status
 - Supabase table reachability
-- Recent inbound calls and leads
+- Recent inbound calls grouped by Retell call ID, with blank partial webhook events hidden by default
+- Recent leads with address and service-area/ZIP detail when available
 - Public custom webhook/tool URLs and curl snippets
 - Live-call checklist and rollback notes
 
@@ -61,6 +65,21 @@ Inbound should book over the phone:
 12. Confirm only after booking succeeds.
 
 If booking fails, Paul must not say the caller is booked. He should save the request and say the team will follow up.
+
+After Paul collects an address, the inbound agent may call `check_service_area` silently. If coverage is `maybe` or `unknown`, Paul should continue booking or capture the request and say the team can confirm coverage. If coverage is `out_of_area`, Paul should not reject harshly; he should offer follow-up.
+
+Optional service-area env vars:
+
+```bash
+GOOGLE_MAPS_API_KEY=
+SERVICE_AREA_ZIPS=11201,11215
+SERVICE_AREA_CITIES=Brooklyn,Queens
+SERVICE_AREA_CENTER_LAT=
+SERVICE_AREA_CENTER_LNG=
+SERVICE_AREA_RADIUS_MILES=
+```
+
+`GOOGLE_MAPS_API_KEY` is server-side only. If it is missing, `/tools/check-service-area` falls back to the configured ZIP/city lists and the Retell KB, then returns `maybe` or `unknown` when it cannot confirm.
 
 ## SMS Policy
 
@@ -86,6 +105,8 @@ Use this sequence:
 6. Place a live phone test.
 
 If publishing fails with `Duplicate property name call_summary in post call analysis data`, de-dupe post-call fields before publishing. Keep Retell’s `system-presets` `call_summary` and remove any custom `call_summary` field with the same name. The finalize script already does this.
+
+Backchanneling is intentionally disabled for the inbound receptionist because frequent “mm-hmm” style sounds were poorly timed in live testing. Keep `enable_backchannel=false` unless a later live test clearly justifies turning it back on.
 
 ## Tool Registry
 

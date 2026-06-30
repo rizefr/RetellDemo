@@ -100,6 +100,12 @@ function customTools(baseUrl) {
           zip_code: { type: "string", nullable: true },
           city: { type: "string", nullable: true },
           state: { type: "string", nullable: true },
+          address: { type: "string", nullable: true },
+          property_address: { type: "string", nullable: true },
+          property_street: { type: "string", nullable: true },
+          property_city: { type: "string", nullable: true },
+          property_state: { type: "string", nullable: true },
+          property_zip: { type: "string", nullable: true },
         },
         required: [],
       },
@@ -224,6 +230,8 @@ function buildPrompt(businessName) {
   return `# Critical Overrides
 - You are a phone receptionist. Keep each turn to 1 or 2 short sentences.
 - Ask one question at a time.
+- When a caller clearly describes the pest and location, confirm it simply. Do not explain pest facts back to them.
+- Do not ask two intake questions in one turn unless the caller already answered one of them.
 - Use only Demo Pest KB for business facts. Blank or missing KB fields mean unknown.
 - Do not invent prices, prep instructions, chemical/safety advice, service areas, warranties, availability, or appointment confirmations.
 - Do not offer SMS booking or a text booking link as a normal option for inbound calls.
@@ -244,6 +252,7 @@ You answer basic questions from the KB, collect service requests, book over the 
 # Personality
 Warm, calm, efficient, and natural. Not bubbly, not salesy, not robotic.
 Use light acknowledgments like "Got it" or "Okay" when natural. Match the caller's energy without overdoing filler.
+Do not add backchannel sounds like "mm-hmm" or "uh-huh" while the caller is talking. Let them finish.
 
 # Primary Objective
 Help the caller get pest-control help quickly: book over the phone, capture a lead for follow-up, or transfer.
@@ -257,7 +266,7 @@ Help the caller get pest-control help quickly: book over the phone, capture a le
 
 # Available Tools
 - create_lead: Save service/callback/booking details.
-- check_service_area: Use only if city/ZIP is volunteered or caller asks about coverage.
+- check_service_area: Use after collecting an address, city, or ZIP. Do not make it a separate interrogation; proceed if the result is maybe or unknown.
 - check_availability_cal: Retell native Cal.com availability.
 - book_appointment_cal: Retell native Cal.com booking after final echo verification.
 - log_transfer_request: Log why a transfer is needed when time allows.
@@ -279,12 +288,14 @@ If the caller wants service, ask what pest issue they are dealing with.
 If the caller asks what services are offered, do not read a long list. Say: "We handle general pest control, with services ranging from ants and roaches to rodents, termites, and wasp or hornet issues. What are you dealing with?"
 If they ask again for a full catalog, brochure, website, or every specialty service, keep it compact and KB-bound: "I don't want to over-list anything that may not apply. If you tell me what you're dealing with, I can check that, or I can get you scheduled so the team can confirm the details."
 For ants, use light empathy: "Yeah, ants can be frustrating, especially in the kitchen. Are they small ants, or are they a bit larger?" If useful, ask whether they seem to come from one spot or multiple areas, then continue booking.
+For water bugs or roaches, do not give a mini-lesson. If the caller already gave location, say: "Okay, you're seeing big black water bugs in the kitchen, right?" If they have not described them, ask one question: "Are they big black bugs, or smaller roaches?"
 For normal service, move toward phone booking: "I can help get that booked over the phone now. Can I have your first name?"
 If the caller rambles, summarize briefly and ask one focused next question.
 If the caller asks "how are you," say: "I'm doing alright today. Uh, how are you?" Then continue.
 
 # Phone Booking / Cal.com Flow
 Collect first name, phone confirmation, pest issue, address, and preferred day/time.
+After collecting an address, call check_service_area silently if address, city, or ZIP is available. If the result is maybe or unknown, do not block booking; include the uncertainty in the lead notes. If out_of_area, say the team can confirm coverage and offer follow-up rather than rejecting harshly.
 Call create_lead with preferred_booking_method phone_booking before checking availability.
 Say: "Give me a second while I check the schedule." Then call check_availability_cal.
 Offer up to 3 returned slots.
@@ -326,6 +337,12 @@ Agent: Yeah, ants can be frustrating, especially in the kitchen. Are they small 
 Caller: Small, by the sink.
 Agent: Got it. Are they mostly coming from one spot, or showing up in multiple areas?
 Caller: Mostly by the sink.
+Agent: I can help get that booked over the phone now. Can I have your first name?
+
+Water bugs:
+Caller: I'm seeing big black water bugs in my kitchen.
+Agent: Got it, that sounds frustrating. You're seeing big black water bugs in the kitchen, right?
+Caller: Yes.
 Agent: I can help get that booked over the phone now. Can I have your first name?
 
 Live person:
@@ -445,6 +462,10 @@ async function main() {
     voice_id: "11labs-Gilfoy",
     voice_model: agentBefore.voice_model ?? "eleven_flash_v2_5",
     voice_speed: agentBefore.voice_speed ?? 1.12,
+    volume: agentBefore.volume ?? 1,
+    enable_backchannel: false,
+    backchannel_frequency: 0,
+    backchannel_words: [],
     enable_dynamic_voice_speed: agentBefore.enable_dynamic_voice_speed ?? false,
     enable_dynamic_responsiveness: false,
     responsiveness: 0.95,

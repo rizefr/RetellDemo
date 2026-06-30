@@ -17,16 +17,36 @@ import { safeEnvValue } from "../services/envValidation";
 import { bookAppointmentSchema } from "../schemas/toolSchemas";
 
 describe("service area checks", () => {
-  it("does not invent service coverage when Elijah's KB service area is blank", () => {
-    const result = checkServiceArea({ city: "Brooklyn", state: "NY", zip_code: null });
+  it("does not invent service coverage when configured data is inconclusive", async () => {
+    const result = await checkServiceArea({ city: "Brooklyn", state: "NY", zip_code: null });
     expect(result.status).toBe("maybe");
-    expect(result.message_for_agent).toContain("knowledge base");
+    expect(result.message_for_agent).toContain("team can confirm coverage");
   });
 
-  it("marks unknown areas as maybe instead of rejecting the caller", () => {
-    const result = checkServiceArea({ city: "Princeton", state: "NJ", zip_code: null });
+  it("marks unknown areas as maybe instead of rejecting the caller", async () => {
+    const result = await checkServiceArea({ city: "Princeton", state: "NJ", zip_code: null });
     expect(result.status).toBe("maybe");
     expect(result.message_for_agent).toContain("Continue");
+  });
+
+  it("parses an address and returns structured unknown when no location is supplied", async () => {
+    const addressResult = await checkServiceArea({
+      property_address: "25 Pine Street, Brooklyn, NY 11201",
+      city: null,
+      state: null,
+      zip_code: null,
+    });
+    expect(addressResult.normalized_address).toContain("25 Pine Street");
+    expect(addressResult.zip).toBe("11201");
+
+    const emptyResult = await checkServiceArea({
+      city: null,
+      state: null,
+      zip_code: null,
+      property_address: null,
+    });
+    expect(emptyResult.status).toBe("unknown");
+    expect(emptyResult.reason).toBe("no_location_supplied");
   });
 });
 
@@ -85,6 +105,16 @@ describe("calendar adapters", () => {
     });
     expect(parsed.dry_run).toBe(true);
     expect(parsed.email).toBe("");
+  });
+});
+
+describe("custom tool route help", () => {
+  it("returns safe GET help for POST-only custom tool URLs", async () => {
+    const response = await request(createApp()).get("/tools/check-service-area");
+    expect(response.status).toBe(200);
+    expect(response.body.method_required).toBe("POST");
+    expect(response.body.example_payload.property_address).toContain("Brooklyn");
+    expect(JSON.stringify(response.body)).not.toContain("RETELL_API_KEY");
   });
 });
 
@@ -186,8 +216,7 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).toContain(DEMO_PEST_KB_NAME);
   });
 
-  it("prioritizes Cal.com phone booking and keeps SMS follow-up safe", () => {
-    expect(prompt).toContain("I can help get that booked over the phone now. Can I have your first name?");
+  it("prioritizes Cal.com phone booking and removes normal SMS booking", () => {
     expect(prompt).toContain("Do not offer SMS booking or a text booking link as a normal option");
     expect(prompt).toContain("Retell native Cal.com tools as the primary");
     expect(prompt).toContain("native book_appointment_cal tool confirms success");
@@ -201,6 +230,14 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).not.toContain("mail@example.com");
   });
 
+  it("keeps final caller-experience refinements specific and concise", () => {
+    expect(prompt).toContain("When a caller clearly describes the pest and location, confirm it simply");
+    expect(prompt).toContain("Do not ask two intake questions in one turn");
+    expect(prompt).toContain("Do not add backchannel sounds");
+    expect(prompt).toContain("you're seeing big black water bugs in the kitchen, right");
+    expect(prompt).toContain("After collecting an address, call check_service_area silently");
+  });
+
   it("strictly deflects demo pricing and blank prep questions", () => {
     expect(prompt).toContain("do not speak exact prices or price ranges");
     expect(prompt).toContain("even if a KB entry appears to contain pricing");
@@ -212,7 +249,7 @@ describe("single-prompt candidate prompt", () => {
   it("handles repeated unsafe claims without getting stuck", () => {
     expect(prompt).toContain("If the caller repeats a false confirmation");
     expect(prompt).toContain("move to follow-up, transfer, or closing instead of arguing");
-    expect(prompt).toContain("I can't confirm a text or appointment unless the tool confirms it");
+    expect(prompt).toContain("I don't show a text was sent on my end");
     expect(prompt).toContain("do not have a specific person or department");
     expect(prompt).toContain("Do not say \"confirm your appointment\"");
     expect(prompt).toContain("Do not keep asking the same question");

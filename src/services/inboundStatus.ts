@@ -63,21 +63,87 @@ function callSummary(row: AnyRecord) {
   const call = payload?.call as AnyRecord | undefined;
   const analysis = call?.call_analysis as AnyRecord | undefined;
   const custom = analysis?.custom_analysis_data as AnyRecord | undefined;
+  const eventType = row.event_type || payload?.event || "unknown";
+  const appointmentStatus = custom?.appointment_confirmed
+    ? "Booking confirmed"
+    : custom?.appointment_requested
+      ? "Appointment requested"
+      : null;
+  const transferStatus = custom?.transfer_requested || eventType === "transfer_requested" ? "Transfer requested" : null;
+  const outcome = custom?.call_outcome ?? null;
+  const summary = custom?.call_summary ?? analysis?.call_summary ?? null;
   return {
     id: row.id,
     created_at: row.created_at,
     retell_call_id: row.retell_call_id,
-    event_type: row.event_type,
+    event_type: eventType,
     caller_phone: row.caller_phone,
     agent_id: row.agent_id,
     caller_name: custom?.caller_name ?? null,
     pest_issue: custom?.pest_issue ?? null,
     property_address: custom?.property_address ?? null,
-    appointment_status: custom?.appointment_confirmed ? "confirmed" : custom?.appointment_requested ? "requested" : null,
-    transfer_status: custom?.transfer_requested ? "requested" : null,
-    outcome: custom?.call_outcome ?? null,
+    service_area_or_zip: custom?.service_area_or_zip ?? null,
+    appointment_status: appointmentStatus,
+    transfer_status: transferStatus,
+    outcome,
     sentiment: custom?.user_sentiment ?? analysis?.user_sentiment ?? null,
-    summary: custom?.call_summary ?? analysis?.call_summary ?? null,
+    summary,
+    status_label:
+      eventType === "call_analyzed"
+        ? "Analyzed"
+        : eventType === "call_ended"
+          ? "Completed"
+          : transferStatus
+            ? "Transfer requested"
+            : summary || outcome
+              ? "Needs follow-up"
+              : "Pending analysis",
+  };
+}
+
+function hasMeaningfulCallSignal(call: ReturnType<typeof callSummary>): boolean {
+  return Boolean(
+    call.caller_phone ||
+      call.caller_name ||
+      call.pest_issue ||
+      call.property_address ||
+      call.appointment_status ||
+      call.transfer_status ||
+      call.outcome ||
+      call.sentiment ||
+      call.summary ||
+      ["call_analyzed", "call_ended", "transfer_requested"].includes(String(call.event_type)),
+  );
+}
+
+function groupedCallSummaries(rows: AnyRecord[]) {
+  const summaries = rows.map(callSummary);
+  const groups = new Map<string, ReturnType<typeof callSummary> & { event_count: number; latest_event_type: string }>();
+  for (const summary of summaries) {
+    const key = summary.retell_call_id || summary.id;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, { ...summary, event_count: 1, latest_event_type: summary.event_type });
+      continue;
+    }
+    groups.set(key, {
+      ...existing,
+      ...Object.fromEntries(
+        Object.entries(summary).filter(([, value]) => value !== null && value !== undefined && value !== ""),
+      ),
+      created_at: existing.created_at > summary.created_at ? existing.created_at : summary.created_at,
+      event_count: existing.event_count + 1,
+      latest_event_type: existing.created_at > summary.created_at ? existing.latest_event_type : summary.event_type,
+      status_label: summary.status_label !== "Pending analysis" ? summary.status_label : existing.status_label,
+    });
+  }
+  const calls = Array.from(groups.values())
+    .filter(hasMeaningfulCallSignal)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  return {
+    calls,
+    raw_event_count: rows.length,
+    hidden_blank_event_count: summaries.length - calls.reduce((sum, call) => sum + call.event_count, 0),
   };
 }
 
@@ -95,17 +161,18 @@ export async function getInboundStatus(detectedBaseUrl: string) {
       selectRecentRecords(
         "call_events",
         "id,created_at,retell_call_id,event_type,event_payload,caller_phone,agent_id",
-        20,
+        75,
       ),
       selectRecentRecords(
         "leads",
-        "id,created_at,caller_name,caller_phone,alternate_phone,pest_issue,property_address,property_city,property_zip,preferred_datetime,preferred_booking_method,urgency_level,status,retell_call_id,call_summary",
+        "id,created_at,caller_name,caller_phone,alternate_phone,pest_issue,service_area,zip_code,property_address,property_city,property_zip,preferred_datetime,preferred_booking_method,urgency_level,status,retell_call_id,call_summary",
         20,
       ),
     ]);
 
   const phoneBinding = (phone.data?.inbound_agents ?? []).find((binding: AnyRecord) => binding.agent_id === INBOUND_AGENT_ID);
   const tools = publicTools(llm.data);
+  const groupedCalls = groupedCallSummaries(recentCalls.data);
   const toolUrls = tools.filter((tool) => tool.url);
   const nativeCalTools = tools.filter((tool) => ["check_availability_cal", "book_appointment_cal"].includes(tool.name));
   const checks = [
@@ -142,6 +209,10 @@ export async function getInboundStatus(detectedBaseUrl: string) {
             voice_id: agent.data.voice_id,
             voice_model: agent.data.voice_model,
             voice_speed: agent.data.voice_speed,
+            volume: agent.data.volume,
+            enable_backchannel: agent.data.enable_backchannel,
+            backchannel_frequency: agent.data.backchannel_frequency,
+            backchannel_words: agent.data.backchannel_words,
             interruption_sensitivity: agent.data.interruption_sensitivity,
             responsiveness: agent.data.responsiveness,
             enable_dynamic_responsiveness: agent.data.enable_dynamic_responsiveness,
@@ -196,7 +267,9 @@ export async function getInboundStatus(detectedBaseUrl: string) {
     },
     recent: {
       leads: recentLeads.data,
-      calls: recentCalls.data.map(callSummary),
+      calls: groupedCalls.calls,
+      raw_call_event_count: groupedCalls.raw_event_count,
+      hidden_blank_call_event_count: groupedCalls.hidden_blank_event_count,
       call_events_error: recentCalls.error,
       leads_error: recentLeads.error,
     },

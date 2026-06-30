@@ -118,6 +118,17 @@ h3 {
   font-size: 0.8rem;
 }
 
+.safety-badge.muted {
+  color: #d7ebe2;
+  border-color: #436f5d;
+}
+
+.muted-copy {
+  margin: 0.35rem 0 0;
+  color: #647169;
+  font-size: 0.86rem;
+}
+
 main {
   min-width: 0;
   padding: 1.5rem clamp(1rem, 4vw, 3rem) 3rem;
@@ -224,6 +235,22 @@ dl {
 .check-item.fail .check-marker {
   color: #7b3d16;
   background: #f8e7d6;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.45rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  background: #e6f2ec;
+  color: #15583f;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+small {
+  color: #6a756d;
 }
 
 .table-wrap {

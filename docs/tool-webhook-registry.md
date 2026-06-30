@@ -4,7 +4,7 @@ Production backend URL: `https://elixis.agency`
 
 This registry separates Retell native tools from custom backend webhooks. Retell native tools do not have webhook URLs in this backend; they are configured inside Retell and verified by Retell readback plus live/batch testing.
 
-Current phone-bound inbound agent: `agent_16b324c0e55f21c0a5f914c169`, version `26` via `latest_published`.
+Current phone-bound inbound agent: `agent_16b324c0e55f21c0a5f914c169`, version `29` via `latest_published`.
 
 The inbound LLM does not attach `send_booking_sms`; SMS remains a backend route for future/other-agent use only.
 
@@ -25,7 +25,7 @@ Native Cal.com tools do not expose a backend “during execution feedback” web
 | --- | --- | --- | --- | --- | --- |
 | `create_lead` | POST | `https://elixis.agency/tools/create-lead` | `{ success, persisted, lead_id, caller_phone, alternate_phone, message_for_agent }` | Continue politely and offer transfer/follow-up. | PASS |
 | `send_booking_sms` | POST | `https://elixis.agency/tools/send-booking-sms` | Simulated mode returns `{ success:true, sms_sent:false, sms_simulated:true, message_for_agent }` | Backend-only for inbound; Paul should save a follow-up request instead of offering SMS booking. | PASS / NOT ATTACHED TO INBOUND |
-| `check_service_area` | POST | `https://elixis.agency/tools/check-service-area` | `{ status:"in_area"|"maybe"|"outside_area", message_for_agent }` | Capture the lead and say the team can confirm coverage. | PASS |
+| `check_service_area` | POST | `https://elixis.agency/tools/check-service-area` | `{ status:"in_area"|"out_of_area"|"maybe"|"unknown", normalized_address, city, state, zip, reason, message_for_agent }` | Capture the lead and say the team can confirm coverage; do not reject harshly. | PASS |
 | `log_transfer_request` | POST | `https://elixis.agency/tools/transfer-call` | `{ success, transfer_number_configured, message_for_agent }` | Capture callback/follow-up if Retell transfer fails. | PASS |
 | diagnostic `check_availability_cal` | POST | `https://elixis.agency/tools/candidate/check-availability-cal` | `{ success, enabled, provider, available, slots, message_for_agent }` | Use native Retell Cal.com tools as primary; this route is diagnostic/fallback only. | PASS |
 | diagnostic `book_appointment_cal` | POST | `https://elixis.agency/tools/candidate/book-appointment-cal` | Dry run returns `{ success:true, confirmed:false, dry_run:true, request_summary, message_for_agent }` | Do not confirm an appointment unless a real booking returns `confirmed:true`. | PASS DRY-RUN |
@@ -90,8 +90,27 @@ Service area:
 ```bash
 curl -s -X POST https://elixis.agency/tools/check-service-area \
   -H 'content-type: application/json' \
-  -d '{"city":"Brooklyn","state":"NY","zip_code":"11201"}'
+  -d '{"property_address":"25 Pine Street, Brooklyn, NY 11201","city":"Brooklyn","state":"NY","zip_code":"11201"}'
 ```
+
+Open a custom tool URL in a browser to see safe method/help JSON, for example:
+
+```bash
+curl -s https://elixis.agency/tools/check-service-area
+```
+
+Optional service-area configuration lives in Vercel/local env:
+
+```bash
+GOOGLE_MAPS_API_KEY=
+SERVICE_AREA_ZIPS=
+SERVICE_AREA_CITIES=
+SERVICE_AREA_CENTER_LAT=
+SERVICE_AREA_CENTER_LNG=
+SERVICE_AREA_RADIUS_MILES=
+```
+
+If Google Maps is not configured, the backend falls back to structured ZIP/city values and the Retell KB. Unknown or ambiguous addresses should return `maybe` or `unknown`, not a guessed yes/no.
 
 Transfer logging:
 
