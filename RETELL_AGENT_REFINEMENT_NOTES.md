@@ -9,10 +9,10 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Agent: `Elevator Inspection Collections — Sophia`
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Flow ID: `conversation_flow_bebdceabc801`
-- Voice: `11labs-Sloane`
+- Voice: `11labs-Gilfoy`
 - Spoken name: `Sophia`
 - Model: GPT-4.1
-- Speed/start delay: `0.84`, `1200 ms`
+- Speed/start delay: `0.82`, `1200 ms`
 - Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
 
 ## Rules To Keep

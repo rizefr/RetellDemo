@@ -18,7 +18,7 @@ type SetupReport = {
 
 const OUTBOUND_VOICE_SETTINGS = {
   voice_model: "eleven_flash_v2_5" as const,
-  voice_speed: 0.84,
+  voice_speed: 0.82,
   voice_temperature: 1.2,
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,
@@ -134,7 +134,7 @@ function resolveOutboundVoice(existingAgent: unknown): {
       : "";
   if (dashboardVoice) return { voiceId: dashboardVoice, source: "current_dashboard" };
 
-  return { voiceId: "11labs-Sloane", source: "default_fallback" };
+  return { voiceId: "11labs-Gilfoy", source: "default_fallback" };
 }
 
 async function updateExistingOutboundAgent(

@@ -216,8 +216,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).not.toContain("phoneNumber.update");
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
-    expect(setupScript).toContain('return { voiceId: "11labs-Sloane", source: "default_fallback" }');
-    expect(setupScript).toContain("voice_speed: 0.84");
+    expect(setupScript).toContain('return { voiceId: "11labs-Gilfoy", source: "default_fallback" }');
+    expect(setupScript).toContain("voice_speed: 0.82");
     expect(setupScript).toContain("begin_message_delay_ms: 1200");
     expect(setupScript).toContain('ambient_sound: "call-center"');
     expect(setupScript).toContain("ambient_sound_volume: 1");
