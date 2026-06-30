@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the Sophia audio-stability/tool-call fix: V57.
+- Latest verified Retell version after the Sophia audio-stability/tool-call fix: V58.
 - Active product resource: `Elevator Inspection Collections — Sophia`, voice `11labs-Sloane`, spoken name `Sophia`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
 - Voice and pacing: `11labs-Sloane`, speed `0.89`, `1150 ms` first-message delay, GPT-4.1.
@@ -32,7 +32,7 @@ Current Retell settings to preserve for the elevator demo:
 
 Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. Keep the inspection product on `11labs-Sloane` unless a new voice is intentionally selected and tested. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
 Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
-Use one complete short bridge line for a whole payment-link delivery sequence, preferably “One moment.” Do not say a second “one moment” line between creating the payment link and sending email or SMS.
+Use the native static `create_payment_link` execution message for the payment-link bridge; it says “One moment.” Do not add a separate assistant bridge line or a second “one moment” between creating the payment link and sending email or SMS.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Sophia comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
 
@@ -58,7 +58,7 @@ The active Sophia inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_M
 - If the caller asks for a named person to call, handle the invoice, or be put on the phone, Sophia logs `named_contact_requested` before promising that person or their team will follow up.
 - The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
 
-## V57 Audio Stability And Tool-Call Fix
+## V58 Audio Stability And Tool-Call Fix
 
 - Sophia uses speed `0.89` with a `1150 ms` first-message delay and `call-center` ambient volume `0.5`. This intentionally makes the voice less choppy than the slower V56 setting while keeping the opening steady.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
@@ -69,6 +69,7 @@ The active Sophia inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_M
 - Names spoken by Retell now use `business_name_spoken`, `account_company_name_spoken`, `customer_first_name_spoken`, and `customer_last_name_spoken` to avoid all-caps delivery such as `YELENA`.
 - Spoken dates use ordinal phrasing, for example `May twentieth, twenty twenty-six`.
 - Retell `log_outcome` optional string arguments tolerate `null` values from the model, preventing 400 responses on unused responsible-party or named-contact fields.
+- `create_payment_link` has `speak_during_execution=true` with a static “One moment.” message, so the bridge is complete and not dependent on the model beginning a sentence before tool execution.
 - While SMS is disabled, Sophia does not create a Stripe payment link before the manual SMS fallback. If the caller switches from text to email, she confirms the email before the email tool path.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.

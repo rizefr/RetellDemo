@@ -189,7 +189,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"email_second_readback_phonetic_example"');
     expect(serialized).toContain('"id":"email_correction_contact_update_example"');
     expect(serialized).toContain('"id":"phone_correction_contact_update_example"');
-    expect(serialized).toContain("say one complete two-word bridge line for the whole sequence");
+    expect(serialized).toContain("For payment-link creation, do not generate your own separate bridge line");
+    expect(serialized).toContain('"execution_message_description":"One moment."');
     expect(serialized).toContain("One moment.");
     expect(serialized).not.toContain("One moment while I prepare that.");
     expect(serialized).not.toContain("One moment while I pull that up.");
@@ -228,11 +229,17 @@ describe("outbound flow guardrails", () => {
   });
 
   it("adds subtle tool-wait bridge behavior without exposing internals", () => {
-    const serialized = JSON.stringify(buildOutboundConversationFlow("https://elixis.agency"));
+    const flow = buildOutboundConversationFlow("https://elixis.agency");
+    const serialized = JSON.stringify(flow);
+    const createPaymentLink = (flow.tools || []).find((tool) => tool.name === "create_payment_link");
+    expect(createPaymentLink).toMatchObject({
+      speak_during_execution: true,
+      execution_message_type: "static_text",
+      execution_message_description: "One moment.",
+    });
     expect(serialized).toContain("One moment.");
     expect(serialized).toContain("I'll pull that up.");
     expect(serialized).toContain("I'll prepare that now.");
-    expect(serialized).toContain("One moment.");
     expect(serialized).toContain("Do not overuse the bridge line for quick background logging");
     expect(serialized).toContain("Never mention tools, APIs, systems, or databases");
   });

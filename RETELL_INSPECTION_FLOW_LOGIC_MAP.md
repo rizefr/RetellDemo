@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Sophia
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V57 after the Sophia audio-stability/tool-call fix. Read back Retell before any publish.
+- Latest repo-documented verified version: V58 after the Sophia audio-stability/tool-call fix. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Sloane`
 - Spoken agent name: `Sophia`
@@ -92,7 +92,7 @@ For "what invoice", "what inspection", "why am I getting this call", Sophia answ
 
 ### Payment Preference
 
-After explicit agreement, Sophia asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, she sends through the backend only after on-file email confirmation. For SMS-disabled text, she logs the confirmed request and calls the SMS fallback tool without creating a Stripe link first; the expected result is manual/pending. If the caller switches from text to email, Sophia confirms the email before sending. She uses one short bridge line for the payment tool sequence. If payment-link creation fails, she logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+After explicit agreement, Sophia asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, she sends through the backend only after on-file email confirmation. For SMS-disabled text, she logs the confirmed request and calls the SMS fallback tool without creating a Stripe link first; the expected result is manual/pending. If the caller switches from text to email, Sophia confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, she logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
 
 `log_outcome` accepts optional unused string fields as `null` from Retell and normalizes them to blanks. This prevents a model-generated payload like `responsible_party_name:null` from causing a 400 when the outcome is unrelated to responsible-party updates.
 
