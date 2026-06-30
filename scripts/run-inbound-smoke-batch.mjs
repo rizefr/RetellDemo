@@ -16,7 +16,7 @@ function loadEnv() {
 
 const env = loadEnv();
 const llmId = env.RETELL_SINGLE_PROMPT_CANDIDATE_LLM_ID || "llm_e8bb285e8cb0fc562f06e2395a78";
-const llmVersion = Number(env.RETELL_TEST_LLM_VERSION || "26");
+const pinnedLlmVersion = env.RETELL_TEST_LLM_VERSION ? Number(env.RETELL_TEST_LLM_VERSION) : null;
 
 async function retell(method, endpoint, body) {
   const response = await fetch(`https://api.retellai.com${endpoint}`, {
@@ -37,7 +37,6 @@ async function retell(method, endpoint, body) {
   return text ? JSON.parse(text) : {};
 }
 
-const engine = { type: "retell-llm", llm_id: llmId, version: llmVersion };
 const dynamicVariables = {
   business_name: "Elijah's Pest Control",
   booking_placeholder_email: env.BOOKING_PLACEHOLDER_EMAIL || "demo@example.com",
@@ -150,6 +149,11 @@ async function waitForBatch(batchId) {
 async function main() {
   const created = [];
   try {
+    const currentLlm = pinnedLlmVersion
+      ? { version: pinnedLlmVersion }
+      : await retell("GET", `/get-retell-llm/${llmId}`);
+    const engine = { type: "retell-llm", llm_id: llmId, version: currentLlm.version };
+
     for (const scenario of scenarios) {
       const definition = await retell("POST", "/create-test-case-definition", {
         name: `codex inbound final ${scenario.name}`,
