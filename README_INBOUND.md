@@ -5,7 +5,7 @@ This project’s live inbound receptionist is the single-prompt Retell agent for
 ## Current Live Configuration
 
 - Phone-bound agent: `agent_16b324c0e55f21c0a5f914c169`
-- Published version: `29` via `latest_published`
+- Published version: `30` via `latest_published`
 - LLM: `llm_e8bb285e8cb0fc562f06e2395a78`
 - Backend: `https://elixis.agency`
 - Webhook: `https://elixis.agency/retell/webhook`
