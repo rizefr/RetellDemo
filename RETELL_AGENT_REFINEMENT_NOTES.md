@@ -12,7 +12,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Voice: `11labs-Sloane`
 - Spoken name: `Sophia`
 - Model: GPT-4.1
-- Speed/start delay: `0.89`, `1150 ms`
+- Speed/start delay: `0.84`, `1200 ms`
 - Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
 
 ## Rules To Keep
