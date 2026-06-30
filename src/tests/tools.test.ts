@@ -176,7 +176,7 @@ describe("single-prompt candidate prompt", () => {
       "# Required Lead Fields",
       "# Core Flow",
       "# Phone Booking / Cal.com Flow",
-      "# Text Booking Link Flow",
+      "# Follow-Up Request Flow",
       "# Transfer Rules",
       "# Pricing / Safety / Unknown Rules",
       "# Example Dialogues",
@@ -186,8 +186,9 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).toContain(DEMO_PEST_KB_NAME);
   });
 
-  it("prioritizes Cal.com phone booking and keeps SMS simulated-safe", () => {
-    expect(prompt).toContain("I can help book it over the phone now, or I can have the team send you the booking link");
+  it("prioritizes Cal.com phone booking and keeps SMS follow-up safe", () => {
+    expect(prompt).toContain("I can help get that booked over the phone now. Can I have your first name?");
+    expect(prompt).toContain("Do not offer SMS booking or a text booking link as a normal option");
     expect(prompt).toContain("Retell native Cal.com tools as the primary");
     expect(prompt).toContain("native book_appointment_cal tool confirms success");
     expect(prompt).toContain("Give me a second while I check the schedule");
@@ -195,8 +196,8 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).toContain("Before calling book_appointment_cal");
     expect(prompt).toContain("Let me make sure I have this right");
     expect(prompt).toContain("Do not call book_appointment_cal until the caller confirms");
-    expect(prompt).toContain("send_booking_sms returns sms_sent true");
-    expect(prompt).toContain("I saved your request. The team can follow up with the booking link.");
+    expect(prompt).toContain("Do not call send_booking_sms in the normal inbound flow");
+    expect(prompt).toContain("I saved your request. The team can follow up from there.");
     expect(prompt).not.toContain("mail@example.com");
   });
 
@@ -211,7 +212,7 @@ describe("single-prompt candidate prompt", () => {
   it("handles repeated unsafe claims without getting stuck", () => {
     expect(prompt).toContain("If the caller repeats a false confirmation");
     expect(prompt).toContain("move to follow-up, transfer, or closing instead of arguing");
-    expect(prompt).toContain("I don't show a text was sent on my end");
+    expect(prompt).toContain("I can't confirm a text or appointment unless the tool confirms it");
     expect(prompt).toContain("do not have a specific person or department");
     expect(prompt).toContain("Do not say \"confirm your appointment\"");
     expect(prompt).toContain("Do not keep asking the same question");

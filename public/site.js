@@ -4,6 +4,7 @@ const serviceMenus = document.querySelectorAll(".services-menu");
 const retellModal = document.querySelector("[data-retell-modal]");
 const retellOpeners = document.querySelectorAll("[data-open-retell]");
 const retellClosers = document.querySelectorAll("[data-close-retell]");
+const iframeFrames = document.querySelectorAll("[data-iframe-frame]");
 const transcriptCarousel = document.querySelector("[data-transcript-carousel]");
 const transcriptStack = document.querySelector("[data-transcript-stack]");
 const transcriptLabel = document.querySelector("[data-transcript-label]");
@@ -221,6 +222,32 @@ document.querySelectorAll("[data-mobile-menu] a").forEach((link) => {
     serviceMenus.forEach((menu) => {
       menu.open = false;
     });
+  });
+});
+
+iframeFrames.forEach((frame) => {
+  const activateButton = frame.querySelector("[data-iframe-activate]");
+  const deactivate = () => {
+    frame.classList.remove("is-iframe-active");
+    activateButton?.setAttribute("aria-pressed", "false");
+  };
+
+  activateButton?.addEventListener("click", () => {
+    frame.classList.add("is-iframe-active");
+    activateButton.setAttribute("aria-pressed", "true");
+  });
+
+  frame.addEventListener("mouseleave", deactivate);
+  frame.addEventListener("focusout", (event) => {
+    if (!frame.contains(event.relatedTarget)) deactivate();
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  iframeFrames.forEach((frame) => {
+    frame.classList.remove("is-iframe-active");
+    frame.querySelector("[data-iframe-activate]")?.setAttribute("aria-pressed", "false");
   });
 });
 

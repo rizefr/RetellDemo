@@ -26,7 +26,7 @@
       rel="stylesheet"
     />
     <link href="/styles.css" rel="stylesheet" />
-    <link href="/polish.css" rel="stylesheet" />
+    <link href="/polish.css?v=elixis-home-polish-20260630" rel="stylesheet" />
     <script src="/site-config.js?v=elixis-services-20260618" defer></script>
     <script src="/site.js?v=elixis-services-20260618" defer></script>
     <script type="application/ld+json">
@@ -213,22 +213,16 @@
             <div class="hero-copy agency-hero-copy reveal">
               <p class="kicker">Elixis AI systems agency</p>
               <h1>AI Payment Outreach for Invoices That Need Follow-Up</h1>
-              <p class="hero-subhead">Elixis builds practical AI systems for service businesses: payment outreach first, AI receptionist support second, and custom workflow automation when the process is worth mapping.</p>
+              <p class="hero-subhead">Elixis helps service businesses follow up on unpaid invoices with approved AI voice outreach, then adds receptionist coverage and custom automations when the workflow is worth mapping.</p>
               <div class="hero-actions">
-                <a href="/booking/" class="button button-primary"><svg class="icon"><use href="#i-calendar" /></svg>Book a consultation</a>
+                <a href="/booking/" class="button button-primary"><svg class="icon"><use href="#i-calendar" /></svg>Book an AI Audit</a>
                 <a href="#payment-outreach" class="button button-secondary" data-scroll-target="payment-outreach">See payment outreach</a>
-              </div>
-              <div class="hero-assurances" aria-label="Implementation principles">
-                <span>B2B first-party follow-up</span>
-                <span>Approved scripts and guardrails</span>
-                <span>Start with one workflow</span>
               </div>
             </div>
 
-            <div class="payment-console reveal" aria-label="Sample AI payment outreach dashboard">
-              <div class="console-topbar">
-                <span><i class="status-dot"></i>Sample AR workflow</span>
-                <span>Elixis Collect</span>
+            <div class="payment-console demo-preview reveal" aria-label="Elixis Collect AI payment outreach dashboard preview">
+              <div class="console-topbar console-topbar-single">
+                <span><i class="status-dot"></i>Elixis Collect</span>
               </div>
               <div class="payment-console-body">
                 <div class="invoice-card">
@@ -260,13 +254,17 @@
               </div>
             </div>
           </div>
+          <a href="#follow-up-problem" class="scroll-cue reveal" data-scroll-target="follow-up-problem" aria-label="Scroll to invoice follow-up problems">
+            <span>Scroll</span>
+            <i aria-hidden="true"></i>
+          </a>
         </section>
 
-        <section class="section-block section-rule problem-section">
+        <section id="follow-up-problem" class="section-block section-rule problem-section">
           <div class="section-wrap">
             <div class="section-heading reveal">
-              <h2>Revenue leaks when follow-up depends on whoever has time.</h2>
-              <p>Invoices age, staff get busy, calls arrive while the team is in the field, and the owner ends up carrying the customer follow-up process manually.</p>
+              <h2>Late invoices are not just accounting work. They create operational drag.</h2>
+              <p>Invoices age, staff get busy, calls arrive while the team is in the field, and the owner ends up carrying follow-up that should have a repeatable system.</p>
             </div>
             <div class="problem-grid reveal">
               <article>
@@ -288,6 +286,67 @@
                 <span>04</span>
                 <h3>Tools exist, but handoffs break.</h3>
                 <p>The issue is usually not one missing app. It is the gap between invoices, calls, notes, follow-up, owner review, and booking.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="comparisons" class="section-block comparison-section">
+          <div class="section-wrap">
+            <div class="section-heading reveal">
+              <h2>Two practical systems, designed around the work your team already does.</h2>
+              <p>Elixis does not replace judgment. It gives repetitive payment follow-up and call intake a clearer operating path, then routes exceptions back to people.</p>
+            </div>
+            <div class="comparison-stack">
+              <article class="comparison-panel reveal" aria-labelledby="intake-comparison-title">
+                <div class="comparison-panel-heading">
+                  <p class="kicker">Elixis Intake</p>
+                  <h3 id="intake-comparison-title">Regular receptionist vs Elixis Intake</h3>
+                </div>
+                <div class="comparison-sides">
+                  <div class="comparison-side comparison-side-manual">
+                    <span class="comparison-label">Regular Receptionist</span>
+                    <ul>
+                      <li>Full-time cost, payroll overhead, benefits, vacations, and sick days</li>
+                      <li>Limited after-hours coverage unless you pay more or miss calls</li>
+                      <li>Inconsistent customer experience when staff are overloaded, rushed, or having a bad day</li>
+                    </ul>
+                  </div>
+                  <div class="comparison-side comparison-side-elixis">
+                    <span class="comparison-label">Elixis Intake</span>
+                    <ul>
+                      <li>A fraction of full-time staffing cost, based on call volume and setup scope</li>
+                      <li>Available 24/7 for missed, overflow, and after-hours calls</li>
+                      <li>Fast, consistent intake that captures details, routes urgent issues, and logs outcomes</li>
+                    </ul>
+                  </div>
+                </div>
+              </article>
+
+              <article class="comparison-panel reveal" aria-labelledby="collect-comparison-title">
+                <div class="comparison-panel-heading">
+                  <p class="kicker">Elixis Collect</p>
+                  <h3 id="collect-comparison-title">Regular payment collection vs Elixis Collect</h3>
+                </div>
+                <div class="comparison-sides">
+                  <div class="comparison-side comparison-side-manual">
+                    <span class="comparison-label">Regular Payment Collection / Manual AR</span>
+                    <ul>
+                      <li>Often relies on email, SMS, or one-off reminders that are easy to ignore</li>
+                      <li>Follow-up depends on busy staff remembering to chase each invoice</li>
+                      <li>Notes, disputes, payment promises, and next steps can get scattered across inboxes and spreadsheets</li>
+                    </ul>
+                  </div>
+                  <div class="comparison-side comparison-side-elixis">
+                    <span class="comparison-label">Elixis Collect</span>
+                    <ul>
+                      <li>Professional AI voice follow-up with email/manual SMS/mail-in support depending on setup</li>
+                      <li>Invoice-specific outreach with exact amount, due date, and secure payment next step</li>
+                      <li>Centralized notes, outcomes, disputes, callbacks, and payment status in the admin workflow</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="comparison-note">Flexible pricing is based on workflow scope, call volume, integrations, and rollout complexity. The goal is to cost less than staffing the whole follow-up process manually while keeping exceptions human.</p>
               </article>
             </div>
           </div>
@@ -377,31 +436,6 @@
               <article><strong>Inbound call coverage</strong><span>Missed-call capture, lead qualification, routing, booking support, and summaries.</span></article>
               <article><strong>Service coordination</strong><span>Requests, follow-ups, intake details, owner review, and customer handoffs.</span></article>
               <article><strong>Visibility plus follow-up</strong><span>Clearer pages and discovery signals connected to booking and intake systems.</span></article>
-            </div>
-          </div>
-        </section>
-
-        <section class="section-block comparison-section">
-          <div class="section-wrap comparison-grid">
-            <div class="comparison-card reveal">
-              <p class="kicker">Manual follow-up</p>
-              <h2>What happens when the process lives in memory.</h2>
-              <ul>
-                <li>Invoices get checked only when someone has time.</li>
-                <li>Customer calls interrupt staff work.</li>
-                <li>Notes sit in inboxes, spreadsheets, or call logs.</li>
-                <li>Disputes and exceptions are hard to triage.</li>
-              </ul>
-            </div>
-            <div class="comparison-card comparison-card-active reveal">
-              <p class="kicker">AI-assisted follow-up</p>
-              <h2>What changes when the workflow has a system.</h2>
-              <ul>
-                <li>Scripts, timing, and escalation rules are approved first.</li>
-                <li>Customers get a professional reminder and clear next step.</li>
-                <li>Calls and outcomes are logged for review.</li>
-                <li>Staff stay involved where judgment is needed.</li>
-              </ul>
             </div>
           </div>
         </section>
