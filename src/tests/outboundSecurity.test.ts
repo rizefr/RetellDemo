@@ -103,6 +103,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("email_missing");
     expect(serialized).toContain("Elixis Elevator Systems");
     expect(serialized).toContain("Hello, I'm calling from {{business_name_spoken}}. Is this {{customer_first_name_spoken}}?");
+    expect(serialized).toContain("Speak as if the caller has already asked you to slow down.");
+    expect(serialized).toContain("Keep a steady, lower-energy tone and do not rush the opening, names, emails, phone numbers, dates, or payment instructions.");
     expect(serialized).toContain("Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
@@ -215,10 +217,10 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain('return { voiceId: "11labs-Sloane", source: "default_fallback" }');
-    expect(setupScript).toContain("voice_speed: 0.89");
-    expect(setupScript).toContain("begin_message_delay_ms: 1150");
+    expect(setupScript).toContain("voice_speed: 0.84");
+    expect(setupScript).toContain("begin_message_delay_ms: 1200");
     expect(setupScript).toContain('ambient_sound: "call-center"');
-    expect(setupScript).toContain("ambient_sound_volume: 0.5");
+    expect(setupScript).toContain("ambient_sound_volume: 1");
     expect(envConfig).toContain('OUTBOUND_RETELL_MODEL: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Sophia")');
