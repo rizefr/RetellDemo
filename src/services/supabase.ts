@@ -48,7 +48,7 @@ export async function selectRecentRecords(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) return { configured: true, data: [], error: error.message };
-  return { configured: true, data: (data ?? []) as Record<string, unknown>[] };
+  return { configured: true, data: (data ?? []) as unknown as Record<string, unknown>[] };
 }
 
 export async function countTable(
