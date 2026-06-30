@@ -47,6 +47,9 @@ const envSchema = z.object({
   OUTBOUND_RETELL_WEBHOOK_SECRET: z.string().optional().default(""),
   OUTBOUND_RETELL_SMS_ENABLED: booleanFromString.default(false),
   OUTBOUND_RETELL_SMS_CHAT_AGENT_ID: z.string().optional().default(""),
+  OUTBOUND_PAYMENT_EMAIL_ENABLED: booleanFromString.default(false),
+  OUTBOUND_PAYMENT_EMAIL_FROM: z.string().optional().default(""),
+  OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE: booleanFromString.default(false),
   RETELL_FROM_NUMBER: z.string().optional().default("+19842075346"),
   CONFIRM_CREATE_RETELL_OUTBOUND_AGENT: booleanFromString.default(false),
 
