@@ -54,6 +54,7 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(""),
   HUMAN_TRANSFER_NUMBER: z.string().optional().default(""),
   BUSINESS_CALLBACK_NUMBER: z.string().optional().default(""),
+  EMAIL_PROVIDER: z.enum(["none", "resend"]).default("none"),
   EMAIL_PROVIDER_API_KEY: z.string().optional().default(""),
 
   PUBLIC_BASE_URL: z.string().optional().default(""),
