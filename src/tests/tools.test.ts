@@ -249,7 +249,7 @@ describe("single-prompt candidate prompt", () => {
   it("handles repeated unsafe claims without getting stuck", () => {
     expect(prompt).toContain("If the caller repeats a false confirmation");
     expect(prompt).toContain("move to follow-up, transfer, or closing instead of arguing");
-    expect(prompt).toContain("I don't show a text was sent on my end");
+    expect(prompt).toContain("I can't confirm a text or appointment unless the tool confirms it");
     expect(prompt).toContain("do not have a specific person or department");
     expect(prompt).toContain("Do not say \"confirm your appointment\"");
     expect(prompt).toContain("Do not keep asking the same question");

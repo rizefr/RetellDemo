@@ -28,6 +28,7 @@ import {
   formatOutboundInvoiceCountSpoken,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
+  formatOutboundNameSpoken,
   formatOutboundPhoneSpoken,
   formatOutboundPhoneSpokenChunked,
 } from "./outboundFormatting";
@@ -295,15 +296,22 @@ export async function startOutboundCall(
   const accountCompanyName =
     String(context.customer.account_company_name || "").trim() ||
     "the business account connected with this number";
+  const businessName = String(context.business.business_name);
+  const customerFirstName = String(context.customer.first_name);
+  const customerLastName = String(context.customer.last_name);
   const daysAfterInspection = Number(context.business.days_after_inspection_first_call ?? 14);
   const veryOverdueThreshold = Number(context.business.very_overdue_threshold_days ?? 45);
   const dueDate = DateTime.fromISO(String(context.invoice.original_due_date || ""), { zone: "utc" });
   const overdueDays = dueDate.isValid ? Math.max(0, Math.floor((now.getTime() - dueDate.toJSDate().getTime()) / 86_400_000)) : 0;
   const dynamicVariables = {
-    business_name: String(context.business.business_name),
+    business_name: businessName,
+    business_name_spoken: formatOutboundNameSpoken(businessName),
     account_company_name: accountCompanyName,
-    customer_first_name: String(context.customer.first_name),
-    customer_last_name: String(context.customer.last_name),
+    account_company_name_spoken: formatOutboundNameSpoken(accountCompanyName),
+    customer_first_name: customerFirstName,
+    customer_first_name_spoken: formatOutboundNameSpoken(customerFirstName),
+    customer_last_name: customerLastName,
+    customer_last_name_spoken: formatOutboundNameSpoken(customerLastName),
     amount_due: money(Number(context.invoice.amount_due_cents), String(context.invoice.currency)),
     amount_due_spoken: formatOutboundMoneySpoken(
       Number(context.invoice.amount_due_cents),
@@ -372,6 +380,7 @@ export async function startOutboundCall(
     payment_mailing_instructions: String(context.business.payment_mailing_instructions || ""),
     payment_provider: paymentProvider,
     quickbooks_connected: String(quickBooksConnected),
+    sms_effective: String(runtime.smsEffective),
     manual_payment_followup_required: String(
       paymentProvider === "manual" ||
         paymentProvider === "quickbooks_read_only" ||

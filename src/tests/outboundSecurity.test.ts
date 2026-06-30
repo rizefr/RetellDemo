@@ -102,14 +102,14 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("email_pending_manual");
     expect(serialized).toContain("email_missing");
     expect(serialized).toContain("Elixis Elevator Systems");
-    expect(serialized).toContain("Hello, I'm calling from {{business_name}}. Is this {{customer_first_name}}?");
-    expect(serialized).toContain("Nice to meet you, {{customer_first_name}}. I'm {{agent_display_name}}, calling from {{business_name}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
+    expect(serialized).toContain("Hello, I'm calling from {{business_name_spoken}}. Is this {{customer_first_name_spoken}}?");
+    expect(serialized).toContain("Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
-    expect(serialized).toContain("Do you have an estimated payment date, or is there anything preventing payment right now?");
+    expect(serialized).toContain("Good to hear. Would you like to take care of it now?");
     expect(serialized).toContain("We value our relationship and want to avoid any interruption in service or delays with future inspection filings");
     expect(serialized).toContain("Do not mention virtual assistant or AI status automatically in the normal flow.");
-    expect(serialized).toContain("Is this {{account_company_name}}?");
+    expect(serialized).toContain("Is this {{account_company_name_spoken}}?");
     expect(serialized).toContain("company/account confirmed");
     expect(serialized).toContain("inspection_type");
     expect(serialized).toContain("days_after_inspection_first_call");
@@ -149,7 +149,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("\\\"status\\\":\\\"email_sent\\\"");
     expect(serialized).toContain("I sent the secure payment link to {{customer_email_spoken_slow}}");
     expect(serialized).toContain("If the person says \\\"hello\\\"");
-    expect(serialized).toContain("State the inspection type, inspection date, and selected balance before any payment tool");
+    expect(serialized).toContain("State the inspection type, inspection date, and selected balance only when the caller asks");
     expect(serialized).toContain("amount_due_spoken");
     expect(serialized).toContain("total_amount_due_spoken");
     expect(serialized).toContain("invoice_id_spoken");
@@ -183,13 +183,16 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Customer email spoken phonetic");
     expect(serialized).toContain("Customer phone spoken in chunks");
     expect(serialized).toContain("Is {{customer_email_spoken_slow}} still the best email for the secure payment link?");
-    expect(serialized).toContain("Is e-l-i-x-i-s agency at gmail dot com still the best email for the secure payment link?");
+    expect(serialized).toContain("Is e l i x i s agency, at gmail, dot com still the best email for the secure payment link?");
     expect(serialized).toContain("If the caller asks you to repeat the email, says it is wrong, or sounds confused, the second readback must use {{customer_email_spoken_phonetic}}");
     expect(serialized).toContain("If the caller asks you to repeat the phone number or corrects it, use {{customer_phone_spoken_chunked}}");
     expect(serialized).toContain('"id":"email_second_readback_phonetic_example"');
     expect(serialized).toContain('"id":"email_correction_contact_update_example"');
     expect(serialized).toContain('"id":"phone_correction_contact_update_example"');
-    expect(serialized).toContain("Use one bridge line for the whole payment-link delivery sequence");
+    expect(serialized).toContain("say one complete two-word bridge line for the whole sequence");
+    expect(serialized).toContain("One moment.");
+    expect(serialized).not.toContain("One moment while I prepare that.");
+    expect(serialized).not.toContain("One moment while I pull that up.");
     expect(serialized).not.toContain("One moment while I send that.");
     expect(serialized).toContain("Inspection date: {{inspection_date_spoken}}");
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
@@ -211,10 +214,10 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain('return { voiceId: "11labs-Sloane", source: "default_fallback" }');
-    expect(setupScript).toContain("voice_speed: 0.86");
-    expect(setupScript).toContain("begin_message_delay_ms: 1000");
+    expect(setupScript).toContain("voice_speed: 0.89");
+    expect(setupScript).toContain("begin_message_delay_ms: 1150");
     expect(setupScript).toContain('ambient_sound: "call-center"');
-    expect(setupScript).toContain("ambient_sound_volume: 0.28");
+    expect(setupScript).toContain("ambient_sound_volume: 0.5");
     expect(envConfig).toContain('OUTBOUND_RETELL_MODEL: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Sophia")');
@@ -226,11 +229,20 @@ describe("outbound flow guardrails", () => {
 
   it("adds subtle tool-wait bridge behavior without exposing internals", () => {
     const serialized = JSON.stringify(buildOutboundConversationFlow("https://elixis.agency"));
-    expect(serialized).toContain("One moment while I pull that up.");
-    expect(serialized).toContain("Give me a moment while I prepare that.");
-    expect(serialized).toContain("One moment while I check that time.");
+    expect(serialized).toContain("One moment.");
+    expect(serialized).toContain("I'll pull that up.");
+    expect(serialized).toContain("I'll prepare that now.");
+    expect(serialized).toContain("One moment.");
     expect(serialized).toContain("Do not overuse the bridge line for quick background logging");
     expect(serialized).toContain("Never mention tools, APIs, systems, or databases");
+  });
+
+  it("prevents SMS-to-email delivery without email confirmation and avoids repeated invoice details", () => {
+    const flow = buildOutboundConversationFlow("https://elixis.agency");
+    const prompt = String(flow.global_prompt);
+    expect(prompt).toContain("If the caller switches from text to email, confirm {{customer_email_spoken_slow}} before calling send_payment_email");
+    expect(prompt).toContain('If the invoice was received, say: "Good to hear. Would you like to take care of it now?"');
+    expect(prompt).toContain("Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks what the invoice is about, asks how payment works, or asks for the amount.");
   });
 
   it("keeps Presentation Mode copy professional and surfaces specific demo gate messages", () => {
