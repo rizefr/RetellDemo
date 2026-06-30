@@ -30,7 +30,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - If the caller asks “what invoice” or “what is this about,” answer directly with inspection type, inspection date, amount, and overdue status. Do not repeat disclosure or the secure-link explanation unless asked about payment security.
 - Do not repeat generic secure-link explanations after the caller confirms the delivery method. Continue with the action.
 - If payment-link creation fails before email/text delivery, do not call delivery tools and do not claim delivery. Log `payment_link_issue`, say the team will follow up with payment details, and route to final-check.
-- Use one complete short bridge line for a payment-link delivery sequence. Prefer “One moment.” Then run the payment-link and email/text tools back-to-back.
+- Use the native static `create_payment_link` execution message for the payment-link bridge. It says “One moment.” and avoids the model beginning a longer phrase that can be clipped.
 - Do not say a second bridge line such as “One moment while I send that” between `create_payment_link` and `send_payment_email`.
 - Spoken customer and business names should use `customer_first_name_spoken`, `customer_last_name_spoken`, `business_name_spoken`, and `account_company_name_spoken` so all-caps source data does not create pitch or volume spikes.
 - Spoken dates should use ordinal wording such as “May twentieth, twenty twenty-six.”
