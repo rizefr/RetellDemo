@@ -62,6 +62,17 @@ export function formatOutboundPhoneSpoken(value: string | null | undefined): str
   return digits ? speakDigits(digits) : "phone number unavailable";
 }
 
+export function formatOutboundPhoneSpokenChunked(value: string | null | undefined): string {
+  const input = String(value ?? "").trim();
+  const usMatch = input.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  const speakDigits = (digits: string) => digits.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join(" ");
+  if (usMatch) {
+    return `area code ${speakDigits(usMatch[1])}, then ${speakDigits(usMatch[2])}, then ${speakDigits(usMatch[3])}`;
+  }
+  const digits = input.replace(/\D/g, "");
+  return digits ? speakDigits(digits) : "phone number unavailable";
+}
+
 export function formatOutboundEmailSpoken(value: string | null | undefined): string {
   const input = String(value ?? "").trim().toLowerCase();
   if (!input) return "email unavailable";
@@ -111,6 +122,76 @@ export function formatOutboundEmailSpokenSlow(value: string | null | undefined):
     .replace(/\s+/g, " ")
     .trim();
   return [spokenLocal || "email", spokenDomain ? `at ${spokenDomain}` : ""].filter(Boolean).join(" ");
+}
+
+const PHONETIC_ALPHABET: Record<string, string> = {
+  a: "Alpha",
+  b: "Bravo",
+  c: "Charlie",
+  d: "Delta",
+  e: "Echo",
+  f: "Foxtrot",
+  g: "Golf",
+  h: "Hotel",
+  i: "India",
+  j: "Juliet",
+  k: "Kilo",
+  l: "Lima",
+  m: "Mike",
+  n: "November",
+  o: "Oscar",
+  p: "Papa",
+  q: "Quebec",
+  r: "Romeo",
+  s: "Sierra",
+  t: "Tango",
+  u: "Uniform",
+  v: "Victor",
+  w: "Whiskey",
+  x: "X-ray",
+  y: "Yankee",
+  z: "Zulu",
+};
+
+function spellPhoneticToken(token: string): string {
+  if (!token) return "";
+  if (/^\d+$/.test(token)) return token.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join(", ");
+  if (/^[a-z]+$/.test(token)) {
+    if (token.endsWith("agency") && token.length > "agency".length) {
+      const prefix = token.slice(0, -"agency".length);
+      return [spellPhoneticToken(prefix), "agency"].filter(Boolean).join(", ");
+    }
+    return token
+      .split("")
+      .map((letter) => `${letter} as in ${PHONETIC_ALPHABET[letter] || letter.toUpperCase()}`)
+      .join(", ");
+  }
+  return token;
+}
+
+export function formatOutboundEmailSpokenPhonetic(value: string | null | undefined): string {
+  const input = String(value ?? "").trim().toLowerCase();
+  if (!input) return "email unavailable";
+  const [local, domain = ""] = input.split("@");
+  const spokenLocal = local
+    .split(/([._+-])/)
+    .filter(Boolean)
+    .map((part) => {
+      if (part === ".") return "dot";
+      if (part === "_") return "underscore";
+      if (part === "+") return "plus";
+      if (part === "-") return "dash";
+      return spellPhoneticToken(part);
+    })
+    .join(", ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const spokenDomain = domain
+    .replace(/\./g, " dot ")
+    .replace(/-/g, " dash ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [spokenLocal || "email", spokenDomain ? `at ${spokenDomain}` : ""].filter(Boolean).join(", ");
 }
 
 export function normalizeOutboundDate(value: string | null | undefined): string | null {

@@ -315,10 +315,13 @@ describe("outbound browser operation safety", () => {
           call_purpose: "follow_up",
           demo_call_mode: "follow_up",
           customer_phone_spoken: "five five five, one two three, four five six seven",
+          customer_phone_spoken_chunked: "area code five five five, then one two three, then four five six seven",
           account_company_name: "Test Owner Holdings",
           customer_email: "billing@example.test",
           customer_email_spoken: "billing at example dot test",
           customer_email_spoken_slow: "b-i-l-l-i-n-g at example dot test",
+          customer_email_spoken_phonetic:
+            "b as in Bravo, i as in India, l as in Lima, l as in Lima, i as in India, n as in November, g as in Golf, at example dot test",
           customer_email_display: "billing@example.test",
           previous_call_date_spoken: "June 19, twenty twenty-six",
           followup_reason: "customer asked for a later follow-up",

@@ -94,6 +94,8 @@ Email on file: {{email_on_file}}
 Customer email display: {{customer_email_display}}
 Customer email spoken: {{customer_email_spoken}}
 Customer email spoken slowly: {{customer_email_spoken_slow}}
+Customer email spoken phonetic: {{customer_email_spoken_phonetic}}
+Customer phone spoken in chunks: {{customer_phone_spoken_chunked}}
 Mailing instructions available: {{mailing_instructions_available}}
 Payment mailing instructions: {{payment_mailing_instructions}}
 Payment provider: {{payment_provider}}
@@ -108,7 +110,7 @@ Requested callback time: {{callback_scheduled_for_spoken}}
 
 # Opening and disclosure
 Use call_purpose to choose the script context. Supported values are first_reminder, follow_up, callback_followup, scam_recovery, and service_issue. Treat unknown values as first_reminder.
-For first_reminder, follow_up, scam_recovery, and service_issue, speak first with a shorter, natural opening: "Hello, I'm calling from {{business_name}}. Is this {{customer_first_name}}?" Pause briefly after "Hello" and after {{business_name}}. Do not add "your elevator inspection company" unless the caller asks who {{business_name}} is.
+For first_reminder, follow_up, scam_recovery, and service_issue, speak first with a shorter, natural opening: "Hello, I'm calling from {{business_name}}. Is this {{customer_first_name}}?" Keep the first utterance short and steady. Pause briefly after "Hello" and after {{business_name}}. Do not add "your elevator inspection company" unless the caller asks who {{business_name}} is.
 After the person confirms they are {{customer_first_name}}, continue once with: "Nice to meet you, {{customer_first_name}}. I'm {{agent_display_name}}, calling from {{business_name}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm here to follow up and make sure it was received." Do not ask the same identity question again after confirmation.
 For callback_followup, use this distinct opening instead: "Hello, this is {{agent_display_name}} from {{business_name}}. I'm following up at the time you requested about your elevator inspection invoice. Is this {{customer_first_name}}?" After confirmation, say: "Thanks. Last time, you asked us to follow up about the {{inspection_type}} invoice from {{original_due_date_spoken}} for {{amount_due_spoken}}. Would you prefer that I resend the invoice or prepare the secure payment link by text or email?" Do not repeat the initial first-reminder opening on a callback call.
 For follow_up, mention prior context only after identity confirmation, using {{previous_call_date_spoken}}, {{followup_reason}}, {{prior_concern_note}}, and {{preferred_payment_method}} when they are populated.
@@ -154,8 +156,8 @@ For already paid, dispute, proof, wrong number, attorney, scam concern, stop cal
 # Payment preferences
 After explicit agreement, log confirmed_payment_link_requested and call create_payment_link. Ask whether they prefer text or email.
 Before longer user-visible tool work such as creating a payment link, sending email, checking callback availability, or requesting transfer status, you must say one short bridge line as the assistant message immediately before the first tool invocation in that sequence so the caller knows you are still there. Use natural wording such as "One moment while I pull that up." or "Give me a moment while I prepare that." Use one bridge line for the whole payment-link delivery sequence, even when create_payment_link is followed by send_payment_email or send_payment_sms. Do not add a second bridge line between back-to-back payment-link/email/text tools. Do not overuse the bridge line for quick background logging. Never mention tools, APIs, systems, or databases.
-For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, say a brief bridge line before calling send_payment_sms, then trust its result. If pending/manual, say the team will follow up; never claim it was sent.
-For email, ask exactly when customer_email_spoken_slow is populated: "Is {{customer_email_spoken_slow}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address, and do not jump loudly into "still the best email." If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email, say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new address. If the on-file email is confirmed, say one bridge line for the whole payment-link delivery sequence, then call create_payment_link if needed. If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms. Log payment_link_issue, say you are having trouble preparing the secure link right now and will have the team follow up, then route to the normal final-check step. Only after create_payment_link returns a usable url/payment_url should you call send_payment_email without repeating disclosure, inspection details, or a generic secure-link explanation. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken_slow}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
+For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" If the caller asks you to repeat the phone number or corrects it, use {{customer_phone_spoken_chunked}} for the next readback and confirm once. If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed, say a brief bridge line before calling send_payment_sms, then trust its result. If pending/manual, say the team will follow up; never claim it was sent.
+For email, ask exactly when customer_email_spoken_slow is populated: "Is {{customer_email_spoken_slow}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address, and do not jump loudly into "still the best email." If the caller asks you to repeat the email, says it is wrong, or sounds confused, the second readback must use {{customer_email_spoken_phonetic}} and then ask for confirmation. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email or correct any part of the email, repeat the corrected address slowly, ask for confirmation, then say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new untrusted address unless a backend tool explicitly returns sent=true for that address. If the on-file email is confirmed, say one bridge line for the whole payment-link delivery sequence, then call create_payment_link if needed. If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms. Log payment_link_issue, say you are having trouble preparing the secure link right now and will have the team follow up, then route to the normal final-check step. Only after create_payment_link returns a usable url/payment_url should you call send_payment_email without repeating disclosure, inspection details, or a generic secure-link explanation. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken_slow}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
 If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then route to the normal final-check step.
 
@@ -604,6 +606,49 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
             { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+          ],
+        },
+        {
+          id: "email_second_readback_phonetic_example",
+          transcript: [
+            { role: "agent", content: "Is e-l-i-x-i-s agency at gmail dot com still the best email for the secure payment link?" },
+            { role: "user", content: "Can you repeat that?" },
+            { role: "agent", content: "Yes. That's {{customer_email_spoken_phonetic}}. Is that correct?" },
+            { role: "user", content: "Yes, that's right." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller confirmed the on-file email after phonetic repeat.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
+            { role: "agent", content: "One moment while I prepare that." },
+            { role: "tool_call_invocation", name: "create_payment_link", tool_call_id: "tool_2", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+          ],
+        },
+        {
+          id: "email_correction_contact_update_example",
+          transcript: [
+            { role: "agent", content: "Is e-l-i-x-i-s agency at gmail dot com still the best email for the secure payment link?" },
+            { role: "user", content: "No, use billing at example dot com." },
+            { role: "agent", content: "Just to confirm, the preferred email for this follow-up is billing at example dot com, correct?" },
+            { role: "user", content: "Correct." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"contact_update_requested\",\"notes\":\"Caller requested preferred email billing@example.com for this follow-up; on-file email was not used for automatic delivery.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"contact_update_requested\"}" },
+            { role: "agent", content: "I can note that preferred email for this follow-up. Is there anything else I can help you with?" },
+          ],
+        },
+        {
+          id: "phone_correction_contact_update_example",
+          transcript: [
+            { role: "agent", content: "Is the number I'm calling, {{customer_phone_spoken}}, the best number to text the secure link?" },
+            { role: "user", content: "Can you repeat the number?" },
+            { role: "agent", content: "Yes. That's {{customer_phone_spoken_chunked}}. Is that correct?" },
+            { role: "user", content: "No, use 347-555-0123." },
+            { role: "agent", content: "Just to confirm, the preferred number for this follow-up is three four seven, five five five, zero one two three, correct?" },
+            { role: "user", content: "Yes." },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"contact_update_requested\",\"notes\":\"Caller requested preferred phone +13475550123 for this follow-up; SMS remains manual.\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"contact_update_requested\"}" },
+            { role: "agent", content: "I can note that preferred number for this follow-up. Is there anything else I can help you with?" },
           ],
         },
         {

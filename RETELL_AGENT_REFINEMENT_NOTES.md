@@ -12,13 +12,16 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Voice: `11labs-Sloane`
 - Spoken name: `Sophia`
 - Model: GPT-4.1
-- Speed/start delay: `0.88`, `1000 ms`
+- Speed/start delay: `0.86`, `1000 ms`
 - Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
 
 ## Rules To Keep
 
 - Use backend speech-safe variables for anything read aloud. Do not let Retell infer raw dates, phone numbers, email addresses, invoice IDs, or cents.
-- Use `customer_email_spoken_slow` when confirming an email address. Example: `elixisagency@gmail.com` becomes `e-l-i-x-i-s agency at gmail dot com`.
+- Use `customer_email_spoken_slow` on the first email confirmation. Example: `elixisagency@gmail.com` becomes `e-l-i-x-i-s agency at gmail dot com`.
+- If the caller asks Sophia to repeat the email, says it is wrong, or sounds confused, use `customer_email_spoken_phonetic` on the second readback instead of waiting for more failures. Example: “e as in Echo, l as in Lima, i as in India...”.
+- Use `customer_phone_spoken` on the first phone confirmation. If the caller asks Sophia to repeat or correct the phone number, use `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
+- If the caller corrects an email or phone number, repeat the corrected value slowly, confirm once, log `contact_update_requested`, and do not claim delivery to the corrected value unless the backend tool explicitly returns `sent:true`.
 - Use `inspection_date_spoken` in the trust-building invoice line. If a separate inspection date is unavailable, the backend may fall back to the invoice date.
 - Do not repeat virtual-assistant disclosure after the caller has already confirmed email/text/payment delivery.
 - Do not volunteer virtual-assistant disclosure in the normal inspection invoice flow. Use it only when the caller asks if Sophia is AI/automated, when a stricter configured policy explicitly requires it, or when scam concern makes one clear disclosure useful.
