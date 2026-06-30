@@ -7,11 +7,11 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Sophia
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V59 after the speak-slower default tuning. Read back Retell before any publish.
+- Latest repo-documented verified version: V60 after the Gilfoy voice and slight slower-pacing tuning. Read back Retell before any publish.
 - Model: GPT-4.1
-- Voice: `11labs-Sloane`
+- Voice: `11labs-Gilfoy`
 - Spoken agent name: `Sophia`
-- Speed: `0.84`
+- Speed: `0.82`
 - First-message delay: `1200 ms`
 - Ambient sound: `call-center`, volume `1.0`
 - Outbound phone: `+19842075346`

@@ -28,17 +28,17 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
   - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
   - active inspection name: `Elevator Inspection Collections — Sophia`
-  - active verified version: V59 after the speak-slower default tuning publish
-  - active voice: `11labs-Sloane`, spoken name `Sophia`, speed `0.84`, first-message delay `1200 ms`
+  - active verified version: V60 after the Gilfoy voice and slight slower-pacing publish
+  - active voice: `11labs-Gilfoy`, spoken name `Sophia`, speed `0.82`, first-message delay `1200 ms`
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
   - preserved resources: active inspection flow, future service flow, inbound receptionist flow, single-prompt candidate agent, and patient-template flow with an agent reference
 - Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V59 after the speak-slower default tuning publish
+  - active verified version: V60 after the Gilfoy voice and slight slower-pacing publish
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - current voice is `11labs-Sloane`; the presentation speed is `0.84` with a `1200 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `1.0`, and voicemail hangup are preserved
+  - current voice is `11labs-Gilfoy`; the presentation speed is `0.82` with a `1200 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `1.0`, and voicemail hangup are preserved
   - Sophia speaks first with a short business-first opening, avoids repeating the opener after identity confirmation, and states the inspection type, natural date, and speech-safe amount from trusted backend variables
   - the active inspection demo uses on-request disclosure: Sophia does not volunteer “virtual assistant” in normal flow, but answers honestly if asked whether she is AI or if scam concern makes disclosure useful
   - the V53 live-call refinement shortened the opener, added company/account confirmation when the named person is wrong, removed forced disclosure from normal invoice-continuation paths, and requires service-issue detail before logging `service_issue_reported`
@@ -93,22 +93,22 @@ The demo details editor can update the fake customer and invoice variables used 
 Current production selection:
 
 - Model: GPT-4.1
-- Voice: `11labs-Sloane`
+- Voice: `11labs-Gilfoy`
 - Spoken agent name: `Sophia`
 - Voice model: ElevenLabs Flash v2.5 (`eleven_flash_v2_5`)
-- Speed: `0.84`
+- Speed: `0.82`
 - First-message delay: `1200 ms`
 - Ambient sound: `call-center` at audible but professional volume (`1.0`) so longer tool waits have audible but professional office background instead of sounding like a dead line. Retell docs expose ambient categories, not a keyboard-only effect tied only to custom-tool execution, so `create_payment_link` has a native static execution message of “One moment.” This gives the caller a complete bridge line without relying on the model to start a phrase before a tool call. Do not repeat a second bridge line between `create_payment_link` and `send_payment_email`.
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
-The V59 speed/style change came from the live V56 call where the caller asked Sophia to slow down. Retell word timing showed the opening was materially faster than the first full response after Sophia acknowledged the request. V59 makes that lower-energy, already-slowed-down style the default with speed `0.84`, a `1200 ms` first-message delay, and an explicit prompt rule to speak as if the caller has already asked her to slow down.
+The V59 speed/style change came from the live V56 call where the caller asked Sophia to slow down. Retell word timing showed the opening was materially faster than the first full response after Sophia acknowledged the request. V60 keeps that lower-energy, already-slowed-down style, moves a tad slower to speed `0.82`, and switches the active voice to `11labs-Gilfoy`.
 
 GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Sophia prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for the V59 polish.
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
 
-If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. The setup script preserves the current Retell dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. For the inspection product, keep `11labs-Sloane` unless a new voice is intentionally selected and tested. Voice changes do not affect tools, signed request shape, dynamic variables, phone bindings, email, demo-number authorization, Stripe, or backend routes.
+If the voice is changed manually in Retell, read back the active agent before running `npm run outbound:setup-retell`. The setup script preserves the current Retell dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. For the inspection product, the current verified voice is `11labs-Gilfoy`; the previous Sloane voice can be restored by setting `OUTBOUND_RETELL_VOICE_ID=11labs-Sloane` for a deliberate republish. Voice changes do not affect tools, signed request shape, dynamic variables, phone bindings, email, demo-number authorization, Stripe, or backend routes.
 
 Retell-specific call-quality rules that should be reused by the future service copy are documented in `RETELL_AGENT_REFINEMENT_NOTES.md`.
 
