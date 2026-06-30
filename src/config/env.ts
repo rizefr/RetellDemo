@@ -34,6 +34,7 @@ const envSchema = z.object({
   RETELL_SMS_CHAT_AGENT_ID: z.string().optional().default(""),
 
   APP_BASE_URL: z.string().optional().default(""),
+  INBOUND_ADMIN_TOKEN: z.string().optional().default(""),
   OUTBOUND_ADMIN_TOKEN: z.string().optional().default(""),
   OUTBOUND_TEST_MODE: booleanFromString.default(true),
   OUTBOUND_TEST_PHONE_ALLOWLIST: z.string().optional().default(""),
