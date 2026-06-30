@@ -238,6 +238,25 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).toContain("After collecting an address, call check_service_area silently");
   });
 
+  it("requires clear caller-number and address confirmation pacing", () => {
+    expect(prompt).toContain("slow down slightly and speak each part clearly");
+    expect(prompt).toContain("read the actual caller ID out loud using {{user_number}}");
+    expect(prompt).toContain("Speak phone numbers digit by digit or in clear grouped chunks");
+    expect(prompt).toContain("pause naturally between street, city, state, and ZIP");
+    expect(prompt).toContain("Is the number you're calling from, {{user_number}}, the best one to reach you?");
+    expect(prompt).toContain("the best number is [spoken phone number]");
+  });
+
+  it("instructs native Cal.com booking to include callback phone and context", () => {
+    expect(prompt).toContain("Include the caller's best callback number and booking context");
+    expect(prompt).toContain("When calling book_appointment_cal, include the selected time");
+    expect(prompt).toContain("best callback phone number");
+    expect(prompt).toContain("phone_number");
+    expect(prompt).toContain("booking_fields_responses");
+    expect(prompt).toContain('put the best callback phone in the name value like "[name] - phone [best callback phone]"');
+    expect(prompt).toContain("If the caller gave an alternate phone, use the alternate as the best callback number");
+  });
+
   it("strictly deflects demo pricing and blank prep questions", () => {
     expect(prompt).toContain("do not speak exact prices or price ranges");
     expect(prompt).toContain("even if a KB entry appears to contain pricing");

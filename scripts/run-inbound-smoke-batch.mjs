@@ -99,7 +99,14 @@ const scenarios = [
     name: "ants phone booking echo verification",
     user_prompt:
       "I have ants in my kitchen. They are small and mostly by the sink. My name is Maria, this number is best, address is 25 Pine Street Brooklyn 11201, and tomorrow at 11 works.",
-    metric: "Shows light empathy, asks a useful ant detail, collects booking fields, checks availability, echo-verifies, and confirms only after book_appointment_cal succeeds.",
+    metric: "Shows light empathy, reads the caller number out loud before confirming it is best, collects booking fields, checks availability, echo-verifies with the spoken phone and address, includes callback phone context in the booking tool call if accepted, and confirms only after book_appointment_cal succeeds.",
+  },
+  {
+    name: "alternate callback number booking",
+    user_prompt:
+      "I have ants in the kitchen. My name is Damon. The number I'm calling from is not best — use 347-585-0249. The address is 44 Court Street Brooklyn 11201, and tomorrow at 2 works.",
+    metric:
+      "Reads the caller ID before confirmation, collects the alternate number, repeats it clearly, uses the alternate as the best callback number in lead details and booking context, echo-verifies address and time, and confirms only after book_appointment_cal succeeds.",
   },
   {
     name: "text link request becomes follow-up",

@@ -5,7 +5,7 @@ This project’s live inbound receptionist is the single-prompt Retell agent for
 ## Current Live Configuration
 
 - Phone-bound agent: `agent_16b324c0e55f21c0a5f914c169`
-- Published version: `30` via `latest_published`
+- Published version: `32` via `latest_published`
 - LLM: `llm_e8bb285e8cb0fc562f06e2395a78`
 - Backend: `https://elixis.agency`
 - Webhook: `https://elixis.agency/retell/webhook`
@@ -53,7 +53,7 @@ Inbound should book over the phone:
 
 1. Understand the issue.
 2. Ask first name.
-3. Confirm the Retell caller ID is the best callback number.
+3. Read the Retell caller ID out loud, slowly and clearly, and ask whether it is the best callback number.
 4. Collect alternate number only if needed.
 5. Collect pest issue and a useful detail.
 6. Ask for property address.
@@ -63,6 +63,14 @@ Inbound should book over the phone:
 10. Echo-verify name, phone, issue, useful detail, address, and selected date/time.
 11. Use Retell native `book_appointment_cal`.
 12. Confirm only after booking succeeds.
+
+Phone numbers and addresses should be spoken more slowly during confirmation than in normal conversation. Paul should say the actual caller ID before asking if it is best, for example:
+
+```txt
+Is the number you're calling from, three four seven, five eight five, zero two four nine, the best one to reach you?
+```
+
+When calling Retell native `book_appointment_cal`, Paul is instructed to pass the best callback number and booking context whenever the native tool accepts fields such as `phone`, `phone_number`, `attendee_phone`, `notes`, `metadata`, or `booking_fields_responses`. In current Retell readback and batch tests, the native Cal.com booking tool exposed only `name`, `email`, `time`, `timezone`, and execution messaging to the LLM. To make the phone visible in Cal.com anyway, Paul is instructed to set the booking name as `[name] - phone [best callback phone]` when no dedicated phone/notes field is available. If the caller gives an alternate number, the alternate is the primary callback number and the original caller ID should remain in lead notes.
 
 If booking fails, Paul must not say the caller is booked. He should save the request and say the team will follow up.
 
