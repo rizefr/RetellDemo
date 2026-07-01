@@ -398,12 +398,6 @@ button {
   padding: 74px 0 86px;
 }
 
-@media (min-width: 981px) and (max-width: 1100px) {
-  .agency-hero {
-    padding-top: 42px;
-  }
-}
-
 .mesh-field {
   position: absolute;
   inset: 0;
@@ -499,16 +493,6 @@ button {
   pointer-events: none;
 }
 
-@media (min-width: 981px) {
-  .agency-hero .scroll-cue {
-    position: absolute;
-    top: calc(100svh - 164px);
-    left: 50%;
-    margin: 0;
-    transform: translateX(-50%);
-  }
-}
-
 .scroll-cue i {
   position: relative;
   display: block;
@@ -564,62 +548,6 @@ button {
 .agency-hero .payment-console {
   max-width: 550px;
   justify-self: end;
-  width: 100%;
-  transition: max-width 240ms cubic-bezier(0.16, 1, 0.3, 1), transform 240ms ease, filter 240ms ease;
-}
-
-.agency-hero .payment-console[data-preview-size-current="tablet"] {
-  max-width: 460px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] {
-  max-width: 330px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .invoice-card-top,
-.agency-hero .payment-console[data-preview-size-current="phone"] .dashboard-strip,
-.agency-hero .payment-console[data-preview-size-current="phone"] .call-flow-card li,
-.agency-hero .payment-console[data-preview-size-current="phone"] .invoice-status-grid {
-  grid-template-columns: 1fr;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .invoice-card-top {
-  display: grid;
-  gap: 8px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .invoice-card-top strong {
-  font-size: clamp(2rem, 5vw, 2.65rem);
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .payment-console-body {
-  padding: 14px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .invoice-card,
-.agency-hero .payment-console[data-preview-size-current="phone"] .call-flow-card {
-  padding: 16px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .call-flow-card li,
-.agency-hero .payment-console[data-preview-size-current="phone"] .dashboard-strip article {
-  padding: 14px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .console-topbar-single {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .preview-size-toggle {
-  width: 100%;
-  margin-left: 0;
-}
-
-.agency-hero .payment-console[data-preview-size-current="phone"] .preview-size-toggle button {
-  flex: 1;
-  padding-inline: 7px;
 }
 
 .agency-console-top {
@@ -965,36 +893,6 @@ button {
   }
 }
 
-@media (min-width: 981px) and (max-width: 1100px) {
-  .agency-hero .payment-console-body {
-    gap: 12px;
-    padding: 14px;
-  }
-
-  .agency-hero .invoice-card,
-  .agency-hero .call-flow-card {
-    padding: 18px;
-  }
-
-  .agency-hero .invoice-card p {
-    margin: 8px 0 16px;
-  }
-
-  .agency-hero .invoice-status-grid {
-    gap: 10px;
-  }
-
-  .agency-hero .invoice-status-grid span {
-    min-height: 100px;
-    padding: 12px;
-  }
-
-  .agency-hero .dashboard-strip article {
-    min-height: 72px;
-    padding: 12px;
-  }
-}
-
 .demo-console,
 .demo-panel,
 .booking-panel {
@@ -1035,42 +933,6 @@ button {
 .console-topbar-single > span {
   display: inline-flex;
   align-items: center;
-}
-
-.preview-size-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  padding: 3px;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.05);
-}
-
-.preview-size-toggle button {
-  min-height: 26px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0 8px;
-  color: rgba(248,244,235,0.62);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-}
-
-.preview-size-toggle button:hover,
-.preview-size-toggle button:focus-visible {
-  color: var(--ivory-100);
-}
-
-.preview-size-toggle button[aria-pressed="true"] {
-  color: #061527;
-  background: linear-gradient(135deg, #efca84, #ac7d34);
-  box-shadow: 0 10px 24px rgba(199,156,90,0.22);
 }
 
 .status-dot {
@@ -3082,7 +2944,6 @@ button {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }

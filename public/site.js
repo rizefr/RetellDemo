@@ -9,8 +9,6 @@ const transcriptCarousel = document.querySelector("[data-transcript-carousel]");
 const transcriptStack = document.querySelector("[data-transcript-stack]");
 const transcriptLabel = document.querySelector("[data-transcript-label]");
 const transcriptDots = document.querySelectorAll("[data-scenario-index]");
-const previewSizeButtons = document.querySelectorAll("[data-preview-size]");
-const homepagePreview = document.querySelector(".demo-preview");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const defaultConfig = {
@@ -223,16 +221,6 @@ document.querySelectorAll("[data-mobile-menu] a").forEach((link) => {
     mobileMenu?.classList.add("hidden");
     serviceMenus.forEach((menu) => {
       menu.open = false;
-    });
-  });
-});
-
-previewSizeButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const selectedSize = button.getAttribute("data-preview-size") || "desktop";
-    homepagePreview?.setAttribute("data-preview-size-current", selectedSize);
-    previewSizeButtons.forEach((sizeButton) => {
-      sizeButton.setAttribute("aria-pressed", String(sizeButton === button));
     });
   });
 });
