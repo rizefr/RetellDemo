@@ -5,12 +5,12 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the Paul opening, wrong-person, and Gilfoy phrase polish: V62.
+- Latest verified Retell version after the Paul opening, wrong-person, Gilfoy phrase, and wrong-number terminal polish: V63.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
 - Voice and pacing: `11labs-Gilfoy`, speed `0.82`, `1550 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was re-tested against GPT-4.1 during the wrong-person/disclosure refinement. It was available and cheaper per Retell voice-agent minute, but the tested V51 batch was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in payment-refusal and service-issue paths. Keep GPT-4.1 unless a future Retell/model update clearly fixes those issues.
-- Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths are limited to explicit do-not-contact, attorney, wrong number, or hostile requests and end directly. Polite goodbyes must not be classified as do-not-contact.
+- Terminal behavior: normal terminal paths use the structural final-check/end-call sequence. Explicit do-not-contact, attorney, and hostile requests use the hard-terminal route. Wrong-number outcomes use a separate wrong-number terminal route with the neutral close “Sorry about that. We'll review the contact information. Goodbye.” Polite goodbyes must not be classified as do-not-contact.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
 - Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
 - SMS remains disabled/manual. QuickBooks remains scaffold-only.
@@ -58,10 +58,10 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 - If the caller asks for a named person to call, handle the invoice, or be put on the phone, Paul logs `named_contact_requested` before promising that person or their team will follow up.
 - The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
 
-## V62 Gilfoy/Paul Opening Polish
+## V63 Gilfoy/Paul Opening Polish
 
 - Paul uses `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`.
-- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V62 keeps speed `0.82`, adds a longer first-message delay, and inserts a short Retell pause marker between the business name and name-confirmation question to reduce the bright/rushed first-line effect.
+- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V63 keeps speed `0.82`, adds a longer first-message delay, inserts a short Retell pause marker between the business name and name-confirmation question, and separates wrong-number terminal handling from explicit opt-out handling.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
 - First phone confirmation uses `customer_phone_spoken`; repeat/correction uses `customer_phone_spoken_chunked`.

@@ -80,6 +80,7 @@ describe("outbound flow guardrails", () => {
     const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
     const finalCheckNode = flow.nodes.find((node) => node.id === "outbound_normal_terminal_final_check");
     const hardTerminalNode = flow.nodes.find((node) => node.id === "outbound_hard_terminal_end");
+    const wrongNumberTerminalNode = flow.nodes.find((node) => node.id === "outbound_wrong_number_terminal_end");
     expect(flow.start_node_id).toBe("outbound_collections_agent");
     expect(flow.nodes.length).toBeGreaterThanOrEqual(4);
     expect(serialized).toContain('"type":"subagent"');
@@ -144,6 +145,8 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain('"id":"outbound_normal_terminal_final_check"');
     expect(serialized).toContain('"id":"outbound_polite_final_check_end_edge"');
     expect(serialized).toContain('"id":"outbound_hard_terminal_end"');
+    expect(serialized).toContain('"id":"outbound_wrong_number_terminal_edge"');
+    expect(serialized).toContain('"id":"outbound_wrong_number_terminal_end"');
     expect(serialized).toContain("Is there anything else I can help you with?");
     expect(serialized).toContain("Have a good day. Goodbye");
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
@@ -171,12 +174,16 @@ describe("outbound flow guardrails", () => {
     expect(JSON.stringify(mainNode)).toContain("end_polite_final_check_call");
     expect(JSON.stringify(mainNode)).toContain("Use only after the assistant has already asked: Is there anything else I can help you with?");
     expect(JSON.stringify(mainNode)).toContain("end_hard_terminal_call_from_main");
-    expect(JSON.stringify(mainNode)).toContain("Use only after explicit do-not-contact, attorney represented, wrong number, or hostile/abusive hard terminal outcome has already been acknowledged and logged.");
+    expect(JSON.stringify(mainNode)).toContain("Use only after explicit do-not-contact, attorney represented, or hostile/abusive hard terminal outcome has already been acknowledged and logged.");
     expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');
     expect(JSON.stringify(finalCheckNode)).toContain("end_final_check_call");
     expect(JSON.stringify(finalCheckNode)).toContain('"tool_ids":["outbound_log_outcome"]');
     expect(JSON.stringify(finalCheckNode)).toContain("defensive terminal node");
     expect(JSON.stringify(finalCheckNode)).toContain('"execution_message_description":"Have a good day. Goodbye."');
+    expect(JSON.stringify(wrongNumberTerminalNode)).toContain('"type":"subagent"');
+    expect(JSON.stringify(wrongNumberTerminalNode)).toContain('"tool_ids":["outbound_log_outcome"]');
+    expect(JSON.stringify(wrongNumberTerminalNode)).toContain("end_wrong_number_call");
+    expect(JSON.stringify(wrongNumberTerminalNode)).toContain("Sorry about that. We'll review the contact information. Goodbye.");
     expect(JSON.stringify(hardTerminalNode)).toContain('"type":"subagent"');
     expect(JSON.stringify(hardTerminalNode)).toContain('"tool_ids":["outbound_log_outcome"]');
     expect(JSON.stringify(hardTerminalNode)).toContain('"type":"end_call"');

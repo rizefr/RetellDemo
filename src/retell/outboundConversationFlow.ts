@@ -370,7 +370,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           destination_node_id: "outbound_hard_terminal_end",
           transition_condition: {
             type: "prompt",
-            prompt: "Transition for hard terminal outcomes only after required logging/pause is complete: do_not_contact, attorney_represented, wrong_number, or hostile or abusive request. Do not use this edge for polite goodbye, bye, no thanks, that's all, or have a good day. Do not ask if there is anything else.",
+            prompt: "Transition for hard terminal outcomes only after required logging/pause is complete: do_not_contact, attorney_represented, or hostile or abusive request. Do not use this edge for wrong_number, polite goodbye, bye, no thanks, that's all, or have a good day. Do not ask if there is anything else.",
+          },
+        },
+        {
+          id: "outbound_wrong_number_terminal_edge",
+          destination_node_id: "outbound_wrong_number_terminal_end",
+          transition_condition: {
+            type: "prompt",
+            prompt: "Transition here only after the caller says this is the wrong number or confirms they are not connected to the named person or account/company. Use this after wrong_number logging is complete. Do not use for explicit stop-calling or do-not-contact requests.",
           },
         },
       ],
@@ -389,7 +397,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           type: "end_call",
           name: "end_hard_terminal_call_from_main",
           description:
-            "Use only after explicit do-not-contact, attorney represented, wrong number, or hostile/abusive hard terminal outcome has already been acknowledged and logged.",
+            "Use only after explicit do-not-contact, attorney represented, or hostile/abusive hard terminal outcome has already been acknowledged and logged. Do not use for wrong number; use the wrong-number terminal route instead.",
           speak_during_execution: true,
           execution_message_type: "static_text",
           execution_message_description: "Understood. Goodbye.",
@@ -769,12 +777,34 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       display_position: { x: 620, y: -120 },
     },
     {
+      id: "outbound_wrong_number_terminal_end",
+      type: "subagent",
+      name: "Wrong number terminal logging and end",
+      instruction: {
+        type: "prompt",
+        text: "For wrong-number outcomes only. If wrong_number was not already logged in the immediately preceding turn, first call log_outcome with outcome wrong_number and concise notes. Do not ask if there is anything else. After logging, immediately use this node's native end_call tool. Do not say a separate goodbye as a normal assistant response first; the native end_call tool's static execution message will close the call.",
+      },
+      tool_ids: [OUTBOUND_TOOL_IDS.logOutcome],
+      tools: [
+        {
+          type: "end_call",
+          name: "end_wrong_number_call",
+          description:
+            "End the call after a wrong-number outcome has been acknowledged and logged. Do not use for do-not-contact, attorney, hostile, or normal final-check endings.",
+          speak_during_execution: true,
+          execution_message_type: "static_text",
+          execution_message_description: "Sorry about that. We'll review the contact information. Goodbye.",
+        },
+      ],
+      display_position: { x: 620, y: 240 },
+    },
+    {
       id: "outbound_hard_terminal_end",
       type: "subagent",
       name: "Hard terminal logging and end",
       instruction: {
         type: "prompt",
-        text: "For hard terminal outcomes only: do_not_contact, attorney_represented, wrong_number, or hostile or abusive request. A polite goodbye, bye, no thanks, that's all, or have a good day is not do_not_contact and should not come here unless paired with an explicit opt-out. First acknowledge briefly and professionally. Then call log_outcome with the correct outcome and notes unless it was already logged in the immediately preceding turn. Do not ask if there is anything else. After logging, immediately use this node's native end_call tool. Do not say a separate goodbye as a normal assistant response first; the native end_call tool's static execution message will close the call. For do_not_contact, the end_call tool says: \"Understood. We'll stop calling this number. Goodbye.\"",
+        text: "For hard terminal outcomes only: do_not_contact, attorney_represented, or hostile or abusive request. Wrong number has its own terminal node and should not come here. A polite goodbye, bye, no thanks, that's all, or have a good day is not do_not_contact and should not come here unless paired with an explicit opt-out. First acknowledge briefly and professionally. Then call log_outcome with the correct outcome and notes unless it was already logged in the immediately preceding turn. Do not ask if there is anything else. After logging, immediately use this node's native end_call tool. Do not say a separate goodbye as a normal assistant response first; the native end_call tool's static execution message will close the call. For do_not_contact, the end_call tool says: \"Understood. We'll stop calling this number. Goodbye.\"",
       },
       tool_ids: [OUTBOUND_TOOL_IDS.logOutcome],
       tools: [
