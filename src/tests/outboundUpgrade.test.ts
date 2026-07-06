@@ -244,7 +244,7 @@ describe("downloadable setup templates", () => {
     expect(parseOutboundBusinessCsv(business).errors).toEqual([]);
     expect(parseOutboundBusinessCsv(business).rows[0]).toMatchObject({
       business_name: "Elixis Elevator Systems",
-      agent_display_name: "Sophia",
+      agent_display_name: "Paul",
       ai_disclosure_policy: "on_request",
       product_type: "elevator_inspection",
       days_after_inspection_first_call: 14,

@@ -197,7 +197,7 @@ describe("outbound browser operation safety", () => {
     expect(createPhoneCall).toHaveBeenCalledWith(
       expect.objectContaining({
         retell_llm_dynamic_variables: expect.objectContaining({
-          agent_display_name: "Sophia",
+          agent_display_name: "Paul",
           inspection_type: "Category 1",
           days_after_inspection_first_call: "14",
           very_overdue_threshold_days: "45",
@@ -265,7 +265,7 @@ describe("outbound browser operation safety", () => {
           id: "00000000-0000-4000-8000-000000000001",
           business_name: "Hudson Lift Services",
           business_name_spoken: "Hudson Lift Services",
-          agent_display_name: "Sophia",
+          agent_display_name: "Paul",
           product_type: "elevator_inspection",
           days_after_inspection_first_call: 14,
           very_overdue_threshold_days: 45,
@@ -309,7 +309,7 @@ describe("outbound browser operation safety", () => {
         to_number: "+15551234567",
         retell_llm_dynamic_variables: expect.objectContaining({
           business_name: "Hudson Lift Services",
-          agent_display_name: "Sophia",
+          agent_display_name: "Paul",
           inspection_type: "Category 5",
           days_after_inspection_first_call: "14",
           very_overdue_threshold_days: "45",

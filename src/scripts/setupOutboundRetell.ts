@@ -23,7 +23,7 @@ const OUTBOUND_VOICE_SETTINGS = {
   interruption_sensitivity: 0.75,
   responsiveness: 0.95,
   enable_backchannel: true,
-  begin_message_delay_ms: 1200,
+  begin_message_delay_ms: 1550,
   ambient_sound: "call-center" as const,
   ambient_sound_volume: 1,
 };

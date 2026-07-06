@@ -269,7 +269,7 @@ async function renderSettings() {
   if (!business) return;
   document.getElementById("header-business-name").textContent = business.business_name || "Configured business";
   document.getElementById("setting-business-name").value = business.business_name || "";
-  document.getElementById("setting-agent-name").value = business.agent_display_name || "Sophia";
+  document.getElementById("setting-agent-name").value = business.agent_display_name || "Paul";
   document.getElementById("setting-product-type").value = business.product_type || "elevator_inspection";
   document.getElementById("setting-default-inspection-type").value = business.default_inspection_type || "Category 1";
   document.getElementById("setting-inspection-followup-days").value = business.days_after_inspection_first_call ?? 14;

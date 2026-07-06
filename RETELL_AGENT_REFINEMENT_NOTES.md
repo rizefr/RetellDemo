@@ -2,31 +2,34 @@
 
 These notes capture the live-call fixes applied to the active inspection agent so the future service agent can reuse them without re-discovering the same edge cases.
 
-For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. It maps Sophia's dynamic variables, tools, `/outbound` connector paths, normal and hard terminal routes, known limitations, and Retell API list-endpoint migration rules.
+For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. It maps Paul's dynamic variables, tools, `/outbound` connector paths, normal and hard terminal routes, known limitations, and Retell API list-endpoint migration rules.
 
 ## Active Inspection Agent
 
-- Agent: `Elevator Inspection Collections — Sophia`
+- Agent: `Elevator Inspection Collections — Paul`
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Flow ID: `conversation_flow_bebdceabc801`
 - Voice: `11labs-Gilfoy`
-- Spoken name: `Sophia`
+- Spoken name: `Paul`
 - Model: GPT-4.1
-- Speed/start delay: `0.82`, `1200 ms`
+- Speed/start delay: `0.82`, `1550 ms`
 - Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
 
 ## Rules To Keep
 
 - Use backend speech-safe variables for anything read aloud. Do not let Retell infer raw dates, phone numbers, email addresses, invoice IDs, or cents.
 - Use `customer_email_spoken_slow` on the first email confirmation. Example: `elixisagency@gmail.com` becomes `e l i x i s agency, at gmail, dot com`.
-- If the caller asks Sophia to repeat the email, says it is wrong, or sounds confused, use `customer_email_spoken_phonetic` on the second readback instead of waiting for more failures. Example: “e as in Echo, l as in Lima, i as in India...”.
-- Use `customer_phone_spoken` on the first phone confirmation. If the caller asks Sophia to repeat or correct the phone number, use `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
+- If the caller asks Paul to repeat the email, says it is wrong, or sounds confused, use `customer_email_spoken_phonetic` on the second readback instead of waiting for more failures. Example: “e as in Echo, l as in Lima, i as in India...”.
+- Use `customer_phone_spoken` on the first phone confirmation. If the caller asks Paul to repeat or correct the phone number, use `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
 - If the caller corrects an email or phone number, repeat the corrected value slowly, confirm once, log `contact_update_requested`, and do not claim delivery to the corrected value unless the backend tool explicitly returns `sent:true`.
 - Use `inspection_date_spoken` in the trust-building invoice line. If a separate inspection date is unavailable, the backend may fall back to the invoice date.
 - Do not repeat virtual-assistant disclosure after the caller has already confirmed email/text/payment delivery.
-- Do not volunteer virtual-assistant disclosure in the normal inspection invoice flow. Use it only when the caller asks if Sophia is AI/automated, when a stricter configured policy explicitly requires it, or when scam concern makes one clear disclosure useful.
-- Use the shorter opener: “Hello, I’m calling from {{business_name}}. Is this {{customer_first_name}}?” After confirmation, continue once with Sophia’s name, business name, inspection type, inspection date, and overdue context. Do not restart the opener after confirmation.
-- If the caller says they are not the named person, ask whether this is `{{account_company_name}}` before logging wrong number. If the account/company is correct, ask for the better payment contact, collect details if offered, confirm once, and log `responsible_party_update_requested`.
+- Do not volunteer virtual-assistant disclosure in the normal inspection invoice flow. Use it only when the caller asks if Paul is AI/automated, when a stricter configured policy explicitly requires it, or when scam concern makes one clear disclosure useful.
+- Use the shorter opener with a short Retell pause marker: “Hello, I’m calling from {{business_name}}. - Is this {{customer_first_name}}?” After confirmation, continue once with Paul’s name, business name, inspection type, inspection date, and overdue context. Do not restart the opener after confirmation.
+- If the caller says they are not the named person, first ask whether this is not the right number for the named person, then ask whether they are with `{{account_company_name}}` before logging wrong number. If the account/company is correct, ask for the better payment contact, collect details if offered, confirm once, and log `responsible_party_update_requested`.
+- If the caller asks personal questions like age or physical location, answer briefly as a digital assistant and steer back to whether the invoice was received.
+- If the caller asks “are we done?” before an outcome has been reached, make one reasonable attempt to confirm invoice receipt/resend preference before closing. If an outcome has already been reached, close directly.
+- With `11labs-Gilfoy`, reduce repeated “thank you” language. Prefer “Got it,” “I appreciate it,” “That helps,” or “I’ll make a note of that” where natural.
 - If the caller asks “what invoice” or “what is this about,” answer directly with inspection type, inspection date, amount, and overdue status. Do not repeat disclosure or the secure-link explanation unless asked about payment security.
 - Do not repeat generic secure-link explanations after the caller confirms the delivery method. Continue with the action.
 - If payment-link creation fails before email/text delivery, do not call delivery tools and do not claim delivery. Log `payment_link_issue`, say the team will follow up with payment details, and route to final-check.

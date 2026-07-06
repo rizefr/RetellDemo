@@ -85,7 +85,7 @@ export function parseOutboundBusinessCsv(input: string): {
       default_timezone: record.default_timezone,
       callback_number: record.business_callback_number || null,
       human_transfer_number: record.human_transfer_number || null,
-      agent_display_name: record.agent_display_name || "Sophia",
+      agent_display_name: record.agent_display_name || "Paul",
       product_type: (record.product_type || "elevator_inspection") as OutboundBusinessCsvRow["product_type"],
       default_inspection_type: (record.default_inspection_type || "Category 1") as OutboundBusinessCsvRow["default_inspection_type"],
       days_after_inspection_first_call: daysAfterInspection,

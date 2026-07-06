@@ -52,7 +52,7 @@ const envSchema = z.object({
   OUTBOUND_RETELL_AGENT_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_CONVERSATION_FLOW_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_PHONE_NUMBER_ID: z.string().optional().default(""),
-  OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Sophia"),
+  OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Paul"),
   OUTBOUND_RETELL_VOICE_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_MODEL: z.string().optional().default(""),
   OUTBOUND_RETELL_WEBHOOK_SECRET: z.string().optional().default(""),
