@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the Paul opening and wrong-person polish: V61.
+- Latest verified Retell version after the Paul opening, wrong-person, and Gilfoy phrase polish: V62.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
 - Voice and pacing: `11labs-Gilfoy`, speed `0.82`, `1550 ms` first-message delay, GPT-4.1.
@@ -58,10 +58,10 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 - If the caller asks for a named person to call, handle the invoice, or be put on the phone, Paul logs `named_contact_requested` before promising that person or their team will follow up.
 - The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
 
-## V61 Gilfoy/Paul Opening Polish
+## V62 Gilfoy/Paul Opening Polish
 
 - Paul uses `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`.
-- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V61 keeps speed `0.82`, adds a longer first-message delay, and inserts a short Retell pause marker between the business name and name-confirmation question to reduce the bright/rushed first-line effect.
+- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V62 keeps speed `0.82`, adds a longer first-message delay, and inserts a short Retell pause marker between the business name and name-confirmation question to reduce the bright/rushed first-line effect.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
 - First phone confirmation uses `customer_phone_spoken`; repeat/correction uses `customer_phone_spoken_chunked`.

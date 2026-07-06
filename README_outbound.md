@@ -28,7 +28,7 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
   - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
   - active inspection name: `Elevator Inspection Collections — Paul`
-  - active verified version: V61 after the Paul opening and wrong-person polish
+  - active verified version: V62 after the Paul opening, wrong-person, and Gilfoy phrase polish
   - active voice: `11labs-Gilfoy`, spoken name `Paul`, speed `0.82`, first-message delay `1550 ms`
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. This service copy is separate and was not modified by the active Paul inspection pass.
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
@@ -36,7 +36,7 @@ The business using it is responsible for establishing its right to contact each 
 - Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V61 after the Paul opening and wrong-person polish
+  - active verified version: V62 after the Paul opening, wrong-person, and Gilfoy phrase polish
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
   - current voice is `11labs-Gilfoy`; the presentation speed is `0.82` with a `1550 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `1.0`, and voicemail hangup are preserved
   - Paul speaks first with a short business-first opening, avoids repeating the opener after identity confirmation, and states the inspection type, natural date, and speech-safe amount from trusted backend variables
@@ -102,7 +102,7 @@ Current production selection:
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
-The V59/V60 speed/style change came from the live V56 call where the caller asked Paul to slow down. Retell word timing showed the opening was materially faster than the first full response after Paul acknowledged the request. V61 keeps that lower-energy, already-slowed-down style, keeps speed `0.82`, and increases the first-message delay to `1550 ms` so the first name-confirmation line does not rush the caller.
+The V59/V60 speed/style change came from the live V56 call where the caller asked Paul to slow down. Retell word timing showed the opening was materially faster than the first full response after Paul acknowledged the request. V62 keeps that lower-energy, already-slowed-down style, keeps speed `0.82`, and increases the first-message delay to `1550 ms` so the first name-confirmation line does not rush the caller.
 
 GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Paul prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for the V59 polish.
 
