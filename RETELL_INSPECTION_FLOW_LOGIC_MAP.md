@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V61 after the Paul opening and wrong-person polish. Read back Retell before any publish.
+- Latest repo-documented verified version: V62 after the Paul opening, wrong-person, and Gilfoy phrase polish. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
