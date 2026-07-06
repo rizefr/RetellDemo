@@ -34,6 +34,8 @@ Open:
 https://elixis.agency/inbound
 ```
 
+The unified backend is available at `https://elixis.agency/backend` and uses `OUTBOUND_ADMIN_TOKEN`. Future admin/dashboard work should target `/backend` first, while preserving compatibility routes for `/outbound` and `/inbound`. The legacy `/inbound` route keeps its separate `INBOUND_ADMIN_TOKEN` behavior.
+
 The dashboard shows:
 
 - Retell phone binding and current agent version

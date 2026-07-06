@@ -103,6 +103,18 @@ h3 {
   justify-content: flex-end;
 }
 
+.secondary-link {
+  color: #d9f3e7;
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.secondary-link:hover {
+  color: white;
+  text-decoration: underline;
+}
+
 .section-heading {
   justify-content: space-between;
 }

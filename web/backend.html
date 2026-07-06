@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Elixis Unified Backend</title>
+    <link rel="stylesheet" href="/backend-assets/backend.css?v=20260706" />
+  </head>
+  <body>
+    <div class="backend-shell">
+      <aside class="sidebar" aria-label="Backend navigation">
+        <div class="brand-block">
+          <p class="eyebrow">Elixis Agency</p>
+          <h1>Backend</h1>
+        </div>
+        <nav class="nav-list">
+          <button class="nav-item active" type="button" data-view-button="overview">Overview</button>
+          <button class="nav-item" type="button" data-view-button="outbound">Outbound Collections</button>
+          <button class="nav-item" type="button" data-view-button="inbound">Inbound Receptionist</button>
+          <button class="nav-item" type="button" data-view-button="settings">Settings / Setup</button>
+          <button class="nav-item" type="button" data-view-button="docs">Docs / Runbooks</button>
+        </nav>
+        <div class="sidebar-links">
+          <a href="/outbound" target="_blank" rel="noreferrer">Open legacy outbound</a>
+          <a href="/inbound" target="_blank" rel="noreferrer">Open legacy inbound</a>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Internal operations</p>
+            <h2 id="view-title">Overview</h2>
+          </div>
+          <div class="header-actions">
+            <span id="environment-badge" class="status-badge neutral">Loading</span>
+            <span id="session-badge" class="status-badge neutral">Session active</span>
+            <button id="refresh" class="secondary" type="button">Refresh</button>
+            <button id="logout" class="secondary" type="button">Sign out</button>
+          </div>
+        </header>
+
+        <main>
+          <section id="view-overview" class="view active" aria-labelledby="overview-heading">
+            <div class="section-heading">
+              <div>
+                <h3 id="overview-heading">System status</h3>
+                <p>Read-only status across the public site, outbound collections, inbound receptionist, and provider integrations.</p>
+              </div>
+              <p id="last-updated" class="muted-copy">Not refreshed yet</p>
+            </div>
+            <div id="overview-cards" class="metric-grid"></div>
+            <div class="two-column">
+              <section class="panel">
+                <div class="section-heading compact">
+                  <div>
+                    <h3>Integration readiness</h3>
+                    <p>Booleans and labels only; secret values are redacted server-side.</p>
+                  </div>
+                </div>
+                <div id="integration-list" class="status-list"></div>
+              </section>
+              <section class="panel">
+                <div class="section-heading compact">
+                  <div>
+                    <h3>Recent activity</h3>
+                    <p>Latest event summaries when provider or Supabase data is available.</p>
+                  </div>
+                </div>
+                <div id="activity-list" class="status-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section id="view-outbound" class="view" aria-labelledby="outbound-heading">
+            <div class="section-heading">
+              <div>
+                <h3 id="outbound-heading">Outbound Collections / Elevator Inspection</h3>
+                <p>The existing outbound dashboard is embedded below so all current setup, preflight, customer, invoice, payment-link, and dry-run controls stay intact.</p>
+              </div>
+              <a class="button-link" href="/outbound" target="_blank" rel="noreferrer">Open full page</a>
+            </div>
+            <div id="outbound-summary" class="metric-grid"></div>
+            <section class="panel embedded-panel">
+              <iframe id="outbound-frame" title="Outbound Collections dashboard" data-src="/outbound"></iframe>
+            </section>
+          </section>
+
+          <section id="view-inbound" class="view" aria-labelledby="inbound-heading">
+            <div class="section-heading">
+              <div>
+                <h3 id="inbound-heading">Inbound Receptionist</h3>
+                <p>Read-only inbound status pulled through unified backend auth. This does not change the Retell agent, phone binding, or booking flow.</p>
+              </div>
+              <a class="button-link" href="/inbound" target="_blank" rel="noreferrer">Open legacy page</a>
+            </div>
+            <div id="inbound-summary" class="metric-grid"></div>
+            <div class="two-column">
+              <section class="panel">
+                <h3>Verification checks</h3>
+                <div id="inbound-checks" class="check-list"></div>
+              </section>
+              <section class="panel">
+                <h3>Webhook and tool URLs</h3>
+                <div id="inbound-endpoints" class="endpoint-list"></div>
+              </section>
+            </div>
+            <section class="panel">
+              <div class="section-heading compact">
+                <div>
+                  <h3>Recent inbound calls</h3>
+                  <p id="inbound-call-debug" class="muted-copy"></p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Status</th>
+                      <th>Caller</th>
+                      <th>Name</th>
+                      <th>Issue</th>
+                      <th>Address</th>
+                      <th>Summary</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inbound-call-rows"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="panel">
+              <h3>Recent leads</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Issue</th>
+                      <th>Address</th>
+                      <th>Preferred time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inbound-lead-rows"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <section id="view-settings" class="view" aria-labelledby="settings-heading">
+            <div class="section-heading">
+              <div>
+                <h3 id="settings-heading">Settings / Setup</h3>
+                <p>Operational setup summary. Environment variables and provider keys are represented only as configured/not configured.</p>
+              </div>
+            </div>
+            <div id="settings-grid" class="metric-grid"></div>
+            <section class="panel">
+              <h3>Route map</h3>
+              <div id="route-map" class="endpoint-list"></div>
+            </section>
+          </section>
+
+          <section id="view-docs" class="view" aria-labelledby="docs-heading">
+            <div class="section-heading">
+              <div>
+                <h3 id="docs-heading">Docs / Runbooks</h3>
+                <p>Future admin/dashboard work should target this unified backend first while preserving compatibility routes.</p>
+              </div>
+            </div>
+            <div id="docs-list" class="doc-grid"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <script src="/backend-assets/backend.js?v=20260706" defer></script>
+  </body>
+</html>

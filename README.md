@@ -8,6 +8,8 @@ This README focuses on the Retell agent assets, backend tool endpoints, webhook 
 
 The current live inbound receptionist is `agent_16b324c0e55f21c0a5f914c169` on phone `+18887809963`, with `11labs-Gilfoy`, `eleven_flash_v2_5`, spoken name Paul, Retell native Cal.com booking, and no normal SMS booking offer. The protected admin surface is `/inbound` and requires `INBOUND_ADMIN_TOKEN`.
 
+Unified internal admin/dashboard work now starts at `/backend`, which combines outbound collections and inbound receptionist status while preserving `/outbound` and `/inbound` compatibility routes. See [`README_backend.md`](./README_backend.md).
+
 ## What It Does
 
 - Creates a Retell Conversation Flow voice agent when the API accepts the payload.
