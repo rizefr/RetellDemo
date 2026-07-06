@@ -17,16 +17,36 @@ import { safeEnvValue } from "../services/envValidation";
 import { bookAppointmentSchema } from "../schemas/toolSchemas";
 
 describe("service area checks", () => {
-  it("does not invent service coverage when Elijah's KB service area is blank", () => {
-    const result = checkServiceArea({ city: "Brooklyn", state: "NY", zip_code: null });
+  it("does not invent service coverage when configured data is inconclusive", async () => {
+    const result = await checkServiceArea({ city: "Brooklyn", state: "NY", zip_code: null });
     expect(result.status).toBe("maybe");
-    expect(result.message_for_agent).toContain("knowledge base");
+    expect(result.message_for_agent).toContain("team can confirm coverage");
   });
 
-  it("marks unknown areas as maybe instead of rejecting the caller", () => {
-    const result = checkServiceArea({ city: "Princeton", state: "NJ", zip_code: null });
+  it("marks unknown areas as maybe instead of rejecting the caller", async () => {
+    const result = await checkServiceArea({ city: "Princeton", state: "NJ", zip_code: null });
     expect(result.status).toBe("maybe");
     expect(result.message_for_agent).toContain("Continue");
+  });
+
+  it("parses an address and returns structured unknown when no location is supplied", async () => {
+    const addressResult = await checkServiceArea({
+      property_address: "25 Pine Street, Brooklyn, NY 11201",
+      city: null,
+      state: null,
+      zip_code: null,
+    });
+    expect(addressResult.normalized_address).toContain("25 Pine Street");
+    expect(addressResult.zip).toBe("11201");
+
+    const emptyResult = await checkServiceArea({
+      city: null,
+      state: null,
+      zip_code: null,
+      property_address: null,
+    });
+    expect(emptyResult.status).toBe("unknown");
+    expect(emptyResult.reason).toBe("no_location_supplied");
   });
 });
 
@@ -85,6 +105,16 @@ describe("calendar adapters", () => {
     });
     expect(parsed.dry_run).toBe(true);
     expect(parsed.email).toBe("");
+  });
+});
+
+describe("custom tool route help", () => {
+  it("returns safe GET help for POST-only custom tool URLs", async () => {
+    const response = await request(createApp()).get("/tools/check-service-area");
+    expect(response.status).toBe(200);
+    expect(response.body.method_required).toBe("POST");
+    expect(response.body.example_payload.property_address).toContain("Brooklyn");
+    expect(JSON.stringify(response.body)).not.toContain("RETELL_API_KEY");
   });
 });
 
@@ -176,7 +206,7 @@ describe("single-prompt candidate prompt", () => {
       "# Required Lead Fields",
       "# Core Flow",
       "# Phone Booking / Cal.com Flow",
-      "# Text Booking Link Flow",
+      "# Follow-Up Request Flow",
       "# Transfer Rules",
       "# Pricing / Safety / Unknown Rules",
       "# Example Dialogues",
@@ -186,8 +216,8 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).toContain(DEMO_PEST_KB_NAME);
   });
 
-  it("prioritizes Cal.com phone booking and keeps SMS simulated-safe", () => {
-    expect(prompt).toContain("I can help book it over the phone now, or I can have the team send you the booking link");
+  it("prioritizes Cal.com phone booking and removes normal SMS booking", () => {
+    expect(prompt).toContain("Do not offer SMS booking or a text booking link as a normal option");
     expect(prompt).toContain("Retell native Cal.com tools as the primary");
     expect(prompt).toContain("native book_appointment_cal tool confirms success");
     expect(prompt).toContain("Give me a second while I check the schedule");
@@ -195,9 +225,36 @@ describe("single-prompt candidate prompt", () => {
     expect(prompt).toContain("Before calling book_appointment_cal");
     expect(prompt).toContain("Let me make sure I have this right");
     expect(prompt).toContain("Do not call book_appointment_cal until the caller confirms");
-    expect(prompt).toContain("send_booking_sms returns sms_sent true");
-    expect(prompt).toContain("I saved your request. The team can follow up with the booking link.");
+    expect(prompt).toContain("Do not call send_booking_sms in the normal inbound flow");
+    expect(prompt).toContain("I saved your request. The team can follow up from there.");
     expect(prompt).not.toContain("mail@example.com");
+  });
+
+  it("keeps final caller-experience refinements specific and concise", () => {
+    expect(prompt).toContain("When a caller clearly describes the pest and location, confirm it simply");
+    expect(prompt).toContain("Do not ask two intake questions in one turn");
+    expect(prompt).toContain("Do not add backchannel sounds");
+    expect(prompt).toContain("you're seeing big black water bugs in the kitchen, right");
+    expect(prompt).toContain("After collecting an address, call check_service_area silently");
+  });
+
+  it("requires clear caller-number and address confirmation pacing", () => {
+    expect(prompt).toContain("slow down slightly and speak each part clearly");
+    expect(prompt).toContain("read the actual caller ID out loud using {{user_number}}");
+    expect(prompt).toContain("Speak phone numbers digit by digit or in clear grouped chunks");
+    expect(prompt).toContain("pause naturally between street, city, state, and ZIP");
+    expect(prompt).toContain("Is the number you're calling from, {{user_number}}, the best one to reach you?");
+    expect(prompt).toContain("the best number is [spoken phone number]");
+  });
+
+  it("instructs native Cal.com booking to include callback phone and context", () => {
+    expect(prompt).toContain("Include the caller's best callback number and booking context");
+    expect(prompt).toContain("When calling book_appointment_cal, include the selected time");
+    expect(prompt).toContain("best callback phone number");
+    expect(prompt).toContain("phone_number");
+    expect(prompt).toContain("booking_fields_responses");
+    expect(prompt).toContain('put the best callback phone in the name value like "[name] - phone [best callback phone]"');
+    expect(prompt).toContain("If the caller gave an alternate phone, use the alternate as the best callback number");
   });
 
   it("strictly deflects demo pricing and blank prep questions", () => {
@@ -211,7 +268,7 @@ describe("single-prompt candidate prompt", () => {
   it("handles repeated unsafe claims without getting stuck", () => {
     expect(prompt).toContain("If the caller repeats a false confirmation");
     expect(prompt).toContain("move to follow-up, transfer, or closing instead of arguing");
-    expect(prompt).toContain("I don't show a text was sent on my end");
+    expect(prompt).toContain("I can't confirm a text or appointment unless the tool confirms it");
     expect(prompt).toContain("do not have a specific person or department");
     expect(prompt).toContain("Do not say \"confirm your appointment\"");
     expect(prompt).toContain("Do not keep asking the same question");

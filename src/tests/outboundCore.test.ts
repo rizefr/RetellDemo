@@ -143,6 +143,7 @@ describe("Stripe metadata and outcome policies", () => {
     expect(OUTBOUND_OUTCOMES).toContain("email_sent");
     expect(OUTBOUND_OUTCOMES).toContain("email_pending_manual");
     expect(OUTBOUND_OUTCOMES).toContain("email_failed");
+    expect(OUTBOUND_OUTCOMES).toContain("email_missing");
     for (const outcome of OUTBOUND_OUTCOMES) {
       expect(applyOutcomePolicy(outcome)).toBeDefined();
     }

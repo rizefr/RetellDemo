@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env, isProduction } from "../config/env";
 import { getSupabaseClient } from "./supabase";
+import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
 
 export const OUTBOUND_TABLE_NAMES = [
   "outbound_businesses",
@@ -10,6 +11,7 @@ export const OUTBOUND_TABLE_NAMES = [
   "outbound_payment_links",
   "outbound_events",
   "outbound_followup_tasks",
+  "outbound_demo_call_authorizations",
 ] as const;
 
 export type OutboundTableName = (typeof OUTBOUND_TABLE_NAMES)[number];
@@ -189,6 +191,7 @@ export function buildOutboundSetupSummary(input: {
         "send-payment-email",
         "request-human-transfer",
         "schedule-followup",
+        "schedule-callback",
       ].map((name) => `${operationalBaseUrl}/api/outbound/retell/${name}`),
       sms_mode: input.configuration.outboundSmsEnabled ? "enabled_requires_provider_verification" : "disabled_manual",
       latest_event: input.database.latestRetellEvent,
@@ -239,6 +242,11 @@ export function buildOutboundSetupSummary(input: {
 
 export async function getOutboundSetupStatus(detectedBaseUrl: string) {
   const database = await detectOutboundDatabaseReadiness();
+  const client = getSupabaseClient();
+  const businessResult = client
+    ? await client.from("outbound_businesses").select("*").order("created_at", { ascending: true }).limit(1).maybeSingle()
+    : { data: null };
+  const runtime = businessResult.data ? outboundBusinessRuntimeSettings(businessResult.data) : null;
   return buildOutboundSetupSummary({
     detectedBaseUrl,
     database,
@@ -255,15 +263,15 @@ export async function getOutboundSetupStatus(detectedBaseUrl: string) {
       outboundRetellAgentConfigured: Boolean(env.OUTBOUND_RETELL_AGENT_ID),
       outboundRetellFlowConfigured: Boolean(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID),
       outboundRetellWebhookSecretConfigured: Boolean(env.OUTBOUND_RETELL_WEBHOOK_SECRET),
-      outboundSmsEnabled: env.OUTBOUND_RETELL_SMS_ENABLED,
+      outboundSmsEnabled: runtime?.smsEffective ?? env.OUTBOUND_RETELL_SMS_ENABLED,
       emailProvider: env.EMAIL_PROVIDER,
       emailProviderKeyConfigured: Boolean(env.EMAIL_PROVIDER_API_KEY),
       outboundPaymentEmailFromConfigured: Boolean(env.OUTBOUND_PAYMENT_EMAIL_FROM),
-      outboundPaymentEmailEnabled: env.OUTBOUND_PAYMENT_EMAIL_ENABLED,
-      testMode: env.OUTBOUND_TEST_MODE,
-      allowlistCount: env.OUTBOUND_TEST_PHONE_ALLOWLIST.split(",").filter((value) => value.trim()).length,
-      maxBatchSize: env.OUTBOUND_MAX_BATCH_SIZE,
-      afterHoursOverrideEnabled: env.OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE,
+      outboundPaymentEmailEnabled: runtime?.emailEffective ?? env.OUTBOUND_PAYMENT_EMAIL_ENABLED,
+      testMode: runtime?.testMode ?? env.OUTBOUND_TEST_MODE,
+      allowlistCount: runtime?.allowlist.length ?? env.OUTBOUND_TEST_PHONE_ALLOWLIST.split(",").filter((value) => value.trim()).length,
+      maxBatchSize: runtime?.maxBatchSize ?? env.OUTBOUND_MAX_BATCH_SIZE,
+      afterHoursOverrideEnabled: runtime?.allowAfterHoursTestOverride ?? env.OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE,
     },
   });
 }

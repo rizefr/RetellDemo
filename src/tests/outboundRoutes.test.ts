@@ -13,6 +13,7 @@ describe("outbound admin routes", () => {
       if (!(key in originalEnv)) delete process.env[key];
     });
     Object.assign(process.env, originalEnv);
+    vi.unstubAllGlobals();
     vi.resetModules();
     vi.restoreAllMocks();
   });
@@ -101,6 +102,51 @@ describe("outbound webhook contracts", () => {
     expect(hardeningMigration).toContain("add column if not exists analysis jsonb");
     expect(hardeningMigration).toContain("email_pending_manual");
     expect(hardeningMigration).not.toMatch(/^create policy/gm);
+    const rpcFixMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260619_outbound_mark_paid_rpc_fix.sql"),
+      "utf8",
+    );
+    expect(rpcFixMigration).toContain("where payment_link.invoice_id = v_invoice.id");
+    expect(rpcFixMigration).toContain("where followup.invoice_id = v_invoice.id");
+    expect(rpcFixMigration).toContain("where event.source = 'stripe'");
+    expect(rpcFixMigration).not.toMatch(/^create policy/gm);
+    const emailMissingMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260619_outbound_email_missing_outcome.sql"),
+      "utf8",
+    );
+    expect(emailMissingMigration).toContain("'email_missing'");
+    expect(emailMissingMigration).not.toMatch(/^create policy/gm);
+    const finalPresentationMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260623_outbound_final_presentation_hardening.sql"),
+      "utf8",
+    );
+    expect(finalPresentationMigration).toContain("responsible_party_name");
+    expect(finalPresentationMigration).toContain("'responsible_party_update_requested'");
+    expect(finalPresentationMigration).toContain("'named_contact_requested'");
+    expect(finalPresentationMigration).toContain("enable row level security");
+    expect(finalPresentationMigration).toContain("revoke all on public.outbound_customers from anon, authenticated");
+    expect(finalPresentationMigration).not.toMatch(/^create policy/gm);
+    const callbackMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260620_outbound_conversation_callback_upgrade.sql"),
+      "utf8",
+    );
+    expect(callbackMigration).toContain("ai_disclosure_policy");
+    expect(callbackMigration).toContain("test_phone_allowlist");
+    expect(callbackMigration).toContain("callback_confirmation_text");
+    expect(callbackMigration).toContain("'callback_scheduled'");
+    expect(callbackMigration).toContain("enable row level security");
+    expect(callbackMigration).not.toMatch(/^create policy/gm);
+    const inspectionMigration = fs.readFileSync(
+      path.resolve(process.cwd(), "supabase/migrations/20260624_outbound_inspection_productization.sql"),
+      "utf8",
+    );
+    expect(inspectionMigration).toContain("product_type");
+    expect(inspectionMigration).toContain("default_inspection_type");
+    expect(inspectionMigration).toContain("expected_payment_date");
+    expect(inspectionMigration).toContain("'quickbooks_read_only'");
+    expect(inspectionMigration).toContain("enable row level security");
+    expect(inspectionMigration).toContain("revoke all on public.outbound_businesses from anon, authenticated");
+    expect(inspectionMigration).not.toMatch(/^create policy/gm);
   });
 
   it("accepts a signed Retell webhook and rejects an invalid signature", async () => {
@@ -203,6 +249,168 @@ describe("outbound webhook contracts", () => {
     );
   });
 
+  it("stores responsible-party and named-contact updates from signed wrapped Retell outcome tools", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-tool-api-key";
+    const recordOutboundOutcome = vi.fn().mockResolvedValue({ outreachPaused: false, invoiceStatus: null, followups: [] });
+    const updateOutboundCustomer = vi.fn().mockResolvedValue({});
+    const insertOutboundFollowups = vi.fn().mockResolvedValue([]);
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: { id: "00000000-0000-4000-8000-000000000003", status: "unpaid" },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: { id: "00000000-0000-4000-8000-000000000001" },
+        }),
+        recordOutboundOutcome,
+        updateOutboundCustomer,
+        insertOutboundFollowups,
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const metadata = {
+      business_id: "00000000-0000-4000-8000-000000000001",
+      customer_id: "00000000-0000-4000-8000-000000000002",
+      invoice_id: "00000000-0000-4000-8000-000000000003",
+      call_attempt_id: "00000000-0000-4000-8000-000000000004",
+    };
+    const responsiblePayload = JSON.stringify({
+      name: "log_outcome",
+      args: {
+        outcome: "responsible_party_update_requested",
+        responsible_party_name: "Sam Lee",
+        responsible_party_phone: "+13475550123",
+        responsible_party_email: "sam@example.com",
+        notes: "Caller said Sam handles payments now.",
+      },
+      call: { call_id: "call_responsible_party", metadata },
+    });
+    const responsibleSignature = await sign(responsiblePayload, "retell-tool-api-key");
+    const responsibleResponse = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", responsibleSignature)
+      .send(responsiblePayload);
+
+    expect(responsibleResponse.status).toBe(200);
+    expect(updateOutboundCustomer).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000002",
+      expect.objectContaining({
+        responsible_party_name: "Sam Lee",
+        responsible_party_phone: "+13475550123",
+        responsible_party_email: "sam@example.com",
+        contact_update_note: expect.stringContaining("Sam handles payments"),
+      }),
+    );
+    expect(insertOutboundFollowups).toHaveBeenCalledWith(
+      {
+        businessId: "00000000-0000-4000-8000-000000000001",
+        customerId: "00000000-0000-4000-8000-000000000002",
+        invoiceId: "00000000-0000-4000-8000-000000000003",
+      },
+      expect.arrayContaining([expect.objectContaining({ task_type: "manual_review", reason: "responsible_party_update_requested" })]),
+    );
+
+    const namedPayload = JSON.stringify({
+      name: "log_outcome",
+      args: {
+        outcome: "named_contact_requested",
+        named_contact_name: "Mike",
+        notes: "Caller asked for Mike.",
+      },
+      call: { call_id: "call_named_contact", metadata },
+    });
+    const namedSignature = await sign(namedPayload, "retell-tool-api-key");
+    const namedResponse = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", namedSignature)
+      .send(namedPayload);
+
+    expect(namedResponse.status).toBe(200);
+    expect(updateOutboundCustomer).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000002",
+      expect.objectContaining({
+        named_contact_requested: "Mike",
+        contact_update_note: "Caller asked for Mike.",
+      }),
+    );
+    vi.doUnmock("../services/outboundRepository");
+    vi.resetModules();
+  });
+
+  it("accepts Retell log_outcome optional fields when the model sends nulls", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-tool-api-key";
+    const recordOutboundOutcome = vi.fn().mockResolvedValue({ outreachPaused: false, invoiceStatus: null, followups: [] });
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: { id: "00000000-0000-4000-8000-000000000003", status: "unpaid" },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: { id: "00000000-0000-4000-8000-000000000001" },
+        }),
+        recordOutboundOutcome,
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "log_outcome",
+      args: {
+        outcome: "confirmed_payment_link_requested",
+        notes: "Caller agreed to pay and confirmed text delivery to the number on file.",
+        responsible_party_name: null,
+        responsible_party_phone: null,
+        responsible_party_email: null,
+        named_contact_name: null,
+      },
+      call: {
+        call_id: "call_with_null_optional_fields",
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-tool-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/log-outcome")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body.outcome).toBe("confirmed_payment_link_requested");
+    expect(recordOutboundOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: "confirmed_payment_link_requested",
+        notes: "Caller agreed to pay and confirmed text delivery to the number on file.",
+      }),
+    );
+    vi.doUnmock("../services/outboundRepository");
+    vi.resetModules();
+  });
+
   it("rejects signed root-only Retell tool args because trusted call metadata is absent", async () => {
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "retell-tool-api-key";
@@ -220,6 +428,205 @@ describe("outbound webhook contracts", () => {
       .send(payload);
 
     expect(response.status).toBe(422);
+    const emailPayload = JSON.stringify({ name: "send_payment_email", args: {} });
+    const emailSignature = await sign(emailPayload, "retell-tool-api-key");
+    const emailResponse = await request(createApp())
+      .post("/api/outbound/retell/send-payment-email")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", emailSignature)
+      .send(emailPayload);
+    expect(emailResponse.status).toBe(422);
+  });
+
+  it("does not create or send a payment email when the trusted customer has no email", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-email-api-key";
+    process.env.EMAIL_PROVIDER = "resend";
+    process.env.EMAIL_PROVIDER_API_KEY = "resend-test-key";
+    process.env.OUTBOUND_PAYMENT_EMAIL_FROM = "Elixis Elevator Systems <billing@elixis.agency>";
+    process.env.OUTBOUND_PAYMENT_EMAIL_ENABLED = "true";
+    const insertOutboundEvent = vi.fn().mockResolvedValue({});
+    const createOutboundCheckoutSession = vi.fn();
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: {
+            id: "00000000-0000-4000-8000-000000000003",
+            invoice_id: "ELV-NO-EMAIL",
+            status: "unpaid",
+            service_description: "annual elevator inspection",
+            amount_due_cents: 15000,
+            currency: "usd",
+          },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            email: "",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: {
+            id: "00000000-0000-4000-8000-000000000001",
+            business_name: "Elixis Elevator Systems",
+            callback_number: "+19842075346",
+          },
+        }),
+        hasOutboundPaymentLinkAgreement: vi.fn().mockResolvedValue(true),
+        insertOutboundEvent,
+      };
+    });
+    vi.doMock("../services/outboundStripe", () => ({ createOutboundCheckoutSession }));
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "send_payment_email",
+      args: {},
+      call: {
+        call_id: "call_email_missing",
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-email-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/send-payment-email")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ sent: false, status: "email_missing" });
+    expect(createOutboundCheckoutSession).not.toHaveBeenCalled();
+    expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: "email_missing" }));
+    vi.doUnmock("../services/outboundRepository");
+    vi.doUnmock("../services/outboundStripe");
+    vi.resetModules();
+  });
+
+  it("sends a payment email from a signed wrapped Retell tool after trusted agreement and allowlist checks", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-email-api-key";
+    process.env.EMAIL_PROVIDER = "resend";
+    process.env.EMAIL_PROVIDER_API_KEY = "resend-test-key";
+    process.env.OUTBOUND_PAYMENT_EMAIL_FROM = "Elixis Elevator Systems <billing@elixis.agency>";
+    process.env.OUTBOUND_PAYMENT_EMAIL_ENABLED = "true";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "email_route_success_1" }),
+    }));
+    const insertOutboundEvent = vi.fn().mockResolvedValue({});
+    const markOutboundPaymentLinkDelivered = vi.fn().mockResolvedValue({});
+    const updateOutboundCustomer = vi.fn().mockResolvedValue({});
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: {
+            id: "00000000-0000-4000-8000-000000000003",
+            invoice_id: "ELV-EMAIL-ROUTE",
+            status: "unpaid",
+            service_description: "annual elevator inspection",
+            amount_due_cents: 15000,
+            currency: "usd",
+            original_due_date: "2026-05-20",
+          },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            email: "elixisagency@gmail.com",
+            preferred_email: "",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: {
+            id: "00000000-0000-4000-8000-000000000001",
+            business_name: "Elixis Elevator Systems",
+            callback_number: "+19842075346",
+            payment_email_enabled: true,
+            email_from: "Elixis Elevator Systems <billing@elixis.agency>",
+            email_test_recipient_allowlist: ["elixisagency@gmail.com"],
+            test_mode: true,
+          },
+        }),
+        hasOutboundPaymentLinkAgreement: vi.fn().mockResolvedValue(true),
+        insertOutboundEvent,
+        markOutboundPaymentLinkDelivered,
+        updateOutboundCustomer,
+      };
+    });
+    vi.doMock("../services/outboundStripe", () => ({
+      createOutboundCheckoutSession: vi.fn().mockResolvedValue({
+        reused: false,
+        payment_link: {
+          id: "00000000-0000-4000-8000-000000000010",
+          url: "https://checkout.stripe.test/email-route",
+        },
+      }),
+    }));
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "send_payment_email",
+      args: {},
+      call: {
+        call_id: "call_email_success",
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-email-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/send-payment-email")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      sent: true,
+      status: "email_sent",
+      provider_message_id: "email_route_success_1",
+    });
+    expect(updateOutboundCustomer).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000002",
+      { payment_contact_preference: "email" },
+    );
+    expect(markOutboundPaymentLinkDelivered).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000010",
+      "email",
+    );
+    expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: "email_requested" }));
+    expect(insertOutboundEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: "email_sent",
+        payload: expect.objectContaining({ provider_message_id: "email_route_success_1" }),
+      }),
+    );
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    const [, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(requestInit.body));
+    expect(body).toMatchObject({
+      from: "Elixis Elevator Systems <billing@elixis.agency>",
+      to: ["elixisagency@gmail.com"],
+      subject: "Elixis Elevator Systems invoice ELV-EMAIL-ROUTE",
+    });
+    expect(String(requestInit.body)).not.toContain("resend-test-key");
+    vi.doUnmock("../services/outboundRepository");
+    vi.doUnmock("../services/outboundStripe");
+    vi.resetModules();
   });
 
   it("accepts a signed Stripe completion event with exact trusted metadata", async () => {

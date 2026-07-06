@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   deliverOutboundPaymentEmail,
+  ResendOutboundEmailProvider,
   type OutboundEmailProvider,
   type OutboundPaymentEmail,
 } from "../services/outboundEmail";
@@ -14,6 +15,7 @@ const message: OutboundPaymentEmail = {
   amount: "$150.00",
   paymentUrl: "https://checkout.stripe.test/session",
   callbackNumber: "+19842075346",
+  dueDate: "May 20, 2026",
 };
 
 describe("outbound payment email", () => {
@@ -54,5 +56,25 @@ describe("outbound payment email", () => {
 
     expect(result).toEqual({ sent: true, status: "email_sent", provider_message_id: "email_test_1" });
     expect(provider.send).toHaveBeenCalledWith(message);
+  });
+
+  it("sends only the expected safe payload and keeps the API key out of the body", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "email_test_2" }),
+    });
+    const provider = new ResendOutboundEmailProvider("resend-test-secret", fetchImpl as unknown as typeof fetch);
+
+    await expect(provider.send(message)).resolves.toEqual({ id: "email_test_2" });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    const [url, request] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.resend.com/emails");
+    expect(request.headers).toMatchObject({ authorization: "Bearer resend-test-secret" });
+    expect(String(request.body)).not.toContain("resend-test-secret");
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      from: message.from,
+      to: [message.to],
+      subject: "Elixis Elevator Systems invoice ELV-TEST",
+    });
   });
 });

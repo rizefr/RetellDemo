@@ -1,0 +1,139 @@
+{
+  "created_at": "2026-06-30T18:13:04.757Z",
+  "production_base_url": "https://elixis.agency",
+  "webhook_url": "https://elixis.agency/retell/webhook",
+  "live_agent_id": "agent_16b324c0e55f21c0a5f914c169",
+  "old_conversation_flow_agent_id": "agent_1e77470887528d657c5ad62d4d",
+  "published_version": 32,
+  "backups": {
+    "phone_before": "/Users/elithing3/Documents/Demo Retell AI/retell-pest-control-demo/generated/backups/2026-06-30T18-13-01-736Z-inbound-phone-before-finalize-js.json",
+    "agent_before": "/Users/elithing3/Documents/Demo Retell AI/retell-pest-control-demo/generated/backups/2026-06-30T18-13-01-736Z-agent_16b324c0e55f21c0a5f914c169-before-finalize-js.json",
+    "llm_before": "/Users/elithing3/Documents/Demo Retell AI/retell-pest-control-demo/generated/backups/2026-06-30T18-13-01-736Z-llm_e8bb285e8cb0fc562f06e2395a78-before-finalize-js.json"
+  },
+  "phone_binding_before": [
+    {
+      "agent_version": "latest_published",
+      "weight": 1,
+      "agent_id": "agent_16b324c0e55f21c0a5f914c169"
+    }
+  ],
+  "phone_binding_after": [
+    {
+      "agent_version": "latest_published",
+      "weight": 1,
+      "agent_id": "agent_16b324c0e55f21c0a5f914c169"
+    }
+  ],
+  "settings_before": {
+    "voice_id": "11labs-Gilfoy",
+    "voice_model": "eleven_flash_v2_5",
+    "voice_speed": 1.12,
+    "interruption_sensitivity": 0.85,
+    "responsiveness": 0.95,
+    "enable_dynamic_responsiveness": false,
+    "enable_dynamic_voice_speed": false,
+    "ambient_sound": "coffee-shop",
+    "ambient_sound_volume": 1,
+    "handbook_config": {
+      "echo_verification": true,
+      "speech_normalization": true,
+      "default_personality": true,
+      "scope_boundaries": true,
+      "natural_filler_words": false,
+      "nato_phonetic_alphabet": false,
+      "high_empathy": true,
+      "ai_disclosure": true,
+      "smart_matching": true
+    }
+  },
+  "settings_after": {
+    "voice_id": "11labs-Gilfoy",
+    "voice_model": "eleven_flash_v2_5",
+    "voice_speed": 1.12,
+    "interruption_sensitivity": 0.85,
+    "responsiveness": 0.95,
+    "enable_dynamic_responsiveness": false,
+    "enable_dynamic_voice_speed": false,
+    "ambient_sound": "coffee-shop",
+    "ambient_sound_volume": 1,
+    "handbook_config": {
+      "echo_verification": true,
+      "speech_normalization": true,
+      "default_personality": true,
+      "scope_boundaries": true,
+      "natural_filler_words": false,
+      "nato_phonetic_alphabet": false,
+      "high_empathy": true,
+      "ai_disclosure": true,
+      "smart_matching": true
+    }
+  },
+  "llm_after": {
+    "llm_id": "llm_e8bb285e8cb0fc562f06e2395a78",
+    "version": 32,
+    "model": "gpt-4.1",
+    "model_temperature": 0.2,
+    "begin_message": "Thanks for calling Elijah's Pest Control, this is Paul. How can I help?",
+    "knowledge_base_ids": [
+      "knowledge_base_5c6a5b20b1a9ed4f"
+    ],
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "prompt_length_characters": 12106,
+    "tools": [
+      {
+        "name": "check_service_area",
+        "type": "custom",
+        "url": "https://elixis.agency/tools/check-service-area",
+        "event_type_id": null,
+        "has_secret_config": false
+      },
+      {
+        "name": "create_lead",
+        "type": "custom",
+        "url": "https://elixis.agency/tools/create-lead",
+        "event_type_id": null,
+        "has_secret_config": false
+      },
+      {
+        "name": "log_transfer_request",
+        "type": "custom",
+        "url": "https://elixis.agency/tools/transfer-call",
+        "event_type_id": null,
+        "has_secret_config": false
+      },
+      {
+        "name": "transfer_call",
+        "type": "transfer_call",
+        "url": null,
+        "event_type_id": null,
+        "has_secret_config": false
+      },
+      {
+        "name": "end_call",
+        "type": "end_call",
+        "url": null,
+        "event_type_id": null,
+        "has_secret_config": false
+      },
+      {
+        "name": "check_availability_cal",
+        "type": "check_availability_cal",
+        "url": null,
+        "event_type_id": 5842786,
+        "has_secret_config": true
+      },
+      {
+        "name": "book_appointment_cal",
+        "type": "book_appointment_cal",
+        "url": null,
+        "event_type_id": 5842786,
+        "has_secret_config": true
+      }
+    ]
+  },
+  "no_sms_booking_tool_attached": true,
+  "duplicate_post_call_names": []
+}

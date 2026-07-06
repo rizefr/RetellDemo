@@ -1,6 +1,6 @@
 # Elixis Agency Website Operations
 
-This repo contains the Elixis Agency public website. The Elixis AI service family includes two primary services, Elixis Collect and Elixis Intake; an optional Elixis Visibility add-on; and higher-touch custom work through Elixis Systems. The AI Audit is the first step used to choose the right workflow. The website is served from `public/` by the same Express app used for the Retell backend, but website files must never contain backend secrets.
+This repo contains the Elixis Agency public website. The current public positioning is a premium AI systems agency with Elixis Collect / AI Payment Outreach as the primary offer and Elixis Intake / AI Receptionist as the secondary offer. Elixis Visibility is an optional search visibility add-on, Elixis Systems is higher-touch custom workflow work, and the AI Audit is the first step used to choose the right workflow. The website is served from `public/` by the same Express app used for the Retell backend, but website files must never contain backend secrets.
 
 ## Live Site
 
@@ -52,7 +52,7 @@ Do not put the whole project inside an extra nested folder unless the Vercel Roo
 
 The live website is organized around a general business AI agency offer:
 
-1. `/`: general Elixis Agency homepage. It presents Elixis Collect first, Elixis Intake second, Elixis Visibility as an optional add-on, and Elixis Systems as the custom option.
+1. `/`: general Elixis Agency homepage. It presents AI Payment Outreach / Elixis Collect as the primary offer, AI Receptionist / Elixis Intake as the secondary offer, Elixis Visibility as an optional add-on, and Elixis Systems as the custom option. It also includes the founder/about section, trust/safety content, practical FAQ, and the AI Audit CTA.
 2. `/collections/`: primary Elixis Collect / accounts-receivable follow-up marketing page.
 3. `/demo/`: primary Elixis Intake demo page. The current Retell voice demo uses a pest-control scenario as the example industry.
 4. `/ai-seo/`: optional Elixis Visibility and AI-style search audit page.
@@ -64,7 +64,7 @@ AI Audit is not a numbered service. It is the first step used to identify whethe
 
 The homepage should not be pest-control-specific. It should speak to local service businesses, B2B companies, appointment-based businesses, and companies with customer calls, unpaid invoices, follow-up gaps, or visibility problems. Pest-control-specific copy belongs on `/demo/` because the current Retell demo agent is trained around that example.
 
-Primary booking links open `https://elixis.agency/booking/`, where the Cal.com calendar is embedded. The footer contains the Elixis Agency contact number and both public contact emails.
+Primary booking links open `https://elixis.agency/booking/`, where the Cal.com calendar is embedded. The footer contains the Elixis Agency contact number, agency email `help@elixis.agency`, and founder email `elr234@cornell.edu`.
 
 To update site copy or section order, edit the matching page under `public/`. To update layout and responsive styling, edit `web/styles.css`, then run `npm run build:styles` to regenerate `public/styles.css`.
 
@@ -79,9 +79,9 @@ Do not change backend code for ordinary website copy/layout updates.
 
 ## Service Copy Notes
 
-- Homepage: general Elixis AI business-systems positioning. Present Elixis Collect and Elixis Intake as the two primary services, Elixis Visibility as an optional add-on, and Elixis Systems as the custom option.
+- Homepage: general Elixis AI business-systems positioning with AI Payment Outreach / Elixis Collect as the dominant primary offer and AI Receptionist / Elixis Intake as the secondary offer. Present Elixis Visibility as an optional add-on and Elixis Systems as the custom option.
 - `/demo/`: Elixis Intake page. Keep the Retell demo working and clearly label the pest-control scenario as an example.
-- `/collections/`: Elixis Collect. Use professional accounts-receivable support language. Do not make legal compliance claims or imply aggressive collection tactics.
+- `/collections/`: Elixis Collect. Use professional accounts-receivable support language. Do not make legal compliance claims, imply aggressive collection tactics, or claim SMS payment links are live unless they are verified and enabled.
 - `/ai-seo/`: optional Elixis Visibility audit. Do not guarantee rankings, Google AI Overview placement, ChatGPT/Gemini/Perplexity recommendations, or search results.
 - `/booking/`: booking page. Keep the Cal.com embed and external fallback.
 

@@ -330,20 +330,20 @@ begin
   set status = 'paid', paid_at = coalesce(paid_at, now())
   where id = v_invoice.id;
 
-  update public.outbound_payment_links
+  update public.outbound_payment_links as payment_link
   set
     status = 'paid',
     paid_at = coalesce(paid_at, now()),
-    stripe_payment_intent_id = coalesce(p_payment_intent_id, stripe_payment_intent_id)
-  where invoice_id = v_invoice.id
+    stripe_payment_intent_id = coalesce(p_payment_intent_id, payment_link.stripe_payment_intent_id)
+  where payment_link.invoice_id = v_invoice.id
     and (
-      stripe_checkout_session_id = p_checkout_session_id
-      or (p_checkout_session_id is null and status in ('creating', 'open'))
+      payment_link.stripe_checkout_session_id = p_checkout_session_id
+      or (p_checkout_session_id is null and payment_link.status in ('creating', 'open'))
     );
 
-  update public.outbound_followup_tasks
-  set status = 'cancelled', reason = coalesce(reason, 'invoice_paid')
-  where invoice_id = v_invoice.id and status = 'pending';
+  update public.outbound_followup_tasks as followup
+  set status = 'cancelled', reason = coalesce(followup.reason, 'invoice_paid')
+  where followup.invoice_id = v_invoice.id and followup.status = 'pending';
 
   return query select v_invoice.id, v_invoice.status = 'paid';
 end;

@@ -1,3 +1,15 @@
+import { env } from "../config/env";
+import {
+  getOutboundInvoiceContext,
+  hasOutboundPaymentLinkAgreement,
+  insertOutboundEvent,
+  markOutboundPaymentLinkDelivered,
+  updateOutboundCustomer,
+} from "./outboundRepository";
+import { createOutboundCheckoutSession } from "./outboundStripe";
+import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
+import { formatOutboundDate } from "./outboundFormatting";
+
 export type OutboundPaymentEmail = {
   to: string;
   from: string;
@@ -7,6 +19,7 @@ export type OutboundPaymentEmail = {
   amount: string;
   paymentUrl: string;
   callbackNumber: string;
+  dueDate: string;
 };
 
 export interface OutboundEmailProvider {
@@ -55,6 +68,7 @@ export class ResendOutboundEmailProvider implements OutboundEmailProvider {
           `${message.businessName} invoice ${message.invoiceNumber}`,
           `Service: ${message.serviceDescription}`,
           `Amount: ${message.amount}`,
+          `Original due date: ${message.dueDate}`,
           `Secure payment link: ${message.paymentUrl}`,
           message.callbackNumber ? `Questions: ${message.callbackNumber}` : "",
           "Payment is completed through the secure link, not by phone.",
@@ -106,13 +120,36 @@ export async function sendOutboundPaymentEmailForInvoice(invoiceId: string) {
     source: "retell_function",
     payload: { recipient_on_file: Boolean(context.customer.email) },
   });
-  const recipient = typeof context.customer.email === "string" ? context.customer.email.trim() : "";
+  const recipient = typeof context.customer.preferred_email === "string" && context.customer.preferred_email.trim()
+    ? context.customer.preferred_email.trim()
+    : typeof context.customer.email === "string"
+      ? context.customer.email.trim()
+      : "";
   if (!recipient) {
+    await insertOutboundEvent({
+      ...ids,
+      event_type: "email_missing",
+      source: "retell_function",
+      payload: { reason: "customer_email_missing" },
+    });
+    return {
+      sent: false,
+      status: "email_missing" as const,
+      message_for_agent: "The email was not sent. Say the team will follow up with the secure link.",
+    };
+  }
+
+  const runtime = outboundBusinessRuntimeSettings(context.business);
+  await updateOutboundCustomer(String(context.customer.id), { payment_contact_preference: "email" });
+  if (
+    runtime.testMode &&
+    !runtime.emailTestRecipientAllowlist.map((value) => value.toLowerCase()).includes(recipient.toLowerCase())
+  ) {
     await insertOutboundEvent({
       ...ids,
       event_type: "email_pending_manual",
       source: "retell_function",
-      payload: { reason: "customer_email_missing" },
+      payload: { reason: "test_recipient_not_allowlisted", provider: env.EMAIL_PROVIDER },
     });
     return {
       sent: false,
@@ -122,22 +159,18 @@ export async function sendOutboundPaymentEmailForInvoice(invoiceId: string) {
   }
 
   const checkout = await createOutboundCheckoutSession(invoiceId, "email_placeholder");
-  const enabled = Boolean(
-    env.OUTBOUND_PAYMENT_EMAIL_ENABLED &&
-      env.EMAIL_PROVIDER === "resend" &&
-      env.EMAIL_PROVIDER_API_KEY &&
-      env.OUTBOUND_PAYMENT_EMAIL_FROM,
-  );
+  const enabled = runtime.emailEffective;
   const result = await deliverOutboundPaymentEmail(
     {
       to: recipient,
-      from: env.OUTBOUND_PAYMENT_EMAIL_FROM,
+      from: runtime.emailFrom,
       businessName: String(context.business.business_name),
       invoiceNumber: String(context.invoice.invoice_id),
       serviceDescription: String(context.invoice.service_description),
       amount: money(Number(context.invoice.amount_due_cents), String(context.invoice.currency)),
       paymentUrl: String(checkout.payment_link.url),
       callbackNumber: String(context.business.callback_number || env.BUSINESS_CALLBACK_NUMBER || ""),
+      dueDate: formatOutboundDate(String(context.invoice.original_due_date || "")),
     },
     { enabled, providerName: env.EMAIL_PROVIDER, provider: configuredProvider() },
   );
@@ -159,11 +192,3 @@ export async function sendOutboundPaymentEmailForInvoice(invoiceId: string) {
       : "The email was not sent. Say the team will follow up with the secure link.",
   };
 }
-import { env } from "../config/env";
-import {
-  getOutboundInvoiceContext,
-  hasOutboundPaymentLinkAgreement,
-  insertOutboundEvent,
-  markOutboundPaymentLinkDelivered,
-} from "./outboundRepository";
-import { createOutboundCheckoutSession } from "./outboundStripe";

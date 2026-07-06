@@ -21,6 +21,24 @@
     <link href="/styles.css" rel="stylesheet" />
     <script src="/site-config.js?v=elixis-services-20260618" defer></script>
     <script src="/site.js?v=elixis-services-20260618" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "@id": "https://elixis.agency/demo/#service",
+        "name": "Elixis Intake AI Receptionist",
+        "serviceType": "AI receptionist and inbound call intake",
+        "provider": {
+          "@type": "Organization",
+          "name": "Elixis Agency",
+          "url": "https://elixis.agency/",
+          "email": "help@elixis.agency",
+          "telephone": "+1-860-385-1624"
+        },
+        "areaServed": "United States",
+        "description": "AI receptionist support for missed calls, customer intake, common questions, urgent routing, booking support, and call notes for service businesses."
+      }
+    </script>
     <style>
       .demo-page-shell {
         width: min(100% - 32px, 1120px);
@@ -58,6 +76,7 @@
       }
 
       .orb-frame {
+        position: relative;
         overflow: hidden;
         border: 1px solid var(--line);
         border-radius: 28px;
@@ -71,6 +90,64 @@
         min-height: min(720px, calc(100dvh - 260px));
         border: 0;
         background: #fff;
+        pointer-events: none;
+      }
+
+      .orb-frame.is-iframe-active iframe {
+        pointer-events: auto;
+      }
+
+      .iframe-scroll-shield {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 22px;
+        border: 0;
+        color: var(--ivory-100);
+        text-align: center;
+        cursor: pointer;
+        background:
+          linear-gradient(180deg, rgba(2, 9, 20, 0), rgba(2, 9, 20, 0.08) 45%, rgba(2, 9, 20, 0.82)),
+          radial-gradient(circle at 50% 88%, rgba(199,156,90,0.22), transparent 18rem);
+        transition: opacity 0.18s ease, background 0.18s ease;
+      }
+
+      .iframe-scroll-shield strong,
+      .iframe-scroll-shield span {
+        display: block;
+      }
+
+      .iframe-scroll-shield strong {
+        width: fit-content;
+        margin: 0 auto 8px;
+        padding: 9px 14px;
+        border: 1px solid rgba(222, 182, 117, 0.42);
+        border-radius: 999px;
+        color: #061527;
+        background: linear-gradient(135deg, #efca84, #ac7d34);
+        box-shadow: 0 16px 42px rgba(199, 156, 90, 0.26);
+        font-size: 0.86rem;
+        font-weight: 800;
+      }
+
+      .iframe-scroll-shield span {
+        color: rgba(248, 244, 235, 0.78);
+        font-size: 0.82rem;
+      }
+
+      .iframe-scroll-shield:hover,
+      .iframe-scroll-shield:focus-visible {
+        background:
+          linear-gradient(180deg, rgba(2, 9, 20, 0), rgba(2, 9, 20, 0.12) 42%, rgba(2, 9, 20, 0.9)),
+          radial-gradient(circle at 50% 88%, rgba(199,156,90,0.3), transparent 18rem);
+      }
+
+      .orb-frame.is-iframe-active .iframe-scroll-shield {
+        opacity: 0;
+        pointer-events: none;
       }
 
       .demo-side-card {
@@ -137,7 +214,6 @@
             <span>Elixis Agency</span>
           </a>
           <div class="nav-links">
-            <a class="nav-link" href="/">Home</a>
             <details class="services-menu has-current-service">
               <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
               <div class="services-popover" aria-label="Elixis AI services">
@@ -147,7 +223,8 @@
                 <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
               </div>
             </details>
-            <a class="nav-link" href="/#custom-workflows">Approach</a>
+            <a class="nav-link" href="/#how-it-works">How it works</a>
+            <a class="nav-link" href="/#about">Founder</a>
           </div>
           <a href="/booking/" class="button button-primary nav-cta">Book an AI Audit</a>
           <button data-menu-button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
@@ -155,7 +232,6 @@
           </button>
         </nav>
         <div data-mobile-menu class="section-wrap mobile-menu hidden">
-          <a class="nav-link" href="/">Home</a>
           <details class="services-menu services-menu-mobile has-current-service">
             <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
             <div class="services-popover" aria-label="Elixis AI services">
@@ -165,7 +241,8 @@
               <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
             </div>
           </details>
-          <a class="nav-link" href="/#custom-workflows">Approach</a>
+          <a class="nav-link" href="/#how-it-works">How it works</a>
+          <a class="nav-link" href="/#about">Founder</a>
           <a href="/booking/" class="button button-primary">Book an AI Audit</a>
         </div>
       </header>
@@ -180,7 +257,10 @@
         </section>
 
         <section class="demo-demo-layout" aria-label="AI front desk voice demo">
-          <div class="orb-frame">
+          <div class="orb-frame" data-iframe-frame>
+            <button class="iframe-scroll-shield" type="button" data-iframe-activate aria-pressed="false">
+              <span><strong>Click to use voice demo</strong><span>Page scroll stays active until you open the frame.</span></span>
+            </button>
             <iframe
               title="Elixis Agency AI front desk demo"
               data-config-src="AI_DEMO_ORB_URL"
@@ -204,6 +284,27 @@
           </aside>
         </section>
       </main>
+
+      <footer class="footer">
+        <div class="section-wrap footer-grid">
+          <div>
+            <a href="/" class="brand-link"><img src="/images/elixis-phoenix.png" class="brand-mark" alt="" /><span>Elixis Agency</span></a>
+            <p>Elixis AI systems for payment follow-up, customer intake, visibility, and custom business workflows.</p>
+          </div>
+          <div><h3>Services</h3><a href="/collections/">Elixis Collect</a><a href="/demo/">Elixis Intake</a><a href="/ai-seo/">Elixis Visibility</a><a href="/#custom-workflows">Elixis Systems</a><a href="/booking/">Start with an AI Audit</a></div>
+          <div class="footer-contact">
+            <h3>Contact</h3>
+            <span>Contact phone</span>
+            <a href="tel:+18603851624" data-config-href="CONTACT_PHONE">+1 (860) 385-1624</a>
+            <span>Agency email</span>
+            <a href="mailto:help@elixis.agency">help@elixis.agency</a>
+            <span>Founder email</span>
+            <a href="mailto:elr234@cornell.edu">elr234@cornell.edu</a>
+            <a href="https://cal.com/elixisagency/15min" data-config-href="BOOKING_URL" target="_blank" rel="noreferrer">Open booking page</a>
+          </div>
+        </div>
+        <div class="section-wrap footer-bottom">© 2026 Elixis Agency. All rights reserved.</div>
+      </footer>
     </div>
   </body>
 </html>

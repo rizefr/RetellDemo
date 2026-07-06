@@ -1,6 +1,6 @@
 import { parse } from "csv-parse/sync";
-import { DateTime } from "luxon";
 import { isValidE164, normalizeOutboundTimezone } from "./outboundEligibility";
+import { normalizeOutboundDate } from "./outboundFormatting";
 
 export const OUTBOUND_CSV_COLUMNS = [
   "customer_id",
@@ -20,6 +20,16 @@ export const OUTBOUND_CSV_COLUMNS = [
   "notes",
 ] as const;
 
+export const OUTBOUND_OPTIONAL_CSV_COLUMNS = [
+  "account_company_name",
+  "last_payment_date",
+  "open_invoice_count",
+  "total_amount_due",
+  "payment_contact_preference",
+  "callback_preferred_time",
+  "payment_mailing_instructions",
+] as const;
+
 const IMPORTABLE_STATUSES = new Set([
   "unpaid",
   "payment_link_sent",
@@ -33,6 +43,7 @@ export type OutboundCsvRow = {
   external_customer_id: string;
   first_name: string;
   last_name: string;
+  account_company_name: string;
   phone_number: string;
   email: string;
   mailing_address: string;
@@ -45,11 +56,17 @@ export type OutboundCsvRow = {
   status: string;
   outreach_paused: boolean;
   notes: string;
+  last_payment_date: string | null;
+  open_invoice_count_hint: number | null;
+  total_amount_due_cents_hint: number | null;
+  payment_contact_preference: "none" | "sms" | "email" | "mail_check";
+  callback_preferred_time: string;
+  payment_mailing_instructions: string;
 };
 
 export type OutboundCsvError = { row: number; message: string };
 
-function dollarsToCents(value: string): number | null {
+export function dollarsToCents(value: string): number | null {
   if (!/^\d+(?:\.\d{1,2})?$/.test(value.trim())) return null;
   const [dollars, cents = ""] = value.trim().split(".");
   return Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
@@ -85,8 +102,9 @@ export function parseOutboundCsv(input: string): { rows: OutboundCsvRow[]; error
       errors.push({ row: rowNumber, message: "amount_due must be a positive amount with at most two decimals" });
       return;
     }
-    if (!DateTime.fromISO(record.original_due_date).isValid) {
-      errors.push({ row: rowNumber, message: "original_due_date must be an ISO date" });
+    const originalDueDate = normalizeOutboundDate(record.original_due_date);
+    if (!originalDueDate) {
+      errors.push({ row: rowNumber, message: "original_due_date must be YYYY-MM-DD or YYYYMMDD" });
       return;
     }
     if (!IMPORTABLE_STATUSES.has(record.status)) {
@@ -97,23 +115,50 @@ export function parseOutboundCsv(input: string): { rows: OutboundCsvRow[]; error
       errors.push({ row: rowNumber, message: "outreach_paused must be true or false" });
       return;
     }
+    const lastPaymentDate = record.last_payment_date ? normalizeOutboundDate(record.last_payment_date) : null;
+    if (record.last_payment_date && !lastPaymentDate) {
+      errors.push({ row: rowNumber, message: "last_payment_date must be YYYY-MM-DD or YYYYMMDD" });
+      return;
+    }
+    const openInvoiceCount = record.open_invoice_count ? Number(record.open_invoice_count) : null;
+    if (openInvoiceCount !== null && (!Number.isInteger(openInvoiceCount) || openInvoiceCount < 0)) {
+      errors.push({ row: rowNumber, message: "open_invoice_count must be a non-negative integer" });
+      return;
+    }
+    const totalAmountDue = record.total_amount_due ? dollarsToCents(record.total_amount_due) : null;
+    if (record.total_amount_due && (totalAmountDue === null || totalAmountDue < 0)) {
+      errors.push({ row: rowNumber, message: "total_amount_due must be a non-negative amount" });
+      return;
+    }
+    const paymentPreference = record.payment_contact_preference || "none";
+    if (!["none", "sms", "email", "mail_check"].includes(paymentPreference)) {
+      errors.push({ row: rowNumber, message: "payment_contact_preference must be none, sms, email, or mail_check" });
+      return;
+    }
 
     rows.push({
       external_customer_id: record.customer_id,
       first_name: record.first_name,
       last_name: record.last_name,
+      account_company_name: record.account_company_name || "",
       phone_number: record.phone_number,
       email: record.email,
       mailing_address: record.mailing_address,
       timezone: normalizeOutboundTimezone(record.timezone),
       amount_due_cents: amount,
-      original_due_date: record.original_due_date,
+      original_due_date: originalDueDate,
       service_description: record.service_description,
       invoice_id: record.invoice_id,
       business_name: record.business_name,
       status: record.status,
       outreach_paused: record.outreach_paused.toLowerCase() === "true",
       notes: record.notes,
+      last_payment_date: lastPaymentDate,
+      open_invoice_count_hint: openInvoiceCount,
+      total_amount_due_cents_hint: totalAmountDue,
+      payment_contact_preference: paymentPreference as OutboundCsvRow["payment_contact_preference"],
+      callback_preferred_time: record.callback_preferred_time || "",
+      payment_mailing_instructions: record.payment_mailing_instructions || "",
     });
   });
 

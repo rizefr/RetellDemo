@@ -11,7 +11,7 @@
       <div>
         <p class="eyebrow">B2B first-party demo</p>
         <h1>Outbound collections</h1>
-        <p class="header-subtitle">Elixis Elevator Systems</p>
+        <p id="header-business-name" class="header-subtitle">Configured business loads after refresh</p>
       </div>
       <div class="header-actions">
         <span class="safety-badge">No automatic task execution</span>
@@ -26,6 +26,97 @@
           <p id="last-refreshed">Not refreshed yet</p>
         </div>
         <button id="refresh-all" class="secondary">Refresh all data</button>
+      </section>
+
+      <section class="panel settings-panel" aria-labelledby="settings-heading">
+        <div class="section-heading">
+          <div><h2 id="settings-heading">Business and safety settings</h2><p>Operational values are stored server-side. Provider keys remain in Vercel and are shown only as present or missing.</p></div>
+          <button id="save-settings">Save settings</button>
+        </div>
+        <label class="settings-business">Business <select id="settings-business"></select></label>
+        <div class="settings-grid">
+          <label>Business display name <input id="setting-business-name" /></label>
+          <label>Agent display name <input id="setting-agent-name" value="Paul" /></label>
+          <label>Business type <select id="setting-product-type"><option value="elevator_inspection">Elevator Inspection</option><option value="elevator_service">Elevator Service</option></select></label>
+          <label>Default inspection type <select id="setting-default-inspection-type"><option>Category 1</option><option>Category 5</option><option>Acceptance Test</option><option>Periodic Inspection</option></select></label>
+          <label>First follow-up days after inspection <input id="setting-inspection-followup-days" type="number" min="0" max="365" /></label>
+          <label>Very-overdue threshold days <input id="setting-very-overdue-days" type="number" min="1" max="365" /></label>
+          <label>Default timezone <input id="setting-timezone" /></label>
+          <label>AI disclosure policy <select id="setting-disclosure"><option value="after_identity">After identity (safer default)</option><option value="on_request">Only when asked (compliance-sensitive)</option><option value="opening">Near the opening</option></select></label>
+          <label>Payment provider <select id="setting-payment-provider"><option value="stripe">Stripe</option><option value="quickbooks_read_only">QuickBooks read-only</option><option value="quickbooks_payment_link_enabled">QuickBooks payment-enabled</option><option value="quickbooks">QuickBooks legacy</option><option value="manual">Manual</option></select></label>
+          <label>Callback number <input id="setting-callback-number" type="tel" /></label>
+          <label>Human transfer number <input id="setting-transfer-number" type="tel" /></label>
+          <label>Maximum batch size <input id="setting-max-batch" type="number" min="1" max="25" /></label>
+          <label>Test phone allowlist <textarea id="setting-phone-allowlist" rows="3" placeholder="One E.164 number per line"></textarea></label>
+          <label>Email test-recipient allowlist <textarea id="setting-email-allowlist" rows="3" placeholder="One controlled test email per line"></textarea></label>
+          <label>Email sender <input id="setting-email-from" /></label>
+          <label class="wide">Payment mailing instructions <textarea id="setting-mailing" rows="3" placeholder="Leave blank if mailing details are not configured"></textarea></label>
+          <label class="wide">Callback/follow-up rules (JSON) <textarea id="setting-callback-rules" rows="3"></textarea></label>
+          <label class="check-control"><input id="setting-test-mode" type="checkbox" /> Test mode</label>
+          <label class="check-control"><input id="setting-after-hours" type="checkbox" /> Permit gated after-hours self-test</label>
+          <label class="check-control"><input id="setting-email-enabled" type="checkbox" /> Request payment email delivery</label>
+          <label class="check-control"><input id="setting-sms-enabled" type="checkbox" /> Request Retell SMS delivery</label>
+        </div>
+        <div class="warning-box settings-confirmations">
+          <p>Disabling test mode or raising the batch limit requires an exact phrase. These changes are audit logged.</p>
+          <label>Production-mode phrase <input id="setting-production-confirmation" placeholder="ENABLE PRODUCTION OUTBOUND MODE" /></label>
+          <label>Batch-limit phrase <input id="setting-batch-confirmation" placeholder="INCREASE OUTBOUND BATCH LIMIT" /></label>
+        </div>
+        <div id="settings-readiness" class="setup-summary">Load dashboard data to inspect effective provider readiness.</div>
+      </section>
+
+      <section class="panel presentation-panel" aria-labelledby="presentation-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Presentation mode</p>
+            <h2 id="presentation-heading">Demo test number and editable call context</h2>
+            <p>Prepare one controlled demo call with a temporary test number and the live backend call gates. Invoice status stays payment-focused; demo call mode only changes Paul’s script and context.</p>
+          </div>
+          <span id="demo-auth-status" class="count-badge">No demo number authorized</span>
+        </div>
+        <div class="demo-grid">
+          <label>Demo invoice <select id="demo-invoice-select"></select></label>
+          <label>Demo call mode <select id="demo-call-mode"><option value="first_reminder">First reminder</option><option value="follow_up">Follow-up</option><option value="callback_followup">Callback follow-up</option><option value="scam_recovery">Scam recovery</option><option value="service_issue">Service issue</option></select></label>
+          <label>Temporary test number <input id="demo-phone-number" type="tel" placeholder="+15551234567" /></label>
+          <label>TTL minutes <input id="demo-ttl-minutes" type="number" min="5" max="480" value="240" /></label>
+          <label class="check-control"><input id="demo-authorize-ack" type="checkbox" /> I control this test number or have explicit permission to call it.</label>
+          <label class="wide">Type exact phrase <input id="demo-authorize-confirmation" placeholder="I AUTHORIZE THIS DEMO TEST CALL" autocomplete="off" /></label>
+          <div class="row-actions wide">
+            <button id="demo-authorize-number" class="secondary">Authorize demo number</button>
+            <button id="demo-preflight" class="secondary" disabled>Run real backend preflight</button>
+            <button id="demo-start-call" class="danger-muted" disabled>Start one demo call</button>
+          </div>
+        </div>
+        <div id="demo-feedback-badges" class="feedback-badges" aria-live="polite"></div>
+        <p id="demo-last-result" class="muted">Authorize a temporary test number, save demo variables, then run the backend preflight check.</p>
+        <div class="demo-editor">
+          <h3>Editable demo variables</h3>
+          <p>These values feed the same backend dynamic variables that Retell receives. They are not frontend-only labels.</p>
+          <div class="settings-grid">
+            <label>First name <input id="demo-first-name" /></label>
+            <label>Last name <input id="demo-last-name" /></label>
+            <label>Customer phone <input id="demo-customer-phone" type="tel" /></label>
+            <label>Customer email <input id="demo-customer-email" type="email" /></label>
+            <label>Business name <input id="demo-business-name" /></label>
+            <label>Invoice ID <input id="demo-external-invoice-id" /></label>
+            <label>Invoice amount <input id="demo-amount-due" inputmode="decimal" /></label>
+            <label>Service/due date <input id="demo-original-due-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
+            <label>Inspection type <select id="demo-inspection-type"><option>Category 1</option><option>Category 5</option><option>Acceptance Test</option><option>Periodic Inspection</option></select></label>
+            <label>Expected payment date <input id="demo-expected-payment-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
+            <label class="wide">Service description <input id="demo-service-description" /></label>
+            <label>Previous call date <input id="demo-previous-call-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
+            <label>Preferred payment method <select id="demo-preferred-payment-method"><option value="none">None</option><option value="sms">Text</option><option value="email">Email</option><option value="mail_check">Mail check</option></select></label>
+            <label>Preferred email <input id="demo-preferred-email" type="email" /></label>
+            <label>Preferred phone <input id="demo-preferred-phone" type="tel" /></label>
+            <label class="wide">Follow-up reason <textarea id="demo-followup-reason" rows="2"></textarea></label>
+            <label class="wide">Prior concern/note <textarea id="demo-prior-concern-note" rows="2"></textarea></label>
+            <label class="wide">Callback details <textarea id="demo-callback-details" rows="2"></textarea></label>
+            <label class="wide">Mailing/check instructions <textarea id="demo-mailing-instructions" rows="2"></textarea></label>
+          </div>
+          <button id="demo-save-details">Save demo details</button>
+          <p class="muted">Invoice status remains one of unpaid, payment link sent, paid, disputed, manual review, or cancelled.</p>
+        </div>
+        <div id="quickbooks-status" class="setup-summary">QuickBooks status loads after dashboard data.</div>
       </section>
 
       <section class="panel setup-panel" aria-labelledby="setup-heading">
@@ -72,15 +163,26 @@
         <p id="selected-call-status" class="selected-call-status">No customer call gates checked yet.</p>
       </section>
 
-      <section class="panel import-panel">
-        <div>
-          <h2>Import demo CSV</h2>
-          <p>Validate first. Imports preserve history, paid invoices, paused outreach, and nonblank notes.</p>
+      <section class="panel import-panel upload-panel">
+        <div class="wide">
+          <h2>Customer invoice CSV</h2>
+          <p>Who to call and what they owe. Phone numbers must be E.164. Dates may be YYYY-MM-DD or YYYYMMDD. Amounts are decimal dollars and store as cents.</p>
+          <p>Imports update matching customer/invoice IDs, preserve history and paid invoices, and never erase notes with blanks.</p>
+          <a class="download-link" href="/api/outbound/templates/customers.csv">Download customer invoice template</a>
         </div>
         <input id="csv-file" type="file" accept=".csv,text/csv" />
-        <button id="dry-run-import">Validate CSV</button>
-        <button id="commit-import" class="danger-muted" disabled>Import validated CSV</button>
+        <button id="dry-run-import">Validate customer CSV</button>
+        <button id="commit-import" class="danger-muted" disabled>Import validated customer CSV</button>
         <output id="import-result"></output>
+        <div class="wide business-upload">
+          <h2>Business setup sheet</h2>
+          <p>How the business wants Paul to behave: identity, timezone, transfer/callback details, disclosure policy, mailing instructions, and requested delivery modes.</p>
+          <a class="download-link" href="/api/outbound/templates/business.csv">Download business setup template</a>
+        </div>
+        <input id="business-csv-file" type="file" accept=".csv,text/csv" />
+        <button id="dry-run-business-import">Validate business sheet</button>
+        <button id="commit-business-import" class="danger-muted" disabled>Import validated business sheet</button>
+        <output id="business-import-result"></output>
       </section>
 
       <section class="panel" aria-labelledby="invoice-heading">
@@ -95,6 +197,12 @@
         <p class="batch-note">Batch controls here are dry-run only and place zero calls.</p>
         <div class="table-wrap"><table class="compact-table"><thead><tr><th>Select</th><th>Customer</th><th>Invoice</th><th>Service / amount</th><th>Status</th><th>Latest activity</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="invoice-rows"></tbody></table></div>
         <div id="invoice-empty" class="empty-state" hidden>No invoices match the current filter.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="callbacks-heading">
+        <div class="section-heading"><div><h2 id="callbacks-heading">Callback tasks</h2><p>Stored preferences only. Every callback still requires manual preflight and the protected one-call start route.</p></div><span id="callback-count" class="count-badge">0 callbacks</span></div>
+        <div class="table-wrap"><table class="compact-table callback-table"><thead><tr><th>Customer / invoice</th><th>Requested callback</th><th>Reason / confirmation</th><th>Status</th><th>Actions</th></tr></thead><tbody id="callback-rows"></tbody></table></div>
+        <div id="callback-empty" class="empty-state" hidden>No callback tasks recorded.</div>
       </section>
 
       <section class="panel" aria-labelledby="calls-heading">
@@ -122,7 +230,7 @@
     <template id="invoice-row-template">
       <tr>
         <td><input data-action="batch-select" type="checkbox" /></td>
-        <td><strong data-field="customer"></strong><span data-field="business" class="subtext"></span><label class="inline-field">Phone <input data-action="phone" type="tel" inputmode="tel" /></label><label class="inline-field">Email <input data-action="email" type="email" /></label></td>
+        <td><strong data-field="customer"></strong><span data-field="business" class="subtext"></span><label class="inline-field">Phone <input data-action="phone" type="tel" inputmode="tel" /></label><label class="inline-field">Email <input data-action="email" type="email" /></label><span data-field="contact-context" class="subtext preserve-lines"></span></td>
         <td><strong data-field="invoice"></strong><details><summary>Internal details</summary><code data-field="ids"></code></details></td>
         <td><span data-field="service"></span><strong data-field="amount" class="subtext"></strong></td>
         <td><select data-action="status"></select><span data-field="payment" class="subtext"></span><span data-field="paused" class="subtext"></span></td>

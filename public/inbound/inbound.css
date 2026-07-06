@@ -37,25 +37,8 @@ button.secondary {
   color: #25342d;
 }
 
-a.secondary-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.35rem;
-  border-radius: 8px;
-  padding: 0.55rem 0.8rem;
-  background: #e4ebe7;
-  color: #25342d;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-a.secondary-link:hover {
-  background: #d7e1d9;
-}
-
 button:focus-visible,
-input:focus-visible,
-a.secondary-link:focus-visible {
+input:focus-visible {
   outline: 3px solid #70c7a2;
   outline-offset: 2px;
 }
@@ -118,6 +101,18 @@ h3 {
 
 .header-actions {
   justify-content: flex-end;
+}
+
+.secondary-link {
+  color: #d9f3e7;
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.secondary-link:hover {
+  color: white;
+  text-decoration: underline;
 }
 
 .section-heading {

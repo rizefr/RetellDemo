@@ -205,8 +205,13 @@
     font-size: 0.96rem;
   }
 
-  .console-topbar > span {
+  .console-topbar:not(.console-topbar-single) > span {
     display: none;
+  }
+
+  .console-topbar-single > span {
+    display: inline-flex !important;
+    align-items: center;
   }
 
   .voice-orb-wrap {

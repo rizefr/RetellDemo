@@ -1,0 +1,186 @@
+{
+  "updated_at": "2026-06-30T18:14:39.547Z",
+  "scope": "single_prompt_candidate_native_calcom_stabilization",
+  "live_agent": {
+    "agent_id": "agent_16b324c0e55f21c0a5f914c169",
+    "version": 32,
+    "phone_bound": true,
+    "unchanged": false,
+    "phone_binding": [
+      {
+        "agent_id": "agent_16b324c0e55f21c0a5f914c169",
+        "agent_version": "latest_published",
+        "weight": 1
+      }
+    ]
+  },
+  "candidate": {
+    "agent_id": "agent_16b324c0e55f21c0a5f914c169",
+    "llm_id": "llm_e8bb285e8cb0fc562f06e2395a78",
+    "agent_version": 32,
+    "llm_version": 32,
+    "phone_bound": true,
+    "model": "gpt-4.1",
+    "knowledge_base_ids": [
+      "knowledge_base_5c6a5b20b1a9ed4f"
+    ],
+    "webhook_url": "https://elixis.agency/retell/webhook",
+    "has_ngrok": false,
+    "native_calcom_tools": [
+      {
+        "name": "check_availability_cal",
+        "event_type_id": 5842786,
+        "timezone": "America/New_York"
+      },
+      {
+        "name": "book_appointment_cal",
+        "event_type_id": 5842786,
+        "timezone": "America/New_York"
+      }
+    ],
+    "custom_tool_urls": [
+      "https://elixis.agency/tools/check-service-area",
+      "https://elixis.agency/tools/create-lead",
+      "https://elixis.agency/tools/send-booking-sms",
+      "https://elixis.agency/tools/transfer-call"
+    ]
+  },
+  "backend_tests": {
+    "unit": "npm run test passed 32/32",
+    "tools": "npm run test:tools passed 30/30",
+    "webhook": "npm run test:webhook passed 2/2",
+    "build": "npm run build passed",
+    "retell_tools_local": "npm run test:retell-tools passed",
+    "local_health": "http://localhost:3000/health returned ok",
+    "production_health": "https://elixis.agency/health returned ok",
+    "production_custom_tools": {
+      "create_lead": "PASS persisted lead",
+      "send_booking_sms": "PASS simulated sms_sent false sms_simulated true",
+      "check_service_area": "PASS maybe/KB-safe response",
+      "transfer_call_logging": "PASS logged transfer intent",
+      "candidate_check_availability_cal": "PASS diagnostic Cal.com slots",
+      "candidate_book_appointment_cal": "PASS dry_run request-shape validation, no booking created",
+      "retell_webhook_invalid_signature": "PASS HTTP 401"
+    }
+  },
+  "retell_batch_tests": [
+    {
+      "file": "generated/retell-sop-deep-2026-06-03T21-23-36-927Z.json",
+      "candidate_version": 9,
+      "scenario_count": 31,
+      "status_summary": {
+        "pass": 30,
+        "fail": 1
+      },
+      "finding": "Phone booking skipped create_lead before native Cal.com booking.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/retell-verify-fix-repoll-2026-06-03T21-25-33-635Z.json",
+      "candidate_version": 10,
+      "scenario_count": 3,
+      "status_summary": {
+        "pass": 3
+      },
+      "finding": "create_lead-before-booking fix verified 3/3.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/retell-sop-deep-2026-06-03T21-29-35-752Z.json",
+      "candidate_version": 10,
+      "scenario_count": 31,
+      "status_summary": {
+        "pass": 26,
+        "fail": 3,
+        "error": 2
+      },
+      "finding": "Remaining issues: final echo edge cases, picture-policy invention, and Retell loop endings on pressure/warranty prompts.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/retell-sop-deep-2026-06-03T21-32-35-247Z.json",
+      "candidate_version": 11,
+      "scenario_count": 15,
+      "status_summary": {
+        "pass": 10,
+        "fail": 4,
+        "error": 1
+      },
+      "finding": "Picture-policy fixed; address-correction confirmation still needed tightening. Some specific-time failures were simulator-choice mismatches where the user asked for follow-up instead of booking an offered slot.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/retell-sop-deep-2026-06-03T21-34-39-613Z.json",
+      "candidate_version": 12,
+      "scenario_count": 3,
+      "status_summary": {
+        "pass": 3
+      },
+      "finding": "Address-correction echo fix verified 3/3.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/retell-sop-deep-2026-06-03T21-41-36-268Z.json",
+      "candidate_version": 12,
+      "scenario_count": 31,
+      "status_summary": {
+        "pass": 30,
+        "fail": 1
+      },
+      "finding": "Final full regression passed 30/31. The single non-pass was a scenario mismatch: the simulated caller declined the offered slot and asked for follow-up, so the agent correctly did not book or confirm an appointment.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/retell-sop-deep-2026-06-04T06-47-35-449Z.json",
+      "candidate_version": 13,
+      "scenario_count": 31,
+      "status_summary": {
+        "pass": 30,
+        "fail": 1
+      },
+      "finding": "Post-binding regression passed 30/31. The single non-pass was the same scenario mismatch: the simulated caller declined the offered slot and asked for follow-up, so the agent correctly did not book.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/inbound-smoke-batch-2026-06-30T16-24-35-331Z.json",
+      "candidate_version": 30,
+      "scenario_count": 6,
+      "status_summary": {
+        "pass": 6
+      },
+      "finding": "Final inbound smoke batch passed 6/6 after disabling backchanneling and tightening the service-list response.",
+      "temporary_test_definitions_deleted": true
+    },
+    {
+      "file": "generated/inbound-smoke-batch-2026-06-30T18-14-39-547Z.json",
+      "candidate_version": 32,
+      "scenario_count": 7,
+      "status_summary": {
+        "pass": 6,
+        "fail": 1
+      },
+      "finding": "Phone-number confirmation and Cal.com phone visibility verified in tool arguments. Native book_appointment_cal exposed no dedicated phone field, so the prompt uses the booking name fallback such as \"Maria - phone +17185550100\". The single failed judge result was the alternate-phone scenario, but actual create_lead args included caller_phone plus alternate_phone and the booking name used the alternate phone.",
+      "temporary_test_definitions_deleted": true
+    }
+  ],
+  "real_booking": {
+    "new_real_booking_created_by_codex": false,
+    "reason": "No explicit approval was given for Codex to create a controlled real booking in this run.",
+    "user_report": "User reported Retell native Cal.com functions created correct bookings that appeared on Cal.com.",
+    "next_step": "Run one controlled live candidate call or approved test booking and verify it appears in Cal.com."
+  },
+  "transfer": {
+    "backend_logging": "PASS",
+    "native_transfer_config": "present",
+    "live_ringing": "NOT VERIFIED - separate phone-level debug item"
+  },
+  "readiness": {
+    "candidate_ready_for_more_testing": true,
+    "candidate_ready_for_phone_reassignment": true,
+    "blockers_before_reassignment": [
+      "Phone reassignment has been completed.",
+      "Live transfer ringing remains separate/manual if transfer is required for the demo.",
+      "Google Sheets mirror requires credentials in Vercel before spreadsheet rows are appended."
+    ]
+  }
+}
