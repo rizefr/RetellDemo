@@ -108,6 +108,8 @@ The admin page can also read a local CSV file in the browser and submit its text
 
 Open `/outbound`, enter `OUTBOUND_ADMIN_TOKEN`, and the backend exchanges it for an HttpOnly cookie. The token is not placed in a URL, local storage, frontend bundle, or application log.
 
+The unified backend is available at `/backend` and uses the same `OUTBOUND_ADMIN_TOKEN`. Future admin/dashboard work should target `/backend` first, while preserving compatibility routes for `/outbound` and `/inbound`.
+
 The page lists customer, phone, invoice, amount, invoice/payment status, last call, next follow-up, notes, pause state, and actions for:
 
 - setup readiness across app, Supabase, Stripe, Retell, and call safety

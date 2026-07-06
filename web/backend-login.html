@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Unified Backend Login</title>
+    <link rel="stylesheet" href="/backend-assets/backend.css?v=20260706" />
+  </head>
+  <body class="login-page">
+    <main class="login-card" aria-labelledby="login-title">
+      <p class="eyebrow">Elixis Agency</p>
+      <h1 id="login-title">Unified backend</h1>
+      <p>Enter the outbound admin token. It is exchanged server-side for HttpOnly cookies and is not stored by the page.</p>
+      <form id="login-form">
+        <label for="token">Admin token</label>
+        <input id="token" name="token" type="password" autocomplete="current-password" required />
+        <button type="submit">Open backend</button>
+        <p id="login-status" class="status-line" role="status"></p>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector("#login-form");
+      const status = document.querySelector("#login-status");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const token = form.token.value.trim();
+        if (!token) {
+          status.textContent = "Missing token.";
+          return;
+        }
+        status.textContent = "Checking token...";
+        const response = await fetch("/api/backend/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        form.token.value = "";
+        if (response.ok) {
+          location.href = "/backend";
+          return;
+        }
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 503) status.textContent = "Backend unavailable: admin token is not configured.";
+        else if (response.status === 400) status.textContent = "Missing token.";
+        else if (response.status === 401) status.textContent = "Wrong token.";
+        else status.textContent = body.error || "Backend unavailable.";
+      });
+    </script>
+  </body>
+</html>

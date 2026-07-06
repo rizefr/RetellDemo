@@ -4,6 +4,8 @@ Retell AI receptionist demo for pest-control companies. The current demo busines
 
 This README focuses on the Retell agent assets, backend tool endpoints, webhook handling, Supabase storage, SMS booking-link flow with safe simulation, future calendar adapters, tests, and setup scripts. Website-specific notes live in [`README_WEBSITE.md`](./README_WEBSITE.md).
 
+Unified internal admin/dashboard work now starts at `/backend`, which combines outbound collections and inbound receptionist status while preserving `/outbound` and `/inbound` compatibility routes. See [`README_backend.md`](./README_backend.md).
+
 ## What It Does
 
 - Creates a Retell Conversation Flow voice agent when the API accepts the payload.

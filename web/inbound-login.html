@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inbound Admin Login</title>
+    <link rel="stylesheet" href="/inbound-assets/inbound.css" />
+  </head>
+  <body class="login-page">
+    <main class="login-card">
+      <p class="eyebrow">Inbound receptionist</p>
+      <h1>Admin access</h1>
+      <p>Enter the inbound admin token. Secret values are checked server-side only.</p>
+      <form id="login-form">
+        <label>
+          Admin token
+          <input id="token" name="token" type="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit">Open inbound dashboard</button>
+        <p id="login-status" class="status-line" role="status"></p>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector("#login-form");
+      const status = document.querySelector("#login-status");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        status.textContent = "Checking token...";
+        const response = await fetch("/api/inbound/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: form.token.value }),
+        });
+        if (!response.ok) {
+          status.textContent = "Invalid token.";
+          return;
+        }
+        location.href = "/inbound";
+      });
+    </script>
+  </body>
+</html>

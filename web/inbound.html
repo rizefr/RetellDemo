@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inbound Receptionist Admin</title>
+    <link rel="stylesheet" href="/inbound-assets/inbound.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Elijah's Pest Control</p>
+        <h1>Inbound receptionist</h1>
+      </div>
+      <div class="header-actions">
+        <span class="safety-badge">Phone booking only</span>
+        <span id="last-updated" class="safety-badge muted">Not refreshed yet</span>
+        <a class="secondary-link" href="/backend#inbound">Open unified backend</a>
+        <button id="refresh" class="secondary">Refresh</button>
+        <button id="logout" class="secondary">Sign out</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel hero-panel">
+        <div>
+          <h2>Live readiness</h2>
+          <p>Readback from Retell, Supabase, and this deployed backend. This page does not create bookings, bind phone numbers, or change agent settings.</p>
+        </div>
+        <div id="summary" class="setup-summary">Loading inbound status...</div>
+      </section>
+
+      <section class="readiness-grid" aria-label="Inbound status cards">
+        <article class="readiness-card">
+          <h3>Retell binding</h3>
+          <dl id="retell-card"></dl>
+        </article>
+        <article class="readiness-card">
+          <h3>Voice and behavior</h3>
+          <dl id="voice-card"></dl>
+        </article>
+        <article class="readiness-card">
+          <h3>Cal.com and KB</h3>
+          <dl id="cal-card"></dl>
+        </article>
+        <article class="readiness-card">
+          <h3>Storage</h3>
+          <dl id="storage-card"></dl>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Verification checks</h2>
+            <p>Anything marked fail should be fixed before demoing or changing Retell settings.</p>
+          </div>
+        </div>
+        <ul id="checks" class="check-list"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Recent inbound calls</h2>
+            <p>Derived from Retell webhook events in Supabase. Empty rows usually mean no signed webhook has arrived yet.</p>
+            <p id="call-debug" class="muted-copy"></p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Caller</th>
+                <th>Name</th>
+                <th>Pest issue</th>
+                <th>Address</th>
+                <th>Area / ZIP</th>
+                <th>Appointment</th>
+                <th>Transfer</th>
+                <th>Outcome</th>
+                <th>Summary</th>
+              </tr>
+            </thead>
+            <tbody id="call-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Recent leads</h2>
+            <p>Lead and booking request data written by the inbound custom tools.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Pest issue</th>
+                <th>Address</th>
+                <th>Area / ZIP</th>
+                <th>Preferred time</th>
+                <th>Method</th>
+                <th>Summary</th>
+              </tr>
+            </thead>
+            <tbody id="lead-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Webhook and tools</h2>
+            <p>Custom backend endpoints are testable by URL. Retell native Cal.com tools are configured inside Retell and do not have normal webhook URLs.</p>
+          </div>
+        </div>
+        <div id="endpoint-list" class="endpoint-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Live call script</h2>
+        <ol class="workflow-steps">
+          <li>Ask: “What types of services do you have?” The answer should be short and ask what you are dealing with.</li>
+          <li>Say: “I have ants in the kitchen.” Paul should show light empathy and ask a practical ant question.</li>
+          <li>Complete phone booking with name, caller number confirmation, address, preferred time, availability, echo verification, and Cal.com booking.</li>
+          <li>Ask for pricing. Paul should not quote a fake price.</li>
+          <li>Ask for a live person once. Paul should offer scheduling first unless urgent; if you insist, he should transfer.</li>
+          <li>Urgent hornet or sting issues should transfer quickly.</li>
+        </ol>
+      </section>
+    </main>
+
+    <script src="/inbound-assets/inbound.js" defer></script>
+  </body>
+</html>

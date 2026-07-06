@@ -34,3 +34,29 @@ export async function insertRecord<T extends Record<string, unknown>>(
   if (error) return { persisted: false, data: null, error: error.message };
   return { persisted: true, data: data as Record<string, unknown> };
 }
+
+export async function selectRecentRecords(
+  table: string,
+  columns = "*",
+  limit = 25,
+): Promise<{ configured: boolean; data: Record<string, unknown>[]; error?: string }> {
+  const client = getSupabaseClient();
+  if (!client) return { configured: false, data: [] };
+  const { data, error } = await client
+    .from(table)
+    .select(columns)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return { configured: true, data: [], error: error.message };
+  return { configured: true, data: (data ?? []) as unknown as Record<string, unknown>[] };
+}
+
+export async function countTable(
+  table: string,
+): Promise<{ configured: boolean; reachable: boolean; count: number | null; error?: string }> {
+  const client = getSupabaseClient();
+  if (!client) return { configured: false, reachable: false, count: null };
+  const { count, error } = await client.from(table).select("id", { count: "exact", head: true });
+  if (error) return { configured: true, reachable: false, count: null, error: error.message };
+  return { configured: true, reachable: true, count: count ?? 0 };
+}
