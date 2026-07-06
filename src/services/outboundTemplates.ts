@@ -65,7 +65,7 @@ export function businessCsvTemplate(): string {
       "America/New_York",
       "+19842075346",
       "",
-      "Sophia",
+      "Paul",
       "elevator_inspection",
       "Category 1",
       "14",

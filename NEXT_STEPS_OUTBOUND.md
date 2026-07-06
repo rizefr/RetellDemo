@@ -5,10 +5,10 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the Sophia audio-stability/tool-call fix: V60.
-- Active product resource: `Elevator Inspection Collections — Sophia`, voice `11labs-Gilfoy`, spoken name `Sophia`.
-- Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number.
-- Voice and pacing: `11labs-Gilfoy`, speed `0.82`, `1200 ms` first-message delay, GPT-4.1.
+- Latest verified Retell version after the Paul opening and wrong-person polish: V61.
+- Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
+- Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
+- Voice and pacing: `11labs-Gilfoy`, speed `0.82`, `1550 ms` first-message delay, GPT-4.1.
 - GPT-5.1 was re-tested against GPT-4.1 during the wrong-person/disclosure refinement. It was available and cheaper per Retell voice-agent minute, but the tested V51 batch was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in payment-refusal and service-issue paths. Keep GPT-4.1 unless a future Retell/model update clearly fixes those issues.
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence; hard terminal paths are limited to explicit do-not-contact, attorney, wrong number, or hostile requests and end directly. Polite goodbyes must not be classified as do-not-contact.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
@@ -23,10 +23,10 @@ Current Retell settings to preserve for the elevator demo:
 - flow `conversation_flow_bebdceabc801`
 - model GPT-4.1
 - voice `11labs-Gilfoy`
-- spoken name `Sophia`
+- spoken name `Paul`
 - voice model ElevenLabs Flash v2.5 (`eleven_flash_v2_5`)
 - speed `0.82`
-- first-message delay `1200 ms`
+- first-message delay `1550 ms`
 - ambient sound `call-center` at volume `1.0`
 - wrapped signed tools with `args_at_root` disabled
 
@@ -34,9 +34,9 @@ Voice maintenance rule: the setup script preserves the current dashboard voice u
 Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
 Use the native static `create_payment_link` execution message for the payment-link bridge; it says “One moment.” Do not add a separate assistant bridge line or a second “one moment” between creating the payment link and sending email or SMS.
 
-Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Sophia comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
+Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Paul comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
 
-Retell docs and SDK types currently expose multiple ElevenLabs model IDs, including Flash, Turbo, Multilingual, and v3 variants. The active Sophia inspection demo stays on `eleven_flash_v2_5` unless a native simulation comparison shows another Sloane-compatible model is clearly more natural at the first line without harming latency, interruption handling, or tool reliability.
+Retell docs and SDK types currently expose multiple ElevenLabs model IDs, including Flash, Turbo, Multilingual, and v3 variants. The active Paul inspection demo stays on `eleven_flash_v2_5` unless a native simulation comparison shows another Gilfoy-compatible model is clearly more natural at the first line without harming latency, interruption handling, or tool reliability.
 
 ## Retell API Maintenance
 
@@ -44,34 +44,36 @@ The repo has been migrated away from Retell deprecated legacy list APIs. Do not 
 
 Never send `pagination_key_version`. The focused test `src/tests/retellListApi.test.ts` guards source code against the deprecated strings and old SDK list methods. If Retell SDK later exposes first-class non-deprecated list helpers, replace the local helpers only after this guard still passes.
 
-The active Sophia inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. Review it before changing Retell routes, dynamic variables, tools, or `/outbound` connector behavior.
+The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. Review it before changing Retell routes, dynamic variables, tools, or `/outbound` connector behavior.
 
 ## Live-Call Refinement Notes Through V55
 
-- Opening is intentionally shorter: “Hello, I’m calling from {{business_name}}. Is this {{customer_first_name}}?”
-- Normal calls should not volunteer virtual-assistant disclosure. Sophia answers honestly when asked whether she is AI, and may disclose when scam concern makes it helpful.
-- If the caller is not the named person, Sophia asks whether this is the account/company before ending. If the company is correct, she asks for the better payment contact or AP contact and logs `responsible_party_update_requested`.
-- If the caller asks what invoice or why they are getting the call, Sophia answers with inspection type, inspection date, and amount instead of restarting the opening or disclosure.
-- If the caller reports a service issue or says the inspection report looks wrong, Sophia must collect one concise issue description before logging `service_issue_reported`.
+- Opening is intentionally shorter with a Retell short-pause marker: “Hello, I’m calling from {{business_name}}. - Is this {{customer_first_name}}?”
+- Normal calls should not volunteer virtual-assistant disclosure. Paul answers honestly when asked whether he is AI, and may disclose when scam concern makes it helpful.
+- If the caller is not the named person, Paul first asks whether this is not the right number for the named person, then asks whether the caller is with the account/company before ending. If the company is correct, he asks for the better payment contact or AP contact and logs `responsible_party_update_requested`.
+- If the caller asks what invoice or why they are getting the call, Paul answers with inspection type, inspection date, and amount instead of restarting the opening or disclosure.
+- If the caller reports a service issue or says the inspection report looks wrong, Paul must collect one concise issue description before logging `service_issue_reported`.
 - Polite “bye” remains a normal final-check ending. Explicit “stop calling,” “remove me from your call list,” and equivalent opt-out language are the do-not-contact path.
-- If `create_payment_link` fails, Sophia must not call email/SMS delivery tools and must not claim the secure link was sent. She logs `payment_link_issue` and routes to manual follow-up/final-check.
-- If the caller asks for a named person to call, handle the invoice, or be put on the phone, Sophia logs `named_contact_requested` before promising that person or their team will follow up.
+- If `create_payment_link` fails, Paul must not call email/SMS delivery tools and must not claim the secure link was sent. He logs `payment_link_issue` and routes to manual follow-up/final-check.
+- If the caller asks for a named person to call, handle the invoice, or be put on the phone, Paul logs `named_contact_requested` before promising that person or their team will follow up.
 - The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
 
-## V60 Gilfoy Voice And Slight Slower Default
+## V61 Gilfoy/Paul Opening Polish
 
-- Sophia uses `11labs-Gilfoy` at speed `0.82` with a `1200 ms` first-message delay and `call-center` ambient volume `1.0`.
-- The speed choice is based on the live V56 call where the caller asked Sophia to slow down: the opening measured materially faster than the first full response after the request. V60 moves a tad slower than V59 and keeps the “already asked to slow down” style rule unless a future audio test proves a better setting.
+- Paul uses `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`.
+- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V61 keeps speed `0.82`, adds a longer first-message delay, and inserts a short Retell pause marker between the business name and name-confirmation question to reduce the bright/rushed first-line effect.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
 - First phone confirmation uses `customer_phone_spoken`; repeat/correction uses `customer_phone_spoken_chunked`.
-- If the caller asks to repeat or correct the phone number, Sophia uses `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
-- If the caller gives a corrected email or phone number, Sophia confirms it once, logs `contact_update_requested`, and only claims delivery if the backend tool explicitly returns `sent:true`.
+- If the caller asks to repeat or correct the phone number, Paul uses `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
+- If the caller gives a corrected email or phone number, Paul confirms it once, logs `contact_update_requested`, and only claims delivery if the backend tool explicitly returns `sent:true`.
 - Names spoken by Retell now use `business_name_spoken`, `account_company_name_spoken`, `customer_first_name_spoken`, and `customer_last_name_spoken` to avoid all-caps delivery such as `YELENA`.
 - Spoken dates use ordinal phrasing, for example `May twentieth, twenty twenty-six`.
 - Retell `log_outcome` optional string arguments tolerate `null` values from the model, preventing 400 responses on unused responsible-party or named-contact fields.
 - `create_payment_link` has `speak_during_execution=true` with a static “One moment.” message, so the bridge is complete and not dependent on the model beginning a sentence before tool execution.
-- While SMS is disabled, Sophia does not create a Stripe payment link before the manual SMS fallback. If the caller switches from text to email, she confirms the email before the email tool path.
+- While SMS is disabled, Paul does not create a Stripe payment link before the manual SMS fallback. If the caller switches from text to email, he confirms the email before the email tool path.
+- Personal or irrelevant questions are answered briefly and honestly, then Paul steers back to invoice receipt/payment status. For example, he says he is a digital assistant and does not have an age or physical office location.
+- If the caller asks “are we done?” before the invoice/follow-up outcome is addressed, Paul makes one reasonable attempt to finish the invoice receipt question before closing. If an outcome has already been reached, he can close directly.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
 
@@ -99,7 +101,7 @@ After receiving a client’s QuickBooks account details:
 7. Read back connection status in `/outbound`.
 8. Map the client’s inspection types from QuickBooks invoice fields: Category 1, Category 5, Acceptance Test, Periodic Inspection, or their local naming.
 9. Implement invoice lookup/payment-link creation for the connected realm only after explicit approval.
-10. Update Retell wording so Sophia says “QuickBooks payment link” only when the backend returns a real link.
+10. Update Retell wording so Paul says “QuickBooks payment link” only when the backend returns a real link.
 
 Future implementation prompt:
 

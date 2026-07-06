@@ -4,15 +4,15 @@ This map documents the active outbound elevator-inspection collections flow so f
 
 ## Active Resources
 
-- Product: Elevator Inspection Collections - Sophia
+- Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V60 after the Gilfoy voice and slight slower-pacing tuning. Read back Retell before any publish.
+- Latest repo-documented verified version: V61 after the Paul opening and wrong-person polish. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
-- Spoken agent name: `Sophia`
+- Spoken agent name: `Paul`
 - Speed: `0.82`
-- First-message delay: `1200 ms`
+- First-message delay: `1550 ms`
 - Ambient sound: `call-center`, volume `1.0`
 - Outbound phone: `+19842075346`
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
@@ -29,7 +29,7 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 | `business_name_spoken` | `business_name` through `formatOutboundNameSpoken` | Avoids all-caps or awkward source spelling in the opening. |
 | `account_company_name` | `outbound_customers.account_company_name` | Falls back to "the business account connected with this number". Used for wrong-person company confirmation. |
 | `account_company_name_spoken` | `account_company_name` through `formatOutboundNameSpoken` | Used for wrong-person/company confirmation. |
-| `agent_display_name` | `outbound_businesses.agent_display_name` | Defaults to Sophia. |
+| `agent_display_name` | `outbound_businesses.agent_display_name` | Defaults to Paul. |
 | `customer_first_name`, `customer_last_name` | `outbound_customers` | Identity confirmation uses first name only. |
 | `customer_first_name_spoken`, `customer_last_name_spoken` | customer names through `formatOutboundNameSpoken` | Prevents all-caps names such as `YELENA` from being shouted or pitched oddly. |
 | `customer_phone_spoken` | effective destination phone | Formatted by `formatOutboundPhoneSpoken`; raw E.164 is not spoken directly. |
@@ -70,59 +70,59 @@ All custom tools are wrapped Retell requests signed by Retell. Backend endpoints
 
 ### Opening
 
-Default opening: `Hello, I'm calling from {{business_name_spoken}}. Is this {{customer_first_name_spoken}}?`
+Default opening: `Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?`
 
-After identity confirmation, Sophia states her name, business, inspection type, inspection date, and overdue context. She does not volunteer virtual-assistant disclosure in the normal path.
+After identity confirmation, Paul states his name, business, inspection type, inspection date, and overdue context. He does not volunteer virtual-assistant disclosure in the normal path.
 
 ### Wrong Person
 
-If the caller is not the named person, Sophia asks whether this is `{{account_company_name_spoken}}`. If yes, she asks for the better payment/AP contact, collects details if offered, confirms once, logs `responsible_party_update_requested`, creates manual-review context through outcome policy, and routes to final-check. If not the company/account, she logs `wrong_number` and hard-ends.
+If the caller is not the named person, Paul first asks whether this is not the right number for the named person, then asks whether the caller is with `{{account_company_name_spoken}}`. If account/company context is not available, he asks whether someone else handles elevator inspection invoices. If yes, he asks for the better payment/AP contact, collects details if offered, confirms once, logs `responsible_party_update_requested`, creates manual-review context through outcome policy, and routes to final-check. If not the company/account, he logs `wrong_number` and hard-ends.
 
 ### Invoice Received
 
-Sophia says `Good to hear. Would you like to take care of it now?` She does not repeat the inspection type, date, amount, or secure-link explanation unless the caller asks for invoice/payment details. If payment is declined, she asks one reason and classifies it without pressure. If a date is given, she notes/stores it.
+Paul says `Good to hear. Would you like to take care of it now?` He does not repeat the inspection type, date, amount, or secure-link explanation unless the caller asks for invoice/payment details. If payment is declined, he asks one reason and classifies it without pressure. If a date is given, he notes/stores it.
 
 ### Invoice Not Received
 
-Sophia offers resend by email or text. Email can send through the backend provider after confirmation. Text remains manual and logs `sms_pending_manual`. After resend preference, Sophia asks when payment is expected after review.
+Paul offers resend by email or text. Email can send through the backend provider after confirmation. Text remains manual and logs `sms_pending_manual`. After resend preference, Paul asks when payment is expected after review.
 
 ### Invoice Detail Questions
 
-For "what invoice", "what inspection", "why am I getting this call", Sophia answers with inspection type, inspection date, amount, and overdue status. Invoice ID is spoken only if asked.
+For "what invoice", "what inspection", "why am I getting this call", Paul answers with inspection type, inspection date, amount, and overdue status. Invoice ID is spoken only if asked.
 
 ### Payment Preference
 
-After explicit agreement, Sophia asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, she sends through the backend only after on-file email confirmation. For SMS-disabled text, she logs the confirmed request and calls the SMS fallback tool without creating a Stripe link first; the expected result is manual/pending. If the caller switches from text to email, Sophia confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, she logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+After explicit agreement, Paul asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, he sends through the backend only after on-file email confirmation. For SMS-disabled text, he logs the confirmed request and calls the SMS fallback tool without creating a Stripe payment link first; the expected result is manual/pending. If the caller switches from text to email, Paul confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, he logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
 
 `log_outcome` accepts optional unused string fields as `null` from Retell and normalizes them to blanks. This prevents a model-generated payload like `responsible_party_name:null` from causing a 400 when the outcome is unrelated to responsible-party updates.
 
 ### Payment Refusal
 
-Sophia asks once: "May I ask the reason, so I can note it correctly for the team?" Then she classifies the answer as dispute, already paid, unable to pay, responsible-party update, proof requested, scam concern, callback scheduled, or manual review. No repeated pressure.
+Paul asks once: "May I ask the reason, so I can note it correctly for the team?" Then he classifies the answer as dispute, already paid, unable to pay, responsible-party update, proof requested, scam concern, callback scheduled, or manual review. No repeated pressure.
 
 ### Scam Concern
 
-Sophia uses only trusted account context. She can disclose she is a virtual/AI assistant connected to business records, states no card details are collected by phone, and offers email/text details or callback.
+Paul uses only trusted account context. He can disclose he is a virtual/AI assistant connected to business records, states no card details are collected by phone, and offers email/text details or callback.
 
 ### Already Paid / Wrong Amount / Dispute / Proof
 
-Sophia does not argue. She uses last-payment/open-invoice context only when available, logs the appropriate outcome, and routes to manual follow-up/final-check.
+Paul does not argue. He uses last-payment/open-invoice context only when available, logs the appropriate outcome, and routes to manual follow-up/final-check.
 
 ### Responsible Party Changed
 
-Sophia asks who handles payments now, collects name/phone/email if the caller is willing, confirms once, logs `responsible_party_update_requested`, and final-checks. She does not transfer by default.
+Paul asks who handles payments now, collects name/phone/email if the caller is willing, confirms once, logs `responsible_party_update_requested`, and final-checks. He does not transfer by default.
 
 ### Named Contact
 
-If a named person is requested, Sophia logs `named_contact_requested`, says that person or someone from the team will reach out, and final-checks. She does not transfer unless the configured transfer path is explicitly available and requested.
+If a named person is requested, Paul logs `named_contact_requested`, says that person or someone from the team will reach out, and final-checks. He does not transfer unless the configured transfer path is explicitly available and requested.
 
 ### Callback Request
 
-Sophia asks what day/time works, then calls `schedule_callback` with `confirmed:false` before speaking a normalized time. After caller confirmation, she calls `schedule_callback` with `confirmed:true`, logs `callback_scheduled`, and final-checks. The tool stores a task only; it does not auto-call.
+Paul asks what day/time works, then calls `schedule_callback` with `confirmed:false` before speaking a normalized time. After caller confirmation, he calls `schedule_callback` with `confirmed:true`, logs `callback_scheduled`, and final-checks. The tool stores a task only; it does not auto-call.
 
 ### Mail Check
 
-Sophia logs `mail_check_requested`. She states mailing instructions only if configured. If missing, she logs `mail_instructions_requested`, says the team will follow up with the right details, and final-checks.
+Paul logs `mail_check_requested`. He states mailing instructions only if configured. If missing, he logs `mail_instructions_requested`, says the team will follow up with the right details, and final-checks.
 
 ### Stop Calling
 
@@ -130,7 +130,7 @@ Only explicit opt-out phrases trigger `do_not_contact`. Polite "bye", "goodbye",
 
 ### AI Question
 
-When asked if she is AI/automated/robot, Sophia answers honestly: she is an AI voice assistant connected to business account records for invoice follow-up.
+When asked if he is AI/automated/robot, Paul answers honestly: he is an AI voice assistant connected to business account records for invoice follow-up.
 
 ### Short Call / No Answer
 
@@ -138,7 +138,7 @@ Voicemail is configured to hang up. Webhook analysis fallback generates a concis
 
 ## Terminal Behavior
 
-Normal terminal outcomes route to `outbound_normal_terminal_final_check` after required tools are complete. Sophia asks exactly: "Is there anything else I can help you with?" If there is no further need, the native end-call action says: "Have a good day. Goodbye."
+Normal terminal outcomes route to `outbound_normal_terminal_final_check` after required tools are complete. Paul asks exactly: "Is there anything else I can help you with?" If there is no further need, the native end-call action says: "Have a good day. Goodbye."
 
 Normal final-check outcomes include service issue, mail check, missing mail instructions, email pending/manual/failed/missing, callback scheduled, responsible-party update, named-contact request, contact update, manual review after one clarification, and unavailable human transfer.
 
@@ -147,7 +147,7 @@ Hard terminal outcomes route to `outbound_hard_terminal_end` and do not ask fina
 ## Known Limitations
 
 - SMS is disabled/manual. Text requests log `sms_pending_manual`.
-- QuickBooks is scaffold-only. Sophia must not claim a QuickBooks link unless the backend returns a real connected-provider link.
+- QuickBooks is scaffold-only. Paul must not claim a QuickBooks link unless the backend returns a real connected-provider link.
 - Retell exposes ambient call-center sound and bridge-line behavior, not a dedicated keyboard-only tool-wait sound tied to custom-tool execution.
 - No broad batch campaign is supported for demos. Presentation Mode uses temporary demo-number authorization and single-call preflight/start only.
 

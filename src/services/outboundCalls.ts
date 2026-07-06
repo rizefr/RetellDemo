@@ -330,7 +330,7 @@ export async function startOutboundCall(
     business_callback_number: String(context.business.callback_number || env.BUSINESS_CALLBACK_NUMBER || ""),
     human_transfer_number: String(context.business.human_transfer_number || env.HUMAN_TRANSFER_NUMBER || ""),
     timezone: String(context.customer.timezone || context.business.default_timezone || "America/New_York"),
-    agent_display_name: String(context.business.agent_display_name || "Sophia"),
+    agent_display_name: String(context.business.agent_display_name || "Paul"),
     ai_disclosure_policy: String(context.business.ai_disclosure_policy || "on_request"),
     ai_disclosure_instruction: outboundAiDisclosureInstruction(
       context.business.ai_disclosure_policy || "on_request",
