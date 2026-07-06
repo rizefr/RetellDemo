@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V62 after the Paul opening, wrong-person, and Gilfoy phrase polish. Read back Retell before any publish.
+- Latest repo-documented verified version: V63 after the Paul opening, wrong-person, Gilfoy phrase, and wrong-number terminal polish. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
@@ -142,7 +142,7 @@ Normal terminal outcomes route to `outbound_normal_terminal_final_check` after r
 
 Normal final-check outcomes include service issue, mail check, missing mail instructions, email pending/manual/failed/missing, callback scheduled, responsible-party update, named-contact request, contact update, manual review after one clarification, and unavailable human transfer.
 
-Hard terminal outcomes route to `outbound_hard_terminal_end` and do not ask final-check. Hard terminal outcomes are explicit do-not-contact, attorney represented, wrong number, or hostile/abusive requests. The native end-call action says: "Understood. We'll stop calling this number. Goodbye."
+Explicit do-not-contact, attorney represented, and hostile/abusive outcomes route to `outbound_hard_terminal_end` and do not ask final-check. The native end-call action says: "Understood. We'll stop calling this number. Goodbye." Wrong-number outcomes route to `outbound_wrong_number_terminal_end`, log `wrong_number`, do not ask final-check, and close with: "Sorry about that. We'll review the contact information. Goodbye."
 
 ## Known Limitations
 
