@@ -100,9 +100,8 @@ function scrollToSection(id, behavior = "smooth") {
 function correctHashScroll() {
   const id = window.location.hash?.slice(1);
   if (!id) return;
-  window.setTimeout(() => scrollToSection(id, "auto"), 120);
-  window.setTimeout(() => scrollToSection(id, "auto"), 800);
-  window.setTimeout(() => scrollToSection(id, "auto"), 1800);
+  window.requestAnimationFrame(() => scrollToSection(id, "auto"));
+  window.setTimeout(() => scrollToSection(id, "auto"), 700);
 }
 
 const callLineNode = document.querySelector("[data-call-line]");
@@ -246,7 +245,9 @@ document.addEventListener("keydown", (event) => {
 
 const revealElements = document.querySelectorAll(".reveal");
 
-if ("IntersectionObserver" in window) {
+if (reducedMotion.matches) {
+  revealElements.forEach((section) => section.classList.add("is-visible"));
+} else if ("IntersectionObserver" in window) {
   const revealObserver = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -256,10 +257,17 @@ if ("IntersectionObserver" in window) {
         }
       });
     },
-    { threshold: 0.12 },
+    { threshold: 0, rootMargin: "0px 0px -10% 0px" },
   );
 
-  revealElements.forEach((section) => revealObserver.observe(section));
+  revealElements.forEach((section) => {
+    const bounds = section.getBoundingClientRect();
+    if (bounds.top < window.innerHeight * 0.94 && bounds.bottom > 0) {
+      section.classList.add("is-visible", "is-initial");
+      return;
+    }
+    revealObserver.observe(section);
+  });
 } else {
   revealElements.forEach((section) => section.classList.add("is-visible"));
 }
@@ -270,6 +278,14 @@ function loadCalEmbed() {
   const target = document.querySelector("#cal-inline");
   const calLink = target?.getAttribute("data-cal-link");
   if (!target || !calLink) return;
+
+  const loadingState = target.querySelector("[data-cal-loading]");
+  const calFrameObserver = new MutationObserver(() => {
+    if (!target.querySelector("iframe")) return;
+    loadingState?.remove();
+    calFrameObserver.disconnect();
+  });
+  calFrameObserver.observe(target, { childList: true, subtree: true });
 
   (function initCalEmbed(C, A, L) {
     const queue = function queue(api, args) {
@@ -322,7 +338,11 @@ function loadCalEmbed() {
   correctHashScroll();
 }
 
-loadCalEmbed();
+function scheduleCalEmbed() {
+  if (!document.querySelector("#cal-inline")) return;
+  window.requestAnimationFrame(() => window.setTimeout(loadCalEmbed, 0));
+}
+
+scheduleCalEmbed();
 window.addEventListener("load", correctHashScroll);
 window.addEventListener("hashchange", correctHashScroll);
-window.addEventListener("resize", correctHashScroll);
