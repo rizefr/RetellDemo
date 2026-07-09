@@ -32,6 +32,30 @@ describe("public site routes", () => {
     expect(h1Count).toBe(1);
   });
 
+  it("places the booking calendar before the clarification section and removes the old audit cards", async () => {
+    const response = await request(app).get("/booking/");
+    const calendarIndex = response.text.indexOf('id="cal-inline"');
+    const clarificationIndex = response.text.indexOf("What we will clarify");
+
+    expect(calendarIndex).toBeGreaterThan(-1);
+    expect(clarificationIndex).toBeGreaterThan(calendarIndex);
+    expect(response.text).not.toContain("Find the workflow with the clearest payoff");
+    expect(response.text).not.toContain("Define what stays human");
+    expect(response.text).not.toContain("Pressure-test fit, cost, and complexity");
+  });
+
+  it("caches versioned static bundles without applying long-lived caching to HTML", async () => {
+    const [styles, script, homepage] = await Promise.all([
+      request(app).get("/styles.css?v=elixis-performance-20260709"),
+      request(app).get("/site.js?v=elixis-performance-20260709"),
+      request(app).get("/"),
+    ]);
+
+    expect(styles.headers["cache-control"]).toBe("public, max-age=604800, stale-while-revalidate=86400");
+    expect(script.headers["cache-control"]).toBe("public, max-age=604800, stale-while-revalidate=86400");
+    expect(homepage.headers["cache-control"]).not.toContain("max-age=604800");
+  });
+
   it("keeps gated pages protected while public pages remain available", async () => {
     const [backend, inbound, outbound] = await Promise.all([
       request(app).get("/backend"),

@@ -13,6 +13,13 @@ import { outboundStripeWebhookRouter } from "./routes/outboundStripeWebhook";
 import { retellWebhookRouter } from "./routes/retellWebhook";
 import { toolsRouter } from "./routes/tools";
 
+const staticAssetOptions: Parameters<typeof express.static>[1] = {
+  setHeaders(res, filePath) {
+    if (!/\.(?:css|js)$/i.test(filePath)) return;
+    res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+  },
+};
+
 export function createApp() {
   const app = express();
 
@@ -45,10 +52,10 @@ export function createApp() {
   app.get(["/ai-seo", "/ai-seo/"], (_req, res) => {
     res.redirect(301, "/");
   });
-  app.use("/backend-assets", express.static(path.join(process.cwd(), "public", "backend")));
-  app.use("/inbound-assets", express.static(path.join(process.cwd(), "public", "inbound")));
-  app.use("/outbound-assets", express.static(path.join(process.cwd(), "public", "outbound")));
-  app.use(express.static(path.join(process.cwd(), "public")));
+  app.use("/backend-assets", express.static(path.join(process.cwd(), "public", "backend"), staticAssetOptions));
+  app.use("/inbound-assets", express.static(path.join(process.cwd(), "public", "inbound"), staticAssetOptions));
+  app.use("/outbound-assets", express.static(path.join(process.cwd(), "public", "outbound"), staticAssetOptions));
+  app.use(express.static(path.join(process.cwd(), "public"), staticAssetOptions));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" });

@@ -23,9 +23,10 @@
       href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link href="/styles.css?v=elixis-premium-20260707b" rel="stylesheet" />
-    <script src="/site-config.js?v=elixis-premium-20260707b" defer></script>
-    <script src="/site.js?v=elixis-premium-20260707b" defer></script>
+    <link rel="preconnect" href="https://app.cal.com" />
+    <link href="/styles.css?v=elixis-performance-20260709" rel="stylesheet" />
+    <script src="/site-config.js?v=elixis-performance-20260709" defer></script>
+    <script src="/site.js?v=elixis-performance-20260709" defer></script>
   </head>
   <body>
     <div class="page-shell">
@@ -75,22 +76,20 @@
           <p>We identify the first workflow worth improving, define the guardrails, and decide whether Elixis Collect, Intake, or a custom Elixis System is the right starting point.</p>
         </section>
 
-        <section class="booking-audit-grid reveal reveal-stagger" aria-label="What the AI Audit covers">
-          <article>
-            <span>01</span>
-            <h2>Find the workflow with the clearest payoff</h2>
-            <p>Bring unpaid invoices, missed-call issues, lead capture gaps, service routing problems, or a repetitive admin process. We will focus on the part that wastes the most time first.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <h2>Define what stays human</h2>
-            <p>The goal is not to replace your team or rebuild everything at once. We set scripts, pause rules, escalation paths, and review points before any workflow goes live.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h2>Pressure-test fit, cost, and complexity</h2>
-            <p>We look at data sources, integrations, call volume, customer expectations, and operational risk so the first system is practical instead of overbuilt.</p>
-          </article>
+        <section class="booking-page-panel" aria-label="Elixis Agency booking calendar">
+          <div id="cal-inline" class="cal-inline" data-cal-link="retell-demo-eli1/actualmeetingletsgoooo">
+            <div class="cal-loading" data-cal-loading role="status">Loading available times…</div>
+          </div>
+          <div class="booking-page-fallback">
+            <span>If the calendar does not load, use the external booking page.</span>
+            <a
+              class="button button-secondary"
+              href="https://cal.com/elixisagency/15min"
+              data-config-href="BOOKING_URL"
+              target="_blank"
+              rel="noreferrer"
+            >Open booking page</a>
+          </div>
         </section>
 
         <section class="booking-objection-panel reveal" aria-labelledby="audit-questions">
@@ -108,19 +107,6 @@
           </div>
         </section>
 
-        <section class="booking-page-panel" aria-label="Elixis Agency booking calendar">
-          <div id="cal-inline" class="cal-inline" data-cal-link="retell-demo-eli1/actualmeetingletsgoooo"></div>
-          <div class="booking-page-fallback">
-            <span>If the calendar does not load, use the external booking page.</span>
-            <a
-              class="button button-secondary"
-              href="https://cal.com/elixisagency/15min"
-              data-config-href="BOOKING_URL"
-              target="_blank"
-              rel="noreferrer"
-            >Open booking page</a>
-          </div>
-        </section>
       </main>
 
       <footer class="footer">
