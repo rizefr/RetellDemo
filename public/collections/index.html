@@ -22,9 +22,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link href="/styles.css" rel="stylesheet" />
-    <script src="/site-config.js?v=elixis-services-20260618" defer></script>
-    <script src="/site.js?v=elixis-services-20260618" defer></script>
+    <link href="/styles.css?v=elixis-premium-20260707b" rel="stylesheet" />
+    <script src="/site-config.js?v=elixis-premium-20260707b" defer></script>
+    <script src="/site.js?v=elixis-premium-20260707b" defer></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -45,6 +45,14 @@
     </script>
   </head>
   <body>
+    <svg class="hidden" aria-hidden="true">
+      <defs>
+        <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7A2 2 0 0 1 22 16.9Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"/></symbol>
+      </defs>
+    </svg>
+
     <div class="page-shell">
       <header class="site-header">
         <nav class="section-wrap nav-shell" aria-label="Primary navigation">
@@ -57,13 +65,12 @@
               <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
               <div class="services-popover" aria-label="Elixis AI services">
                 <a href="/collections/" aria-current="page"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
-                <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
-                <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
-                <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+                <a href="/demo/"><span>02</span><strong>Elixis Intake<small>AI receptionist coverage</small></strong></a>
+                <a href="/#custom-workflows"><span>03</span><strong>Elixis Systems<small>Premium custom builds</small></strong></a>
               </div>
             </details>
-            <a class="nav-link" href="/#how-it-works">How it works</a>
-            <a class="nav-link" href="/#about">Founder</a>
+            <a class="nav-link" href="/#ai-audit">How it works</a>
+            <a class="nav-link" href="/about/">Founder</a>
           </div>
           <a href="/booking/" class="button button-primary nav-cta">Book an AI Audit</a>
           <button data-menu-button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
@@ -75,13 +82,12 @@
             <summary class="nav-link service-menu-trigger">Services <span aria-hidden="true">⌄</span></summary>
             <div class="services-popover" aria-label="Elixis AI services">
               <a href="/collections/" aria-current="page"><span>01</span><strong>Elixis Collect<small>Payment follow-up</small></strong></a>
-              <a href="/demo/"><span>02</span><strong>Elixis Intake<small>Calls and customer intake</small></strong></a>
-              <a href="/ai-seo/"><span>03</span><strong>Elixis Visibility<small>Optional search add-on</small></strong></a>
-              <a href="/#custom-workflows"><span>04</span><strong>Elixis Systems<small>Custom workflow design</small></strong></a>
+              <a href="/demo/"><span>02</span><strong>Elixis Intake<small>AI receptionist coverage</small></strong></a>
+              <a href="/#custom-workflows"><span>03</span><strong>Elixis Systems<small>Premium custom builds</small></strong></a>
             </div>
           </details>
-          <a class="nav-link" href="/#how-it-works">How it works</a>
-          <a class="nav-link" href="/#about">Founder</a>
+          <a class="nav-link" href="/#ai-audit">How it works</a>
+          <a class="nav-link" href="/about/">Founder</a>
           <a href="/booking/" class="button button-primary">Book an AI Audit</a>
         </div>
       </header>
@@ -93,67 +99,114 @@
             <div class="service-hero-copy reveal">
               <p class="kicker">Elixis AI · Collect</p>
               <h1>Stop Letting Unpaid Invoices Drift</h1>
-              <p>When reminders slip, unpaid invoices sit longer and staff lose time chasing the same accounts. Elixis Collect organizes invoice data and runs approved call-first follow-up with secure payment next steps, clear notes, and human escalation.</p>
+              <p>Elixis Collect runs professional, call-first follow-up on your overdue B2B invoices — approved scripts, secure payment steps, clear notes, and human escalation.</p>
               <div class="hero-actions">
-                <a href="/booking/" class="button button-primary">Start with an AI Audit</a>
-                <a href="#workflow" class="button button-secondary" data-scroll-target="workflow">See the Workflow</a>
+                <a href="/booking/" class="button button-primary"><svg class="icon"><use href="#i-calendar" /></svg>Start with an AI Audit</a>
+                <a href="#workflow" class="button button-secondary" data-scroll-target="workflow">See the workflow</a>
               </div>
+              <ul class="hero-proofline">
+                <li><svg class="icon"><use href="#i-check" /></svg>First-party B2B follow-up only</li>
+                <li><svg class="icon"><use href="#i-check" /></svg>No card details taken by voice</li>
+                <li><svg class="icon"><use href="#i-check" /></svg>Disputes routed to your team</li>
+              </ul>
             </div>
-            <div class="service-hero-panel reveal">
-              <h2>What the system works from</h2>
-              <div class="data-list">
-                <span>Customer list</span>
-                <span>Contact info</span>
-                <span>Contract or service details</span>
-                <span>Unpaid amount</span>
-                <span>Due date</span>
-                <span>Follow-up preferences</span>
-                <span>Escalation rules</span>
+
+            <div class="call-stage demo-preview reveal" aria-label="Illustration of an Elixis Collect follow-up call">
+              <div class="call-card">
+                <div class="call-card-head">
+                  <span class="call-avatar" aria-hidden="true"><svg class="icon"><use href="#i-phone" /></svg></span>
+                  <div>
+                    <strong>Elixis Collect</strong>
+                    <span class="call-sub"><i class="status-dot"></i>Calling for Demo Company</span>
+                  </div>
+                  <span class="call-timer">01:32</span>
+                </div>
+                <div class="call-wave" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <p class="call-line" data-call-line data-call-lines="“Hi, I’m calling from Demo Company — is this Jane Doe?”|“I’m calling to check that invoice #1048 from June 3rd was received.”|“No problem — I can resend it right now. Would you prefer email or text?”">“Hi, I’m calling from Demo Company — is this Jane Doe?”</p>
+                <div class="call-chips">
+                  <span class="chip status-info">Invoice #1048 · June 3</span>
+                  <span class="chip status-success">Resent by email</span>
+                </div>
               </div>
+              <p class="call-caption">An illustration of a typical Collect follow-up call.</p>
             </div>
           </div>
         </section>
 
-        <section id="workflow" class="section-block section-rule">
+        <section id="workflow" class="section-block section-rule section-tint">
           <div class="section-wrap">
             <div class="section-heading reveal">
-              <h2>When follow-up is inconsistent, cash gets stuck in the gap.</h2>
-              <p>Start with the customers or invoices you already know need attention. The system follows your policies, uses approved wording, and logs outcomes so your team can see who paid, who needs a reminder, and who needs human review.</p>
+              <h2>Consistent follow-up, without the manual chasing.</h2>
+              <p>Start with the invoices you already know need attention. The system uses your approved wording and logs every outcome, so you always know who paid, who promised, and who needs a person.</p>
             </div>
-            <div class="timeline collections-timeline reveal">
-              <article><span>01</span><h3>Review the invoice list</h3><p>Import or review customers, unpaid amounts, due dates, and service context.</p></article>
-              <article><span>02</span><h3>Segment timing</h3><p>Identify upcoming-due, recently overdue, and older invoices for different follow-up paths.</p></article>
-              <article><span>03</span><h3>Approve scripts</h3><p>Use business-approved wording before any call or supporting payment-link workflow is tested. SMS is only added if explicitly enabled.</p></article>
-              <article><span>04</span><h3>Run call-first follow-up</h3><p>Contact customers through the approved sequence and timing windows, with supporting channels only when enabled.</p></article>
-              <article><span>05</span><h3>Log outcomes</h3><p>Track paid, promised, disputed, unreachable, or needs-human-review outcomes.</p></article>
-              <article><span>06</span><h3>Escalate carefully</h3><p>Escalate only under rules your business approves and applicable policies allow.</p></article>
+            <div class="timeline reveal reveal-stagger">
+              <article><span>01</span><h3>Review the invoice list</h3><p>Customers, unpaid amounts, due dates, and service context.</p></article>
+              <article><span>02</span><h3>Approve scripts and timing</h3><p>Your wording, your call windows — nothing goes out unapproved.</p></article>
+              <article><span>03</span><h3>Run call-first follow-up</h3><p>Professional reminders with exact invoice context and secure payment steps.</p></article>
+              <article><span>04</span><h3>Log outcomes and escalate</h3><p>Paid, promised, disputed, or needs-review — visible to you, escalated by your rules.</p></article>
             </div>
           </div>
         </section>
 
-        <section class="section-block proof-section">
+        <section class="section-block section-rule proof-section">
           <div class="section-wrap proof-grid">
             <div class="section-copy reveal">
-              <h2>Built for business payment operations, not pressure tactics.</h2>
-              <p>The goal is consistent, professional first-party follow-up that reduces manual chasing, keeps exceptions visible, and protects the customer relationship.</p>
+              <h2>Built for payment operations, not pressure tactics.</h2>
+              <p>Consistent, professional first-party follow-up that protects the customer relationship and keeps exceptions visible.</p>
             </div>
-            <div class="proof-list reveal">
-              <article><strong>First-party positioning</strong><span>Use it as an extension of your accounts-receivable process, not a replacement for legal or compliance advice.</span></article>
-              <article><strong>Approved guardrails</strong><span>Scripts, delay windows, channels, and escalation rules are reviewed before launch.</span></article>
-              <article><strong>Test before live</strong><span>Run sample customers and edge cases before the workflow touches real accounts.</span></article>
-              <article><strong>U.S. source note</strong><span>A <a href="https://quickbooks.intuit.com/r/small-business-data/small-business-late-payments-report-2025/" target="_blank" rel="noreferrer">2025 QuickBooks survey</a> of U.S. small businesses reported that 56% were owed money from unpaid invoices, averaging $17.5K per business. Exact impact varies by company and industry.</span></article>
+            <div class="proof-list reveal reveal-stagger">
+              <article><strong>First-party positioning</strong><span>An extension of your AR process — not consumer debt collection or legal advice.</span></article>
+              <article><strong>Test before live</strong><span>Sample customers and edge cases run before the workflow touches real accounts.</span></article>
+              <article><strong>The stakes</strong><span>A <a href="https://quickbooks.intuit.com/r/small-business-data/small-business-late-payments-report-2025/" target="_blank" rel="noreferrer">2025 QuickBooks survey</a> found 56% of U.S. small businesses were owed money from unpaid invoices — averaging $17.5K per business.</span></article>
             </div>
+          </div>
+        </section>
+
+        <section class="section-block section-rule comparison-section">
+          <div class="section-wrap">
+            <article class="comparison-panel reveal" aria-label="Traditional Follow-Up vs Elixis Collect">
+              <div class="comparison-duel">
+                <h3 class="duel-title duel-title-manual">Traditional Follow-Up</h3>
+                <span class="duel-vs" aria-hidden="true">vs</span>
+                <h3 class="duel-title duel-title-elixis">Elixis Collect</h3>
+                <div class="comparison-side comparison-side-manual">
+                  <div class="comparison-side-head">
+                    <span class="comparison-tag">The manual way</span>
+                  </div>
+                  <ul>
+                    <li>Often relies on email, SMS, or one-off reminders that are easy to ignore</li>
+                    <li>Follow-up depends on busy staff remembering to chase each invoice</li>
+                    <li>Notes, disputes, promises, and next steps get scattered across inboxes and spreadsheets</li>
+                  </ul>
+                </div>
+                <div class="comparison-side comparison-side-elixis">
+                  <div class="comparison-side-head">
+                    <span class="comparison-tag">With Elixis</span>
+                  </div>
+                  <ul>
+                    <li>Professional AI voice follow-up with exact invoice context</li>
+                    <li>Secure payment next steps and clear escalation when needed</li>
+                    <li>Centralized notes, outcomes, disputes, callbacks, and payment status</li>
+                  </ul>
+                </div>
+              </div>
+              <p class="comparison-note">Flexible pricing based on workflow scope, call volume, integrations, and rollout complexity — a fraction of staffing the whole follow-up process manually.</p>
+            </article>
           </div>
         </section>
 
         <section class="section-block booking-section">
           <div class="section-wrap">
-            <div class="booking-panel booking-link-panel reveal">
-              <div>
-                <h2>See if payment follow-up is the right starting workflow.</h2>
-                <p>Bring a sample invoice process. We will map what could be automated, what should stay human, and how to test it before launch.</p>
+            <div class="final-cta-panel reveal">
+              <p class="kicker">Start here</p>
+              <h2>See if payment follow-up is your best first workflow.</h2>
+              <p>Bring a sample invoice process. We will map what to automate, what stays human, and how to test it before launch.</p>
+              <div class="final-cta-actions">
+                <a class="button button-primary" href="/booking/"><svg class="icon"><use href="#i-calendar" /></svg>Start with an AI Audit</a>
               </div>
-              <a href="/booking/" class="button button-primary">Start with an AI Audit</a>
+              <p class="final-cta-alt">Prefer email? <a href="mailto:help@elixis.agency">help@elixis.agency</a></p>
             </div>
           </div>
         </section>
@@ -163,9 +216,9 @@
         <div class="section-wrap footer-grid">
           <div>
             <a href="/" class="brand-link"><img src="/images/elixis-phoenix.png" class="brand-mark" alt="" /><span>Elixis Agency</span></a>
-            <p>Elixis AI systems for payment follow-up, customer intake, visibility, and custom business workflows.</p>
+            <p>Elixis AI systems for payment follow-up, customer intake, and custom business workflows.</p>
           </div>
-          <div><h3>Services</h3><a href="/collections/">Elixis Collect</a><a href="/demo/">Elixis Intake</a><a href="/ai-seo/">Elixis Visibility</a><a href="/#custom-workflows">Elixis Systems</a><a href="/booking/">Start with an AI Audit</a></div>
+          <div><h3>Explore</h3><a href="/collections/">Elixis Collect</a><a href="/demo/">Elixis Intake</a><a href="/#custom-workflows">Elixis Systems</a><a href="/about/">About the founder</a><a href="/booking/">Start with an AI Audit</a></div>
           <div class="footer-contact">
             <h3>Contact</h3>
             <span>Contact phone</span>
