@@ -42,6 +42,9 @@ export function createApp() {
   app.use(backendPageRouter);
   app.use(inboundPageRouter);
   app.use(outboundPageRouter);
+  app.get(["/ai-seo", "/ai-seo/"], (_req, res) => {
+    res.redirect(301, "/");
+  });
   app.use("/backend-assets", express.static(path.join(process.cwd(), "public", "backend")));
   app.use("/inbound-assets", express.static(path.join(process.cwd(), "public", "inbound")));
   app.use("/outbound-assets", express.static(path.join(process.cwd(), "public", "outbound")));

@@ -4,11 +4,6 @@ const serviceMenus = document.querySelectorAll(".services-menu");
 const retellModal = document.querySelector("[data-retell-modal]");
 const retellOpeners = document.querySelectorAll("[data-open-retell]");
 const retellClosers = document.querySelectorAll("[data-close-retell]");
-const iframeFrames = document.querySelectorAll("[data-iframe-frame]");
-const transcriptCarousel = document.querySelector("[data-transcript-carousel]");
-const transcriptStack = document.querySelector("[data-transcript-stack]");
-const transcriptLabel = document.querySelector("[data-transcript-label]");
-const transcriptDots = document.querySelectorAll("[data-scenario-index]");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const defaultConfig = {
@@ -25,96 +20,6 @@ const siteConfig = {
   ...defaultConfig,
   ...(window.ELIXIS_SITE_CONFIG || {}),
 };
-
-const transcriptScenarios = [
-  {
-    label: "Ants / normal lead",
-    messages: [
-      { speaker: "Caller", tone: "caller", text: "I’ve got ants all over the kitchen." },
-      { speaker: "AI", tone: "ai", text: "Got it — I’ll save the request so the team can follow up with a booking link." },
-      { speaker: "Caller", tone: "caller", text: "Can they come this week?" },
-      { speaker: "AI", tone: "ai", text: "I’ll capture that preference so the team can confirm a time." },
-    ],
-  },
-  {
-    label: "Pricing / no fake quote",
-    messages: [
-      { speaker: "Caller", tone: "caller", text: "How much is roach treatment?" },
-      { speaker: "AI", tone: "ai", text: "Pricing depends on the property and severity, so I won’t guess." },
-      { speaker: "Caller", tone: "caller", text: "Can someone still reach out?" },
-      { speaker: "AI", tone: "ai", text: "Yes — I’ll capture the request so the team can follow up." },
-    ],
-  },
-  {
-    label: "Urgent / transfer",
-    messages: [
-      { speaker: "Caller", tone: "caller urgent", text: "There’s a hornet nest by my front door." },
-      { speaker: "AI", tone: "ai urgent", text: "That sounds urgent. I’ll get you connected with someone." },
-      { speaker: "Caller", tone: "caller urgent", text: "My kid almost got stung." },
-      { speaker: "AI", tone: "ai urgent", text: "Understood — I’m routing this as urgent now." },
-    ],
-  },
-];
-
-let transcriptScenarioIndex = 0;
-let transcriptTimers = [];
-let transcriptRunId = 0;
-
-function clearTranscriptTimers() {
-  transcriptTimers.forEach((timer) => window.clearTimeout(timer));
-  transcriptTimers = [];
-}
-
-function createTranscriptMessage(message) {
-  const item = document.createElement("p");
-  item.className = `transcript-bubble ${message.tone}`;
-  item.innerHTML = `<strong>${message.speaker}</strong> “${message.text}”`;
-  return item;
-}
-
-function setTranscriptDots(index) {
-  transcriptDots.forEach((dot) => {
-    const isActive = Number(dot.getAttribute("data-scenario-index")) === index;
-    dot.classList.toggle("is-active", isActive);
-    dot.setAttribute("aria-selected", String(isActive));
-  });
-}
-
-function showTranscriptScenario(index, shouldAutoAdvance = true) {
-  if (!transcriptCarousel || !transcriptStack) return;
-
-  clearTranscriptTimers();
-  transcriptRunId += 1;
-  const currentRunId = transcriptRunId;
-  transcriptScenarioIndex = (index + transcriptScenarios.length) % transcriptScenarios.length;
-  const scenario = transcriptScenarios[transcriptScenarioIndex];
-  transcriptStack.innerHTML = "";
-  if (transcriptLabel) transcriptLabel.textContent = scenario.label;
-  setTranscriptDots(transcriptScenarioIndex);
-
-  const messages = scenario.messages.map(createTranscriptMessage);
-  messages.forEach((message) => transcriptStack.appendChild(message));
-
-  if (reducedMotion.matches) {
-    messages.forEach((message) => message.classList.add("is-visible"));
-    return;
-  }
-
-  messages.forEach((message, messageIndex) => {
-    const revealDelay = 420 + messageIndex * 980;
-    transcriptTimers.push(window.setTimeout(() => {
-      if (currentRunId !== transcriptRunId) return;
-      message.classList.add("is-visible");
-    }, revealDelay));
-  });
-
-  if (shouldAutoAdvance) {
-    transcriptTimers.push(window.setTimeout(() => {
-      if (currentRunId !== transcriptRunId) return;
-      showTranscriptScenario(transcriptScenarioIndex + 1, true);
-    }, 9500));
-  }
-}
 
 function isValidOrbUrl(value) {
   try {
@@ -171,7 +76,13 @@ function applySiteConfig() {
 
   document.querySelectorAll("[data-config-src]").forEach((node) => {
     const key = node.getAttribute("data-config-src");
-    if (key && values[key]) node.setAttribute("src", values[key]);
+    if (!key || !values[key]) return;
+    if (node.closest("[data-retell-modal]")) {
+      node.setAttribute("data-src", values[key]);
+      node.removeAttribute("src");
+      return;
+    }
+    node.setAttribute("src", values[key]);
   });
 
   const calTarget = document.querySelector("#cal-inline");
@@ -192,6 +103,53 @@ function correctHashScroll() {
   window.setTimeout(() => scrollToSection(id, "auto"), 120);
   window.setTimeout(() => scrollToSection(id, "auto"), 800);
   window.setTimeout(() => scrollToSection(id, "auto"), 1800);
+}
+
+const callLineNode = document.querySelector("[data-call-line]");
+const defaultCallLines = [
+  "“Hi — this is a quick courtesy call about invoice 1048: $2,840, due June 18.”",
+  "“I can send a secure payment link to the email on file — we never take card details by phone.”",
+  "“I’ve logged your question for the team — someone will follow up today.”",
+];
+let callLineIndex = 0;
+
+if (callLineNode && !reducedMotion.matches) {
+  const linesAttr = callLineNode.getAttribute("data-call-lines") || "";
+  const callLines = linesAttr
+    ? linesAttr.split("|").map((line) => line.trim()).filter(Boolean)
+    : defaultCallLines;
+
+  if (callLines.length > 1) {
+    window.setInterval(() => {
+      callLineIndex = (callLineIndex + 1) % callLines.length;
+      callLineNode.classList.add("is-swapping");
+      window.setTimeout(() => {
+        callLineNode.textContent = callLines[callLineIndex];
+        callLineNode.classList.remove("is-swapping");
+      }, 280);
+    }, 5400);
+  }
+}
+
+const siteHeader = document.querySelector(".site-header");
+let headerScrollScheduled = false;
+
+function updateHeaderScrollState() {
+  headerScrollScheduled = false;
+  siteHeader?.classList.toggle("is-scrolled", window.scrollY > 12);
+}
+
+if (siteHeader) {
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (headerScrollScheduled) return;
+      headerScrollScheduled = true;
+      window.requestAnimationFrame(updateHeaderScrollState);
+    },
+    { passive: true },
+  );
+  updateHeaderScrollState();
 }
 
 menuButton?.addEventListener("click", () => {
@@ -225,32 +183,6 @@ document.querySelectorAll("[data-mobile-menu] a").forEach((link) => {
   });
 });
 
-iframeFrames.forEach((frame) => {
-  const activateButton = frame.querySelector("[data-iframe-activate]");
-  const deactivate = () => {
-    frame.classList.remove("is-iframe-active");
-    activateButton?.setAttribute("aria-pressed", "false");
-  };
-
-  activateButton?.addEventListener("click", () => {
-    frame.classList.add("is-iframe-active");
-    activateButton.setAttribute("aria-pressed", "true");
-  });
-
-  frame.addEventListener("mouseleave", deactivate);
-  frame.addEventListener("focusout", (event) => {
-    if (!frame.contains(event.relatedTarget)) deactivate();
-  });
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  iframeFrames.forEach((frame) => {
-    frame.classList.remove("is-iframe-active");
-    frame.querySelector("[data-iframe-activate]")?.setAttribute("aria-pressed", "false");
-  });
-});
-
 document.querySelectorAll("[data-scroll-target]").forEach((trigger) => {
   trigger.addEventListener("click", (event) => {
     const id = trigger.getAttribute("data-scroll-target");
@@ -260,39 +192,56 @@ document.querySelectorAll("[data-scroll-target]").forEach((trigger) => {
   });
 });
 
-transcriptDots.forEach((dot) => {
-  dot.addEventListener("click", () => {
-    const nextIndex = Number(dot.getAttribute("data-scenario-index"));
-    if (Number.isNaN(nextIndex)) return;
-    showTranscriptScenario(nextIndex, true);
-  });
-});
+let retellModalOpener = null;
 
-reducedMotion.addEventListener?.("change", () => {
-  showTranscriptScenario(transcriptScenarioIndex, !reducedMotion.matches);
-});
+function loadRetellEmbed() {
+  const frame = retellModal?.querySelector("[data-retell-embed]");
+  const source = frame?.getAttribute("data-src");
+  if (frame && source && !frame.getAttribute("src")) frame.setAttribute("src", source);
+}
 
-function openRetellModal() {
-  retellModal?.classList.add("is-open");
-  retellModal?.setAttribute("aria-hidden", "false");
+function openRetellModal(event) {
+  if (!retellModal) return;
+  retellModalOpener = event?.currentTarget instanceof HTMLElement ? event.currentTarget : document.activeElement;
+  loadRetellEmbed();
+  retellModal.classList.add("is-open");
+  retellModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("modal-open");
+  window.requestAnimationFrame(() => retellModal.querySelector(".modal-close")?.focus());
 }
 
 function closeRetellModal() {
-  retellModal?.classList.remove("is-open");
-  retellModal?.setAttribute("aria-hidden", "true");
+  if (!retellModal?.classList.contains("is-open")) return;
+  retellModal.classList.remove("is-open");
+  retellModal.setAttribute("aria-hidden", "true");
   document.body.classList.remove("modal-open");
+  retellModalOpener?.focus?.();
 }
 
-retellOpeners.forEach((button) => button.addEventListener("click", openRetellModal));
+retellOpeners.forEach((button) => button.addEventListener("click", (event) => openRetellModal(event)));
 retellClosers.forEach((button) => button.addEventListener("click", closeRetellModal));
 
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  closeRetellModal();
-  serviceMenus.forEach((menu) => {
-    menu.open = false;
-  });
+  if (event.key === "Escape") {
+    closeRetellModal();
+    serviceMenus.forEach((menu) => {
+      menu.open = false;
+    });
+    return;
+  }
+
+  if (event.key !== "Tab" || !retellModal?.classList.contains("is-open")) return;
+  const focusable = Array.from(retellModal.querySelectorAll("button:not(.modal-backdrop), a[href], iframe, [tabindex]:not([tabindex='-1'])"));
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 });
 
 const revealElements = document.querySelectorAll(".reveal");
@@ -316,7 +265,6 @@ if ("IntersectionObserver" in window) {
 }
 
 applySiteConfig();
-showTranscriptScenario(0, !reducedMotion.matches);
 
 function loadCalEmbed() {
   const target = document.querySelector("#cal-inline");
