@@ -55,4 +55,18 @@ describe("public site routes", () => {
     expect(inbound.status).toBe(401);
     expect(outbound.status).toBe(401);
   });
+
+  it.each([
+    ["/backend/backend.css?v=20260710", "text/css"],
+    ["/backend/backend.js?v=20260710", "text/javascript"],
+    ["/inbound/inbound.css?v=20260710", "text/css"],
+    ["/inbound/inbound.js?v=20260710", "text/javascript"],
+    ["/outbound/outbound.css?v=20260710", "text/css"],
+    ["/outbound/outbound.js?v=20260710", "text/javascript"],
+  ])("serves %s directly as a versioned static asset", async (path, contentType) => {
+    const response = await request(app).get(path);
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toContain(contentType);
+  });
 });
