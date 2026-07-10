@@ -237,10 +237,12 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain('return { voiceId: "11labs-Gilfoy", source: "default_fallback" }');
-    expect(setupScript).toContain("voice_speed: 0.82");
-    expect(setupScript).toContain("begin_message_delay_ms: 1550");
-    expect(setupScript).toContain('ambient_sound: "call-center"');
-    expect(setupScript).toContain("ambient_sound_volume: 1");
+    expect(setupScript).toContain("resolveOutboundVoiceSettings(existing.agent)");
+    expect(setupScript).toContain("voice_speed: numericSetting(current.voice_speed, OUTBOUND_VOICE_SETTINGS.voice_speed)");
+    expect(setupScript).toContain("voice_temperature: numericSetting(current.voice_temperature, OUTBOUND_VOICE_SETTINGS.voice_temperature)");
+    expect(setupScript).toMatch(/begin_message_delay_ms:\s*numericSetting\(\s*current\.begin_message_delay_ms,\s*OUTBOUND_VOICE_SETTINGS\.begin_message_delay_ms/);
+    expect(setupScript).toContain("ambient_sound: stringSetting(current.ambient_sound, OUTBOUND_VOICE_SETTINGS.ambient_sound)");
+    expect(setupScript).toMatch(/ambient_sound_volume:\s*numericSetting\(\s*current\.ambient_sound_volume,\s*OUTBOUND_VOICE_SETTINGS\.ambient_sound_volume/);
     expect(envConfig).toContain('OUTBOUND_RETELL_MODEL: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_VOICE_ID: z.string().optional().default("")');
     expect(envConfig).toContain('OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Paul")');
