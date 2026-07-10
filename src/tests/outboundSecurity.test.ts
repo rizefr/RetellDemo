@@ -108,6 +108,9 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Keep a steady, lower-energy tone and do not rush the opening, names, emails, phone numbers, dates, or payment instructions.");
     expect(String(flow.global_prompt)).toContain('avoid saying the exact phrase "thank you"');
     expect(String(flow.global_prompt)).toContain('do not say "thank you for confirming."');
+    expect(String(flow.global_prompt)).not.toMatch(/wrong number[^\n]*hard terminal route/i);
+    expect(String(flow.global_prompt)).not.toMatch(/hard terminal outcomes[^\n]*wrong_number/i);
+    expect(String(flow.global_prompt)).toContain("use the dedicated wrong-number terminal route");
     expect(serialized).toContain("Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");

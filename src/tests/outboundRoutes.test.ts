@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Stripe from "stripe";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { sign } from "retell-sdk";
 
@@ -84,6 +84,10 @@ describe("outbound admin routes", () => {
 });
 
 describe("outbound webhook contracts", () => {
+  beforeEach(() => {
+    process.env.OUTBOUND_RETELL_AGENT_ID = "agent_outbound_test";
+  });
+
   it("contains database-level Stripe event idempotency guards", () => {
     const migration = fs.readFileSync(
       path.resolve(process.cwd(), "supabase/migrations/20260609_outbound_collections.sql"),
@@ -168,6 +172,7 @@ describe("outbound webhook contracts", () => {
       event: "call_started",
       call: {
         call_id: "call_outbound_test",
+        agent_id: "agent_outbound_test",
         metadata: {
           business_id: "00000000-0000-4000-8000-000000000001",
           customer_id: "00000000-0000-4000-8000-000000000002",
@@ -222,6 +227,7 @@ describe("outbound webhook contracts", () => {
       },
       call: {
         call_id: "call_tool_test",
+        agent_id: "agent_outbound_test",
         metadata: {
           business_id: "00000000-0000-4000-8000-000000000001",
           customer_id: "00000000-0000-4000-8000-000000000002",
@@ -292,7 +298,7 @@ describe("outbound webhook contracts", () => {
         responsible_party_email: "sam@example.com",
         notes: "Caller said Sam handles payments now.",
       },
-      call: { call_id: "call_responsible_party", metadata },
+      call: { call_id: "call_responsible_party", agent_id: "agent_outbound_test", metadata },
     });
     const responsibleSignature = await sign(responsiblePayload, "retell-tool-api-key");
     const responsibleResponse = await request(createApp())
@@ -327,7 +333,7 @@ describe("outbound webhook contracts", () => {
         named_contact_name: "Mike",
         notes: "Caller asked for Mike.",
       },
-      call: { call_id: "call_named_contact", metadata },
+      call: { call_id: "call_named_contact", agent_id: "agent_outbound_test", metadata },
     });
     const namedSignature = await sign(namedPayload, "retell-tool-api-key");
     const namedResponse = await request(createApp())
@@ -384,6 +390,7 @@ describe("outbound webhook contracts", () => {
       },
       call: {
         call_id: "call_with_null_optional_fields",
+        agent_id: "agent_outbound_test",
         metadata: {
           business_id: "00000000-0000-4000-8000-000000000001",
           customer_id: "00000000-0000-4000-8000-000000000002",
@@ -486,6 +493,7 @@ describe("outbound webhook contracts", () => {
       args: {},
       call: {
         call_id: "call_email_missing",
+        agent_id: "agent_outbound_test",
         metadata: {
           business_id: "00000000-0000-4000-8000-000000000001",
           customer_id: "00000000-0000-4000-8000-000000000002",
@@ -579,6 +587,7 @@ describe("outbound webhook contracts", () => {
       args: {},
       call: {
         call_id: "call_email_success",
+        agent_id: "agent_outbound_test",
         metadata: {
           business_id: "00000000-0000-4000-8000-000000000001",
           customer_id: "00000000-0000-4000-8000-000000000002",

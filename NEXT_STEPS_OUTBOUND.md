@@ -49,7 +49,10 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 ## Single Prompt Comparison Maintenance
 
-- Keep `agent_f5a392178f5afa39280b1489a0` unbound. It is selected only through authenticated Presentation Mode and the server-side `single_prompt` variant mapping.
+- Keep `agent_f5a392178f5afa39280b1489a0` unbound. It is Playground-only and is not selectable through `/backend`, `/outbound`, or production call routes.
+- Production calls are fixed to `agent_4aa8074d7eabe311109ed6da89` / `conversation_flow_bebdceabc801` at `latest_published`. Signed webhook and tool traffic from any other Retell agent ID is rejected.
+- Published V67 remains live. The current V68 draft is identical to V67 and should not be published unless a future reviewed change makes it materially different.
+- Retell SDK `5.31.1` is the current compatibility pin. Before upgrading to `5.32+`, verify Retell's supported replacement for the removed `sign`/`verify` helpers and rerun the raw-body webhook signature suite.
 - Keep its LLM `llm_b3f0e230981f653f0fa1195d0459` explicit in server environment settings. Never discover-and-update it by name.
 - Use the same demo variables and caller scenario when comparing it with the V67 Conversation Flow agent.
 - Run `npm run outbound:test-single-prompt` before any live A/B call. Its tool results are mocked and do not prove production delivery.

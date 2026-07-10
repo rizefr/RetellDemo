@@ -37,7 +37,7 @@
     "libphonenumber-js": "^1.12.31",
     "luxon": "3.7.2",
     "pg": "^8.16.3",
-    "retell-sdk": "5.28.0",
+    "retell-sdk": "5.31.1",
     "stripe": "22.2.0",
     "zod": "^4.2.1"
   },

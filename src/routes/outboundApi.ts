@@ -280,7 +280,6 @@ outboundApiRouter.post("/demo-call/preflight", async (req, res) => {
       input.after_hours_override,
       input.followup_task_id,
       input.demo_call_authorization_id,
-      input.agent_variant,
     ));
   } catch (error) {
     sendError(res, error);
@@ -309,7 +308,7 @@ outboundApiRouter.post("/demo-call/start", async (req, res) => {
         reason: eligibility.reason,
         followup_task_id: input.followup_task_id || null,
         demo_call_authorization_id: input.demo_call_authorization_id,
-        agent_variant: input.agent_variant,
+        agent_variant: "conversation_flow",
       },
     });
     if (!eligibility.eligible) throw new Error(`Outbound call blocked: ${eligibility.reason}`);
@@ -319,7 +318,6 @@ outboundApiRouter.post("/demo-call/start", async (req, res) => {
       new Date(),
       input.followup_task_id,
       input.demo_call_authorization_id,
-      input.agent_variant,
     );
     res.status(201).json(result);
   } catch (error) {

@@ -24,11 +24,17 @@ export async function verifyOutboundRetellSignature(
   return false;
 }
 
-export function trustedRetellMetadata(call: unknown):
-  | { businessId: string; customerId: string; invoiceId: string; callAttemptId?: string }
+export function trustedRetellMetadata(
+  call: unknown,
+  expectedAgentId = env.OUTBOUND_RETELL_AGENT_ID,
+):
+  | { businessId: string; customerId: string; invoiceId: string; callAttemptId?: string; agentId: string }
   | null {
   if (!call || typeof call !== "object") return null;
-  const metadata = (call as { metadata?: unknown }).metadata;
+  const callRecord = call as { agent_id?: unknown; metadata?: unknown };
+  const agentId = typeof callRecord.agent_id === "string" ? callRecord.agent_id : "";
+  if (!expectedAgentId || !agentId || agentId !== expectedAgentId) return null;
+  const metadata = callRecord.metadata;
   if (!metadata || typeof metadata !== "object") return null;
   const values = metadata as Record<string, unknown>;
   if (
@@ -43,5 +49,6 @@ export function trustedRetellMetadata(call: unknown):
     customerId: values.customer_id,
     invoiceId: values.invoice_id,
     callAttemptId: typeof values.call_attempt_id === "string" ? values.call_attempt_id : undefined,
+    agentId,
   };
 }

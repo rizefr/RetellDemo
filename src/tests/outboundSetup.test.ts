@@ -30,7 +30,6 @@ describe("outbound setup summary", () => {
         retellFromNumber: "+19842075346",
         outboundRetellAgentConfigured: true,
         outboundRetellFlowConfigured: true,
-        outboundRetellSinglePromptAgentConfigured: false,
         outboundRetellWebhookSecretConfigured: true,
         outboundSmsEnabled: false,
         emailProvider: "none",
@@ -75,7 +74,6 @@ describe("outbound setup summary", () => {
         retellFromNumber: "+19842075346",
         outboundRetellAgentConfigured: true,
         outboundRetellFlowConfigured: true,
-        outboundRetellSinglePromptAgentConfigured: true,
         outboundRetellWebhookSecretConfigured: true,
         outboundSmsEnabled: false,
         emailProvider: "none",
@@ -92,7 +90,6 @@ describe("outbound setup summary", () => {
 
     expect(summary.stripe.webhook_url).toBe("https://demo.example/api/outbound/webhooks/stripe");
     expect(summary.retell.webhook_url).toBe("https://demo.example/api/outbound/webhooks/retell");
-    expect(summary.retell.single_prompt_agent_configured).toBe(true);
     expect(summary.retell.function_urls).toContain(
       "https://demo.example/api/outbound/retell/log-outcome",
     );

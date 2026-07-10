@@ -17,7 +17,6 @@ export const outboundDemoCallModeSchema = z.enum([
   "scam_recovery",
   "service_issue",
 ]);
-export const outboundAgentVariantSchema = z.enum(["conversation_flow", "single_prompt"]);
 export const outboundOutcomeSchema = z.enum(OUTBOUND_OUTCOMES);
 
 export const customerPatchSchema = z
@@ -158,7 +157,6 @@ export const demoCallAuthorizationSchema = z
 
 export const demoCallRunSchema = startCallSchema.extend({
   demo_call_authorization_id: uuidSchema,
-  agent_variant: outboundAgentVariantSchema.default("conversation_flow"),
 });
 
 export const demoDetailsPatchSchema = z

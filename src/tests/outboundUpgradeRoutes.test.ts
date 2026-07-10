@@ -241,6 +241,7 @@ describe("outbound upgrade routes", () => {
   });
 
   it("proposes then stores a signed callback using trusted call metadata", async () => {
+    process.env.OUTBOUND_RETELL_AGENT_ID = "agent-outbound-test";
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "callback-signing-key";
     const createOutboundCallbackTask = vi.fn().mockResolvedValue({ id: "callback-task-1" });
@@ -272,6 +273,7 @@ describe("outbound upgrade routes", () => {
       },
       call: {
         call_id: "call-callback-1",
+        agent_id: "agent-outbound-test",
         start_timestamp: Date.parse("2026-06-22T15:00:00.000Z"),
         metadata: {
           business_id: "00000000-0000-4000-8000-000000000001",
