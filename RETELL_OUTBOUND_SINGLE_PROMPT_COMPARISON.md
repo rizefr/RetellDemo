@@ -100,14 +100,9 @@ Creation requires the explicit one-time flag `CONFIRM_CREATE_RETELL_OUTBOUND_SIN
 
 ## Safe A/B Test
 
-1. Confirm production setup reports the Single Prompt comparison agent as configured.
-2. Open authenticated `/outbound` Presentation Mode.
-3. Select the same demo invoice and variables for both runs.
-4. Authorize one controlled E.164 test number with the existing TTL workflow.
-5. Select `Conversation Flow` or `Single Prompt comparison` under Agent architecture.
-6. Run backend preflight and confirm its agent badge matches the selection.
-7. Do not click Start until the user explicitly authorizes one real call.
-8. Compare transcript continuity, latency, tool sequence, terminal behavior, and call summary using the same caller scenario.
+The production `/backend` and `/outbound` surfaces are Conversation Flow-only. The unbound Single Prompt agent must not be selected by a production route and its signed tool/webhook calls are intentionally rejected by the production backend.
+
+Use the mocked Playground suite for prompt comparison. A future real telephony A/B test requires a separate isolated backend/tool environment and explicit approval; do not reuse the production `/outbound` start route for the candidate.
 
 Playground-only smoke command:
 

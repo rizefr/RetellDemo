@@ -137,6 +137,7 @@ describe("outbound browser operation safety", () => {
     process.env.OUTBOUND_MAX_BATCH_SIZE = "1";
     process.env.OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE = "true";
     process.env.OUTBOUND_RETELL_AGENT_ID = "agent_outbound";
+    process.env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID = "conversation_flow_outbound";
     process.env.RETELL_FROM_NUMBER = "+19842075346";
     const insertOutboundEvent = vi.fn().mockResolvedValue({});
     const createPhoneCall = vi.fn().mockResolvedValue({ call_id: "call_after_hours", call_status: "registered" });
@@ -222,13 +223,13 @@ describe("outbound browser operation safety", () => {
     expect(insertOutboundEvent.mock.invocationCallOrder[0]).toBeLessThan(createPhoneCall.mock.invocationCallOrder[0]);
   });
 
-  it("uses the selected Single Prompt agent for one temporary demo call without changing invoice status", async () => {
+  it("uses only the published Conversation Flow agent for a temporary demo call", async () => {
     process.env.NODE_ENV = "test";
     process.env.OUTBOUND_TEST_MODE = "true";
     process.env.OUTBOUND_TEST_PHONE_ALLOWLIST = "+13475850249";
     process.env.OUTBOUND_MAX_BATCH_SIZE = "1";
     process.env.OUTBOUND_RETELL_AGENT_ID = "agent_outbound";
-    process.env.OUTBOUND_RETELL_SINGLE_PROMPT_AGENT_ID = "agent_single_prompt_comparison";
+    process.env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID = "conversation_flow_outbound";
     process.env.RETELL_FROM_NUMBER = "+19842075346";
     const createPhoneCall = vi.fn().mockResolvedValue({ call_id: "call_demo_number", call_status: "registered" });
     const touchOutboundDemoCallAuthorization = vi.fn().mockResolvedValue({});
@@ -302,16 +303,19 @@ describe("outbound browser operation safety", () => {
       new Date("2026-06-22T15:00:00.000Z"),
       undefined,
       "00000000-0000-4000-8000-000000000099",
-      "single_prompt",
     );
 
     expect(result.call_id).toBe("call_demo_number");
-    expect(result.agent_variant).toBe("single_prompt");
+    expect(result.agent_variant).toBe("conversation_flow");
     expect(createPhoneCall).toHaveBeenCalledWith(
       expect.objectContaining({
         to_number: "+15551234567",
-        override_agent_id: "agent_single_prompt_comparison",
-        metadata: expect.objectContaining({ agent_variant: "single_prompt" }),
+        override_agent_id: "agent_outbound",
+        override_agent_version: "latest_published",
+        metadata: expect.objectContaining({
+          agent_variant: "conversation_flow",
+          conversation_flow_id: "conversation_flow_outbound",
+        }),
         retell_llm_dynamic_variables: expect.objectContaining({
           business_name: "Hudson Lift Services",
           agent_display_name: "Paul",

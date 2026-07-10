@@ -17,7 +17,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Outbound phone: `+19842075346`
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
 
-Publishing must target the explicit IDs above. The outbound setup script refuses name-based matching and duplicate creation.
+Publishing must target the explicit IDs above. The outbound setup script refuses name-based matching and duplicate creation. Production call creation pins the explicit agent to `latest_published`; `/backend` and `/outbound` do not accept an agent architecture override.
 
 ## Dynamic Variable Sources
 
@@ -54,7 +54,7 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 
 ## Custom Tools
 
-All custom tools are wrapped Retell requests signed by Retell. Backend endpoints verify the signature and trust IDs from `call.metadata`, not caller-spoken data.
+All custom tools are wrapped Retell requests signed by Retell. Backend endpoints verify the raw-body signature, require `call.agent_id` to equal `agent_4aa8074d7eabe311109ed6da89`, and trust IDs from `call.metadata`, not caller-spoken data.
 
 | Tool | Endpoint | Required trusted metadata | Success behavior | Failure/manual behavior |
 | --- | --- | --- | --- | --- |
