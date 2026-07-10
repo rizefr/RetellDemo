@@ -87,6 +87,7 @@ const CALL_GATE_MESSAGES = {
   customer_paused: "Customer outreach is paused.",
   outreach_paused: "Customer outreach is paused.",
   retell_agent_missing: "Retell agent ID is missing.",
+  single_prompt_agent_not_configured: "The Single Prompt comparison agent is not configured yet.",
   retell_from_number_missing: "Retell from number is missing.",
   email_not_ready: "Email is not ready.",
   sms_disabled: "SMS is disabled/manual.",
@@ -217,6 +218,7 @@ async function loadSetupStatus() {
       { label: "Outbound from number", ok: setup.retell.from_number_correct, detail: setup.retell.from_number },
       { label: "Outbound agent ID present", ok: setup.retell.outbound_agent_configured },
       { label: "Outbound Conversation Flow ID present", ok: setup.retell.outbound_flow_configured },
+      { label: "Single Prompt comparison agent", ok: setup.retell.single_prompt_agent_configured, detail: setup.retell.single_prompt_agent_configured ? "Configured" : "Not configured" },
       { label: "Retell webhook secret present", ok: setup.retell.webhook_secret_configured },
       { label: "SMS mode", ok: true, detail: setup.retell.sms_mode === "disabled_manual" ? "Disabled/manual" : "Enabled; verify provider" },
       { label: "Latest Retell event", ok: true, detail: setup.retell.latest_event ? `${humanize(setup.retell.latest_event.event_type)} · ${formatDate(setup.retell.latest_event.created_at)}` : "None recorded" },
@@ -248,6 +250,11 @@ async function loadSetupStatus() {
     document.getElementById("after-hours-status").textContent = overrideEnabled
       ? "Enabled for one authenticated, allowlisted self-test after exact confirmation."
       : "Disabled by server configuration.";
+    const singlePromptOption = document.querySelector('#demo-agent-variant option[value="single_prompt"]');
+    singlePromptOption.disabled = !setup.retell.single_prompt_agent_configured;
+    if (!setup.retell.single_prompt_agent_configured && document.getElementById("demo-agent-variant").value === "single_prompt") {
+      document.getElementById("demo-agent-variant").value = "conversation_flow";
+    }
     if (setup.supabase.migration_warning) setStatus(setup.supabase.migration_warning, true);
   } catch (error) {
     summary.textContent = error.message;
@@ -498,6 +505,7 @@ function demoRunPayload() {
   return {
     invoice_id: invoice.id,
     demo_call_authorization_id: activeDemoAuthorization.id,
+    agent_variant: document.getElementById("demo-agent-variant").value,
     after_hours_override: afterHoursOverridePayload(),
   };
 }
@@ -511,12 +519,16 @@ async function demoPreflight() {
     document.getElementById("demo-start-call").disabled = !activeDemoPreflight.eligible;
     const reason = activeDemoPreflight.after_hours_override_block_reason || activeDemoPreflight.reason;
     const message = activeDemoPreflight.eligible
-      ? `Preflight passed for ${activeDemoPreflight.destination_phone_number}. The Start button will still use the real backend single-call endpoint.`
+      ? `Preflight passed for ${activeDemoPreflight.destination_phone_number} using ${activeDemoPreflight.agent_label}. The Start button will still use the real backend single-call endpoint.`
       : friendlyReason(reason);
     const badges = activeDemoPreflight.eligible
       ? [
           { label: "Ready", tone: "ready" },
           { label: "Demo number authorized", tone: "ready" },
+          {
+            label: activeDemoPreflight.agent_variant === "single_prompt" ? "Single Prompt" : "Conversation Flow",
+            tone: "info",
+          },
         ]
       : [
           { label: reason === "outside_calling_window" ? "Needs after-hours confirmation" : "Blocked", tone: reason === "outside_calling_window" ? "warning" : "blocked" },
@@ -524,7 +536,7 @@ async function demoPreflight() {
         ];
     setDemoFeedback(message, badges);
     setStatus(activeDemoPreflight.eligible
-      ? `Demo call preflight passed for ${activeDemoPreflight.destination_phone_number}.`
+      ? `Demo call preflight passed for ${activeDemoPreflight.destination_phone_number} using ${activeDemoPreflight.agent_label}.`
       : `Demo call blocked: ${message}`,
       !activeDemoPreflight.eligible);
   } catch (error) {
@@ -1013,6 +1025,7 @@ document.getElementById("settings-business").onchange = renderSettings;
 document.getElementById("save-settings").onclick = saveSettings;
 document.getElementById("demo-invoice-select").onchange = () => populateDemoEditor(selectedDemoInvoice());
 document.getElementById("demo-call-mode").onchange = () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; };
+document.getElementById("demo-agent-variant").onchange = () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; };
 document.getElementById("demo-authorize-number").onclick = authorizeDemoNumber;
 document.getElementById("demo-save-details").onclick = saveDemoDetails;
 document.getElementById("demo-preflight").onclick = demoPreflight;

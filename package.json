@@ -18,6 +18,8 @@
     "refine:single-prompt-candidate": "tsx src/scripts/refineSinglePromptCandidate.ts",
     "outbound:import": "tsx src/scripts/importOutboundCsv.ts",
     "outbound:setup-retell": "tsx src/scripts/setupOutboundRetell.ts",
+    "outbound:create-single-prompt": "tsx src/scripts/setupOutboundSinglePrompt.ts",
+    "outbound:test-single-prompt": "tsx src/scripts/testOutboundSinglePrompt.ts",
     "setup:supabase": "tsx src/scripts/seedSupabase.ts",
     "test:retell-tools": "tsx src/scripts/testToolCalls.ts",
     "test:retell-sop": "tsx src/scripts/runRetellSopBatch.ts",

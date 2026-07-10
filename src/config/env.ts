@@ -51,6 +51,8 @@ const envSchema = z.object({
   OUTBOUND_MAX_BATCH_SIZE: z.coerce.number().int().positive().max(25).default(3),
   OUTBOUND_RETELL_AGENT_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_CONVERSATION_FLOW_ID: z.string().optional().default(""),
+  OUTBOUND_RETELL_SINGLE_PROMPT_AGENT_ID: z.string().optional().default(""),
+  OUTBOUND_RETELL_SINGLE_PROMPT_LLM_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_PHONE_NUMBER_ID: z.string().optional().default(""),
   OUTBOUND_RETELL_AGENT_NAME: z.string().default("Elevator Inspection Collections — Paul"),
   OUTBOUND_RETELL_VOICE_ID: z.string().optional().default(""),
@@ -63,6 +65,8 @@ const envSchema = z.object({
   OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE: booleanFromString.default(false),
   RETELL_FROM_NUMBER: z.string().optional().default("+19842075346"),
   CONFIRM_CREATE_RETELL_OUTBOUND_AGENT: booleanFromString.default(false),
+  CONFIRM_CREATE_RETELL_OUTBOUND_SINGLE_PROMPT_AGENT: booleanFromString.default(false),
+  CONFIRM_UPDATE_RETELL_OUTBOUND_SINGLE_PROMPT_AGENT: booleanFromString.default(false),
 
   STRIPE_SECRET_KEY: z.string().optional().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(""),

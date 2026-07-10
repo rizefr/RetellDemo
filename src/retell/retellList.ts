@@ -40,7 +40,7 @@ export async function listRetellVoiceAgentsV2(options: RetellListOptions): Promi
   do {
     const body: AnyRecord = {
       limit: options.limit ?? 1000,
-      filter_criteria: { channel: "voice" },
+      filter_criteria: { channel: { type: "string", op: "eq", value: "voice" } },
     };
     if (paginationKey) body.pagination_key = paginationKey;
     const response = await fetchImpl(`${normalizedBaseUrl(options.baseUrl)}/v2/list-agents`, {

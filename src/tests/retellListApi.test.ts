@@ -42,11 +42,11 @@ describe("Retell versioned list APIs", () => {
     ]);
     expect(JSON.parse(String(requests[0].init.body))).toEqual({
       limit: 1,
-      filter_criteria: { channel: "voice" },
+      filter_criteria: { channel: { type: "string", op: "eq", value: "voice" } },
     });
     expect(JSON.parse(String(requests[1].init.body))).toEqual({
       limit: 1,
-      filter_criteria: { channel: "voice" },
+      filter_criteria: { channel: { type: "string", op: "eq", value: "voice" } },
       pagination_key: "agent_1",
     });
     expect(String(requests[0].init.body)).not.toContain("pagination_key_version");

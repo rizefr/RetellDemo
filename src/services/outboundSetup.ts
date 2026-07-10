@@ -37,6 +37,7 @@ export type OutboundSetupConfiguration = {
   retellFromNumber: string;
   outboundRetellAgentConfigured: boolean;
   outboundRetellFlowConfigured: boolean;
+  outboundRetellSinglePromptAgentConfigured: boolean;
   outboundRetellWebhookSecretConfigured: boolean;
   outboundSmsEnabled: boolean;
   emailProvider: "none" | "resend";
@@ -182,6 +183,7 @@ export function buildOutboundSetupSummary(input: {
       from_number_correct: retellFromNumberCorrect,
       outbound_agent_configured: input.configuration.outboundRetellAgentConfigured,
       outbound_flow_configured: input.configuration.outboundRetellFlowConfigured,
+      single_prompt_agent_configured: input.configuration.outboundRetellSinglePromptAgentConfigured,
       webhook_secret_configured: input.configuration.outboundRetellWebhookSecretConfigured,
       webhook_url: `${operationalBaseUrl}/api/outbound/webhooks/retell`,
       function_urls: [
@@ -262,6 +264,7 @@ export async function getOutboundSetupStatus(detectedBaseUrl: string) {
       retellFromNumber: env.RETELL_FROM_NUMBER,
       outboundRetellAgentConfigured: Boolean(env.OUTBOUND_RETELL_AGENT_ID),
       outboundRetellFlowConfigured: Boolean(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID),
+      outboundRetellSinglePromptAgentConfigured: Boolean(env.OUTBOUND_RETELL_SINGLE_PROMPT_AGENT_ID),
       outboundRetellWebhookSecretConfigured: Boolean(env.OUTBOUND_RETELL_WEBHOOK_SECRET),
       outboundSmsEnabled: runtime?.smsEffective ?? env.OUTBOUND_RETELL_SMS_ENABLED,
       emailProvider: env.EMAIL_PROVIDER,
