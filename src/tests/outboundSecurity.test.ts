@@ -178,6 +178,7 @@ describe("outbound flow guardrails", () => {
     expect(JSON.stringify(mainNode)).toContain("Use only after the assistant has already asked: Is there anything else I can help you with?");
     expect(JSON.stringify(mainNode)).toContain("end_hard_terminal_call_from_main");
     expect(JSON.stringify(mainNode)).toContain("Use only after explicit do-not-contact, attorney represented, or hostile/abusive hard terminal outcome has already been acknowledged and logged.");
+    expect(JSON.stringify(mainNode)).toContain("Understood. We'll stop calling this number. Goodbye.");
     expect(JSON.stringify(mainNode)).toContain('"name":"end_wrong_number_call_from_main"');
     expect(JSON.stringify(mainNode)).toContain("Sorry about that. We'll review the contact information. Goodbye.");
     expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');

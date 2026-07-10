@@ -410,7 +410,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             "Use only after explicit do-not-contact, attorney represented, or hostile/abusive hard terminal outcome has already been acknowledged and logged. Do not use for wrong number; use the wrong-number terminal route instead.",
           speak_during_execution: true,
           execution_message_type: "static_text",
-          execution_message_description: "Understood. Goodbye.",
+          execution_message_description: "Understood. We'll stop calling this number. Goodbye.",
         },
         {
           type: "transfer_call",
