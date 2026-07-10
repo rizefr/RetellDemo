@@ -137,12 +137,48 @@ function resolveOutboundVoice(existingAgent: unknown): {
   return { voiceId: "11labs-Gilfoy", source: "default_fallback" };
 }
 
+function numericSetting(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function stringSetting<T extends string>(value: unknown, fallback: T): T {
+  return (typeof value === "string" && value.trim() ? value : fallback) as T;
+}
+
+function resolveOutboundVoiceSettings(existingAgent: unknown): typeof OUTBOUND_VOICE_SETTINGS {
+  const current = existingAgent as Record<string, unknown>;
+  return {
+    voice_model: stringSetting(current.voice_model, OUTBOUND_VOICE_SETTINGS.voice_model),
+    voice_speed: numericSetting(current.voice_speed, OUTBOUND_VOICE_SETTINGS.voice_speed),
+    voice_temperature: numericSetting(current.voice_temperature, OUTBOUND_VOICE_SETTINGS.voice_temperature),
+    interruption_sensitivity: numericSetting(
+      current.interruption_sensitivity,
+      OUTBOUND_VOICE_SETTINGS.interruption_sensitivity,
+    ),
+    responsiveness: numericSetting(current.responsiveness, OUTBOUND_VOICE_SETTINGS.responsiveness),
+    enable_backchannel:
+      typeof current.enable_backchannel === "boolean"
+        ? current.enable_backchannel
+        : OUTBOUND_VOICE_SETTINGS.enable_backchannel,
+    begin_message_delay_ms: numericSetting(
+      current.begin_message_delay_ms,
+      OUTBOUND_VOICE_SETTINGS.begin_message_delay_ms,
+    ),
+    ambient_sound: stringSetting(current.ambient_sound, OUTBOUND_VOICE_SETTINGS.ambient_sound),
+    ambient_sound_volume: numericSetting(
+      current.ambient_sound_volume,
+      OUTBOUND_VOICE_SETTINGS.ambient_sound_volume,
+    ),
+  };
+}
+
 async function updateExistingOutboundAgent(
   existing: Awaited<ReturnType<typeof retrieveExplicitOutboundAgent>>,
   flow: ReturnType<typeof buildOutboundConversationFlow>,
 ) {
   const client = getRetellClient();
   const voice = resolveOutboundVoice(existing.agent);
+  const voiceSettings = resolveOutboundVoiceSettings(existing.agent);
   const draftAgent = await client.agent.createVersion(existing.agent.agent_id, {
     base_version: existing.agent.version,
   });
@@ -167,7 +203,7 @@ async function updateExistingOutboundAgent(
     version: targetAgentVersion,
     agent_name: env.OUTBOUND_RETELL_AGENT_NAME,
     voice_id: voice.voiceId,
-    ...OUTBOUND_VOICE_SETTINGS,
+    ...voiceSettings,
     response_engine: {
       type: "conversation-flow",
       conversation_flow_id: existing.flow.conversation_flow_id,
@@ -230,7 +266,7 @@ async function main() {
       "Safe default: no Retell resources were created.",
       "Set CONFIRM_CREATE_RETELL_OUTBOUND_AGENT=true to update and publish only the explicit OUTBOUND_RETELL_AGENT_ID and OUTBOUND_RETELL_CONVERSATION_FLOW_ID.",
       "This script contains no phone-number update, phone binding, name matching, or duplicate creation operation.",
-      "Voice safety: if OUTBOUND_RETELL_VOICE_ID is not explicitly set for this run, the script preserves the current dashboard voice from Retell readback.",
+      "Voice safety: if OUTBOUND_RETELL_VOICE_ID is not explicitly set for this run, the script preserves the current dashboard voice and runtime voice settings from Retell readback.",
     ],
   };
 
@@ -266,6 +302,7 @@ async function main() {
       updated.voiceSource === "explicit_env"
         ? "Voice was changed because OUTBOUND_RETELL_VOICE_ID was explicitly set for this run."
         : "Voice was preserved from the current Retell dashboard readback because OUTBOUND_RETELL_VOICE_ID was not explicitly set.",
+      "Runtime voice model, speed, temperature, interruption, responsiveness, backchannel, start delay, and ambience settings were preserved from Retell readback when present.",
       "Copy outbound IDs manually from the generated env example after reviewing the report.",
     ],
   };
