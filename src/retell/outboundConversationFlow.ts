@@ -347,7 +347,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "Outbound collections conversation",
       instruction: {
         type: "prompt",
-        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. When the caller confirms a new responsible party, your next action must be log_outcome with outcome responsible_party_update_requested before any transition, thanks, or final-check. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. If this node has already asked \"Is there anything else I can help you with?\" and the caller says no, goodbye, bye, no thanks, or that's all, immediately use end_polite_final_check_call instead of speaking the goodbye yourself. For hard terminal outcomes, log first, then use end_hard_terminal_call_from_main instead of speaking the final goodbye yourself.",
+        text: "Speak first with the opening selected by call_purpose. If the person says hello or interrupts, restart the applicable opening naturally once. Follow ai_disclosure_policy, use only the spoken invoice fields, and keep each sentence short. When the caller supplies a callback day and time, your next action must be the schedule_callback tool with confirmed=false; never calculate or say the resolved time yourself. When the caller confirms a new responsible party, your next action must be log_outcome with outcome responsible_party_update_requested before any transition, thanks, or final-check. After normal terminal tool calls, route to the final-check node instead of trying to improvise a closing. If this node has already asked \"Is there anything else I can help you with?\" and the caller says no, goodbye, bye, no thanks, or that's all, immediately use end_polite_final_check_call instead of speaking the goodbye yourself. After logging wrong_number, transition to its dedicated terminal node; if Retell offers a same-node terminal action first, use end_wrong_number_call_from_main and never use the polite or hard-terminal action. For hard terminal outcomes, log first, then use end_hard_terminal_call_from_main instead of speaking the final goodbye yourself.",
       },
       edges: [
         {
@@ -393,6 +393,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           speak_during_execution: true,
           execution_message_type: "static_text",
           execution_message_description: "Have a good day. Goodbye.",
+        },
+        {
+          type: "end_call",
+          name: "end_wrong_number_call_from_main",
+          description:
+            "Use only after wrong_number has been logged when the dedicated wrong-number node transition has not occurred. Never use for do-not-contact, attorney, hostile, or polite final-check endings.",
+          speak_during_execution: true,
+          execution_message_type: "static_text",
+          execution_message_description: "Sorry about that. We'll review the contact information. Goodbye.",
         },
         {
           type: "end_call",
