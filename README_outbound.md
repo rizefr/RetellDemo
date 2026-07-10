@@ -17,7 +17,7 @@ The business using it is responsible for establishing its right to contact each 
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
 
-## Current setup status (June 29, 2026)
+## Current setup status (July 9, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
@@ -28,7 +28,7 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
   - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
   - active inspection name: `Elevator Inspection Collections — Paul`
-  - active verified version: V63 after the Paul opening, wrong-person, Gilfoy phrase, and wrong-number terminal polish
+  - active published version read back during comparison setup: V67
   - active voice: `11labs-Gilfoy`, spoken name `Paul`, speed `0.82`, first-message delay `1550 ms`
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. This service copy is separate and was not modified by the active Paul inspection pass.
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
@@ -36,9 +36,9 @@ The business using it is responsible for establishing its right to contact each 
 - Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active verified version: V63 after the Paul opening, wrong-person, Gilfoy phrase, and wrong-number terminal polish
+  - active published version read back during comparison setup: V67
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - current voice is `11labs-Gilfoy`; the presentation speed is `0.82` with a `1550 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `call-center` ambient sound at `1.0`, and voicemail hangup are preserved
+  - current voice is `11labs-Gilfoy`; the presentation speed is `0.82` with a `1550 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `coffee-shop` ambient sound at `0.7`, and voicemail hangup are preserved
   - Paul speaks first with a short business-first opening, avoids repeating the opener after identity confirmation, and states the inspection type, natural date, and speech-safe amount from trusted backend variables
   - the active inspection demo uses on-request disclosure: Paul does not volunteer “virtual assistant” in normal flow, but answers honestly if asked whether he is AI or if scam concern makes disclosure useful
   - the V53 live-call refinement shortened the opener, added company/account confirmation when the named person is wrong, removed forced disclosure from normal invoice-continuation paths, and requires service-issue detail before logging `service_issue_reported`
@@ -47,8 +47,9 @@ The business using it is responsible for establishing its right to contact each 
   - the V57 audio-stability fix accepts Retell `log_outcome` optional string fields when the model sends `null`, preventing 400s like `ERR_BAD_REQUEST` on unused responsible-party/named-contact fields. The SMS-disabled path no longer creates a Stripe payment link before confirming SMS delivery capability, and it never switches to email without confirming the email first.
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
-- Retell deprecated list API usage has been removed from repository code. Scripts that need inventory now use `src/retell/retellList.ts`: `POST /v2/list-agents` with `filter_criteria.channel = "voice"` and paginated `items`, and `GET /v2/list-phone-numbers` with paginated `items`. Source tests fail if legacy `GET /list-agents`, legacy `GET /list-phone-numbers`, `client.agent.list()`, `client.phoneNumber.list()`, or `pagination_key_version` reappear in `src`.
-- Current structural terminal routing, introduced in V55 and still verified in the V63 smoke suite, uses normal final-check and terminal end nodes. Playground smoke checks covered opening/hello, small talk, wrong-person/company confirmation, wrong company, invoice detail questions, scam concern, AI honesty, payment refusal, email delivery, payment-link failure, SMS-disabled text preference, service issue detail capture, callback scheduling, named contact requests, responsible-party update, stop-calling, final goodbye, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Explicit opt-outs, attorney, and hostile requests use the hard-terminal node; wrong-number outcomes use a separate wrong-number terminal node that closes with “Sorry about that. We'll review the contact information. Goodbye.” Polite “bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings and must not be treated as do-not-contact.
+- A separate published Single Prompt comparison agent now exists: `agent_f5a392178f5afa39280b1489a0`, Retell LLM `llm_b3f0e230981f653f0fa1195d0459`, V2. It is unbound and uses the same outbound voice/runtime settings, trusted variables, webhook, and seven wrapped custom tools. Authenticated Presentation Mode can select it through a server-side explicit-ID mapping; normal and batch routes cannot override the agent. See `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md`.
+- Retell deprecated list API usage has been removed from repository code. Scripts that need inventory now use `src/retell/retellList.ts`: `POST /v2/list-agents` with `filter_criteria.channel = { type: "string", op: "eq", value: "voice" }` and paginated `items`, and `GET /v2/list-phone-numbers` with paginated `items`. Source tests fail if legacy `GET /list-agents`, legacy `GET /list-phone-numbers`, `client.agent.list()`, `client.phoneNumber.list()`, or `pagination_key_version` reappear in `src`.
+- Current structural terminal routing, introduced in V55 and retained in the V67 readback, uses normal final-check and terminal end nodes. Playground smoke checks covered opening/hello, small talk, wrong-person/company confirmation, wrong company, invoice detail questions, scam concern, AI honesty, payment refusal, email delivery, payment-link failure, SMS-disabled text preference, service issue detail capture, callback scheduling, named contact requests, responsible-party update, stop-calling, final goodbye, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Explicit opt-outs, attorney, and hostile requests use the hard-terminal node; wrong-number outcomes use a separate wrong-number terminal node that closes with “Sorry about that. We'll review the contact information. Goodbye.” Polite “bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings and must not be treated as do-not-contact.
 - A broad V55 Playground suite covered 42 identity, invoice, payment, trust/compliance, tool, and terminal scenarios. Strict automated checks passed 39/42. The remaining three were manually reviewed and accepted as expected clarifying behavior: spelling `a-p@example.com` aloud, asking when payment might be possible after cash-flow refusal, and asking for concise service-issue detail before logging. No blocking scenario failures remained after V55.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
 - Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
@@ -84,6 +85,8 @@ Demo call mode is separate script context and does not change payment status:
 
 The demo-number control is temporary and separate from the persistent test-phone allowlist. It requires admin auth, test mode, max batch size `1`, an E.164 number, a warning checkbox, and the exact phrase `I AUTHORIZE THIS DEMO TEST CALL`. The authorization has a TTL and can be reused during that demo session for manually started single calls. It never applies to batch calls and never bypasses normal calling hours unless the separate after-hours override is also explicitly confirmed.
 
+The **Agent architecture** selector is also Presentation Mode-only. `Conversation Flow` uses `OUTBOUND_RETELL_AGENT_ID`; `Single Prompt comparison` uses `OUTBOUND_RETELL_SINGLE_PROMPT_AGENT_ID`. The backend maps the enum to those server-side IDs, reports the selected architecture in preflight, and rejects an unconfigured candidate. Normal single-call and batch schemas do not accept this override.
+
 Presentation Mode shows backend-derived feedback instead of generic blocked states. Common messages include invalid E.164 phone format, missing warning checkbox, incorrect confirmation phrase, expired temporary authorization, test mode off, batch size not `1`, after-hours confirmation required, ineligible invoice, paused customer, missing Retell setup, disabled SMS, email not ready, and QuickBooks not connected. The badges are informational only; the backend preflight response remains the source of truth.
 
 The demo details editor can update the fake customer and invoice variables used by Retell: name, phone, email, business name, service description, amount, due/service date, invoice ID, demo call mode, previous call date, follow-up reason, prior concern, preferred payment method, callback details, and mailing/check instructions. These changes are sent to protected backend routes and feed real Retell dynamic variables; they are not browser-only labels.
@@ -98,13 +101,13 @@ Current production selection:
 - Voice model: ElevenLabs Flash v2.5 (`eleven_flash_v2_5`)
 - Speed: `0.82`
 - First-message delay: `1550 ms`
-- Ambient sound: `call-center` at audible but professional volume (`1.0`) so longer tool waits have audible but professional office background instead of sounding like a dead line. Retell docs expose ambient categories, not a keyboard-only effect tied only to custom-tool execution, so `create_payment_link` has a native static execution message of “One moment.” This gives the caller a complete bridge line without relying on the model to start a phrase before a tool call. Do not repeat a second bridge line between `create_payment_link` and `send_payment_email`.
+- Ambient sound: current provider readback is `coffee-shop` at `0.7`. `create_payment_link` also has a native static execution message of “One moment.” so the caller hears a complete bridge line without relying on the model to begin a phrase before a tool call.
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
-The V59/V60 speed/style change came from the live V56 call where the caller asked Paul to slow down. Retell word timing showed the opening was materially faster than the first full response after Paul acknowledged the request. V63 keeps that lower-energy, already-slowed-down style, keeps speed `0.82`, and increases the first-message delay to `1550 ms` so the first name-confirmation line does not rush the caller.
+The V59/V60 speed/style change came from the live V56 call where the caller asked Paul to slow down. Retell word timing showed the opening was materially faster than the first full response after Paul acknowledged the request. V63 introduced the lower-energy `0.82` speed and `1550 ms` first-message delay; those values remain in the current V67 provider readback.
 
-GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Paul prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected for the V63 active flow.
+GPT-5.1 was re-evaluated again during the V50-V52 live-call refinement against the same Paul prompt and native simulation suite. GPT-5.1 was available and cheaper per Retell voice-agent minute, but in the tested batch it was slower, more verbose on scam handling, and prematurely logged outcomes before the required clarification in the payment-refusal and service-issue paths. GPT-4.1 kept the cleaner tool sequence and lower observed latency, so GPT-4.1 remains selected in the current V67 readback.
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the public voice-agent pricing. Current public pricing lists GPT-4.1 standard at `$0.045/min`, GPT-5 and GPT-5.1 standard at `$0.04/min`, and Fast Tier at higher per-minute prices. Token-level usage was not visible in the Retell test outputs used for this verification, so the practical comparison is per-minute price plus observed simulation latency/reliability.
 
@@ -355,6 +358,15 @@ Confirmed mode updates and publishes only the explicit existing outbound resourc
 
 For the presentation Retell flow, confirmed mode requires `OUTBOUND_RETELL_AGENT_ID=agent_4aa8074d7eabe311109ed6da89` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID=conversation_flow_bebdceabc801`, retrieves those exact resources, and refuses to match by name or create duplicates. If either ID is missing or the agent is not attached to the configured flow, the script stops.
 
+The separate outbound Single Prompt comparison uses:
+
+```bash
+OUTBOUND_RETELL_SINGLE_PROMPT_AGENT_ID=agent_f5a392178f5afa39280b1489a0
+OUTBOUND_RETELL_SINGLE_PROMPT_LLM_ID=llm_b3f0e230981f653f0fa1195d0459
+```
+
+`npm run outbound:create-single-prompt` is a provider readback/dry run unless an explicit create or update confirmation flag is supplied. `npm run outbound:test-single-prompt` runs Playground-only mocked-tool scenarios and does not place a call. See `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for the creation guard, webhooks, tools, and A/B process.
+
 Review `retell/outbound_collections_flow_spec.md` and `retell/outbound_collections_flow_payload.example.json`. Configure these signed wrapped-body functions:
 
 - `POST {{APP_BASE_URL}}/api/outbound/retell/log-outcome`
@@ -455,7 +467,7 @@ Do not call until the migration, deployed environment, Stripe webhook, Retell fl
 3. Open `https://elixis.agency/outbound` and confirm the setup panel is ready, test mode is enabled, the allowlist has one number, and SMS is disabled/manual.
 4. Confirm invoice `ELV-TEST-OWN-NUMBER` is assigned to `+13475850249`, is not paused, and remains `unpaid` or `payment_link_sent`.
 5. Select that invoice and run the batch dry run; confirm it reports `0 calls placed`.
-6. During the recipient-local weekday 10:00-16:00 window, click “Check call gates” and confirm the single-call button becomes enabled.
+6. Choose `Conversation Flow` or `Single Prompt comparison`, then during the recipient-local weekday 10:00-16:00 window click “Check call gates” and confirm preflight reports the selected architecture before the single-call button becomes enabled.
 7. Start exactly one test call only after explicit authorization.
 8. Inspect the refreshed call outcome, events, notes, and follow-up status in `/outbound` and Supabase.
 

@@ -33,6 +33,7 @@ import {
   formatOutboundPhoneSpokenChunked,
 } from "./outboundFormatting";
 import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
+import { resolveOutboundAgentVariant, type OutboundAgentVariant } from "./outboundAgentVariant";
 
 export type AfterHoursOverrideRequest = {
   acknowledged: true;
@@ -168,6 +169,7 @@ export async function describeOutboundCallPreflight(
   afterHoursOverride?: AfterHoursOverrideRequest,
   followupTaskId?: string,
   demoCallAuthorizationId?: string,
+  agentVariant: OutboundAgentVariant = "conversation_flow",
 ) {
   const eligibility = await inspectOutboundCallEligibility(invoiceId, now, afterHoursOverride, demoCallAuthorizationId);
   const timezone = normalizeOutboundTimezone(
@@ -188,9 +190,10 @@ export async function describeOutboundCallPreflight(
       task.status === "pending";
     if (!callbackTaskEligible) callbackTaskReason = "callback_task_not_pending_for_invoice";
   }
+  const selectedAgent = resolveOutboundAgentVariant(agentVariant);
   return {
-    eligible: eligibility.eligible && callbackTaskEligible,
-    reason: callbackTaskReason || eligibility.reason,
+    eligible: eligibility.eligible && callbackTaskEligible && selectedAgent.configured,
+    reason: selectedAgent.reason || callbackTaskReason || eligibility.reason,
     timezone,
     recipient_local_time: DateTime.fromJSDate(now, { zone: timezone }).toISO(),
     within_calling_window: isWithinOutboundCallingWindow(now, timezone),
@@ -209,6 +212,9 @@ export async function describeOutboundCallPreflight(
     demo_call_authorization_id: demoCallAuthorizationId || null,
     demo_call_mode: demoCallMode(eligibility.demo_call_authorization?.demo_call_mode || eligibility.context.invoice.demo_call_mode),
     destination_phone_number: phoneNumber,
+    agent_variant: selectedAgent.variant,
+    agent_label: selectedAgent.label,
+    agent_configured: selectedAgent.configured,
   };
 }
 
@@ -218,8 +224,10 @@ export async function startOutboundCall(
   now = new Date(),
   followupTaskId?: string,
   demoCallAuthorizationId?: string,
+  agentVariant: OutboundAgentVariant = "conversation_flow",
 ) {
-  if (!env.OUTBOUND_RETELL_AGENT_ID) throw new Error("OUTBOUND_RETELL_AGENT_ID is required");
+  const selectedAgent = resolveOutboundAgentVariant(agentVariant);
+  if (!selectedAgent.configured) throw new Error(selectedAgent.reason || "Retell agent is not configured");
   if (!env.RETELL_FROM_NUMBER) throw new Error("RETELL_FROM_NUMBER is required");
   const eligibility = await inspectOutboundCallEligibility(invoiceId, now, afterHoursOverride, demoCallAuthorizationId);
   if (!eligibility.eligible) throw new Error(`Outbound call blocked: ${eligibility.reason}`);
@@ -270,6 +278,7 @@ export async function startOutboundCall(
     invoice_id: String(context.invoice.id),
     invoice_number: String(context.invoice.invoice_id),
     call_attempt_id: String(attempt.id),
+    agent_variant: selectedAgent.variant,
     ...(demoCallAuthorizationId ? { demo_call_authorization_id: demoCallAuthorizationId } : {}),
   };
   const account = context.account ?? {
@@ -392,7 +401,7 @@ export async function startOutboundCall(
     const call = await getRetellClient().call.createPhoneCall({
       from_number: env.RETELL_FROM_NUMBER,
       to_number: effectivePhoneNumber,
-      override_agent_id: env.OUTBOUND_RETELL_AGENT_ID,
+      override_agent_id: selectedAgent.agentId,
       metadata,
       retell_llm_dynamic_variables: dynamicVariables,
     });
@@ -419,6 +428,8 @@ export async function startOutboundCall(
           demo_call_authorization_id: demoCallAuthorizationId,
           destination_phone_number: effectivePhoneNumber,
           demo_call_mode: selectedDemoMode,
+          agent_variant: selectedAgent.variant,
+          agent_id: selectedAgent.agentId,
           call_id: call.call_id,
         },
       });
@@ -428,6 +439,8 @@ export async function startOutboundCall(
       status: call.call_status,
       attempt_id: attempt.id,
       after_hours_override_used: eligibility.override_used,
+      agent_variant: selectedAgent.variant,
+      agent_label: selectedAgent.label,
     };
   } catch (error) {
     await updateOutboundCallAttempt(String(attempt.id), {

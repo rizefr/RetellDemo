@@ -5,7 +5,8 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Latest verified Retell version after the Paul opening, wrong-person, Gilfoy phrase, and wrong-number terminal polish: V63.
+- Current published Conversation Flow readback during comparison setup: V67.
+- Separate Single Prompt comparison: agent `agent_f5a392178f5afa39280b1489a0`, LLM `llm_b3f0e230981f653f0fa1195d0459`, V2, unbound. Use `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for the safe A/B workflow.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
 - Voice and pacing: `11labs-Gilfoy`, speed `0.82`, `1550 ms` first-message delay, GPT-4.1.
@@ -27,7 +28,7 @@ Current Retell settings to preserve for the elevator demo:
 - voice model ElevenLabs Flash v2.5 (`eleven_flash_v2_5`)
 - speed `0.82`
 - first-message delay `1550 ms`
-- ambient sound `call-center` at volume `1.0`
+- ambient sound `coffee-shop` at volume `0.7` from current provider readback
 - wrapped signed tools with `args_at_root` disabled
 
 Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. The current inspection voice is `11labs-Gilfoy`; use `OUTBOUND_RETELL_VOICE_ID=11labs-Sloane` only for an intentional Sloane rollback. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
@@ -40,11 +41,20 @@ Retell docs and SDK types currently expose multiple ElevenLabs model IDs, includ
 
 ## Retell API Maintenance
 
-The repo has been migrated away from Retell deprecated legacy list APIs. Do not use SDK `client.agent.list()` or legacy `GET /list-agents`; use `listRetellVoiceAgentsV2` from `src/retell/retellList.ts`, which calls `POST /v2/list-agents`, sets `filter_criteria.channel` to `voice`, reads `items`, and paginates with `pagination_key` and `has_more`. Do not use SDK `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`; use `listRetellPhoneNumbersV2`, which calls `GET /v2/list-phone-numbers` and reads paginated `items`.
+The repo has been migrated away from Retell deprecated legacy list APIs. Do not use SDK `client.agent.list()` or legacy `GET /list-agents`; use `listRetellVoiceAgentsV2` from `src/retell/retellList.ts`, which calls `POST /v2/list-agents`, sets `filter_criteria.channel` to `{ type: "string", op: "eq", value: "voice" }`, reads `items`, and paginates with `pagination_key` and `has_more`. Do not use SDK `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`; use `listRetellPhoneNumbersV2`, which calls `GET /v2/list-phone-numbers` and reads paginated `items`.
 
 Never send `pagination_key_version`. The focused test `src/tests/retellListApi.test.ts` guards source code against the deprecated strings and old SDK list methods. If Retell SDK later exposes first-class non-deprecated list helpers, replace the local helpers only after this guard still passes.
 
 The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. Review it before changing Retell routes, dynamic variables, tools, or `/outbound` connector behavior.
+
+## Single Prompt Comparison Maintenance
+
+- Keep `agent_f5a392178f5afa39280b1489a0` unbound. It is selected only through authenticated Presentation Mode and the server-side `single_prompt` variant mapping.
+- Keep its LLM `llm_b3f0e230981f653f0fa1195d0459` explicit in server environment settings. Never discover-and-update it by name.
+- Use the same demo variables and caller scenario when comparing it with the V67 Conversation Flow agent.
+- Run `npm run outbound:test-single-prompt` before any live A/B call. Its tool results are mocked and do not prove production delivery.
+- Do not add the pest-control knowledge base. Trusted outbound invoice/customer data comes from call variables and signed metadata.
+- Read `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for exact tools, current V2 settings, update guards, and the no-call preflight workflow.
 
 ## Live-Call Refinement Notes Through V55
 
@@ -58,10 +68,10 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 - If the caller asks for a named person to call, handle the invoice, or be put on the phone, Paul logs `named_contact_requested` before promising that person or their team will follow up.
 - The V55 broad Playground suite covered 42 scenarios. Strict checks passed 39/42, and the other three were manually accepted clarifying behaviors, not blockers.
 
-## V63 Gilfoy/Paul Opening Polish
+## V63 Gilfoy/Paul Opening Polish (Historical)
 
-- Paul uses `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`.
-- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V63 keeps speed `0.82`, adds a longer first-message delay, inserts a short Retell pause marker between the business name and name-confirmation question, and separates wrong-number terminal handling from explicit opt-out handling.
+- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V67 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
+- The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V63 introduced speed `0.82`, a longer first-message delay, a short Retell pause marker between the business name and name-confirmation question, and separate wrong-number versus explicit-opt-out handling.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
 - First phone confirmation uses `customer_phone_spoken`; repeat/correction uses `customer_phone_spoken_chunked`.

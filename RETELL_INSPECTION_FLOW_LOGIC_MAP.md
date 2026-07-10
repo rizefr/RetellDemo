@@ -7,13 +7,13 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Latest repo-documented verified version: V63 after the Paul opening, wrong-person, Gilfoy phrase, and wrong-number terminal polish. Read back Retell before any publish.
+- Current published version read back during Single Prompt comparison setup: V67. Read back Retell before any publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
 - Speed: `0.82`
 - First-message delay: `1550 ms`
-- Ambient sound: `call-center`, volume `1.0`
+- Ambient sound: `coffee-shop`, volume `0.7` from current provider readback
 - Outbound phone: `+19842075346`
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
 
@@ -168,7 +168,7 @@ Explicit do-not-contact, attorney represented, and hostile/abusive outcomes rout
 
 Repository code must not call deprecated SDK `client.agent.list()` or legacy `GET /list-agents`, and must not call `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`. Use `src/retell/retellList.ts` helpers instead:
 
-- `listRetellVoiceAgentsV2`: `POST /v2/list-agents`, `filter_criteria.channel = "voice"`, reads `items`, `has_more`, and `pagination_key`.
+- `listRetellVoiceAgentsV2`: `POST /v2/list-agents`, `filter_criteria.channel = { type: "string", op: "eq", value: "voice" }`, reads `items`, `has_more`, and `pagination_key`.
 - `listRetellPhoneNumbersV2`: `GET /v2/list-phone-numbers`, reads `items`, `has_more`, and `pagination_key`.
 
 Do not send or depend on `pagination_key_version`.
