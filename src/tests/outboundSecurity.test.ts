@@ -278,8 +278,12 @@ describe("outbound flow guardrails", () => {
     expect(prompt).toContain('If the invoice was received, say: "Good to hear. Do you need the secure payment link?"');
     expect(prompt).toContain('If the caller says no to the payment-link question, ask exactly: "By what date should we expect payment?"');
     expect(prompt).toContain("Declining the payment link is not the same as refusing to pay");
+    expect(prompt).toContain('If the caller answers only yes, ask exactly: "Would you prefer text or email?"');
+    expect(prompt).toContain("Even vague phrases such as soon, later, or sometime must be passed to schedule_followup");
     expect(prompt).toContain("Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks what the invoice is about, asks how payment works, or asks for the amount.");
     expect(JSON.stringify(flow)).toContain('"id":"payment_link_declined_expected_date_example"');
+    expect(JSON.stringify(flow)).toContain('"id":"payment_link_yes_asks_delivery_preference_example"');
+    expect(JSON.stringify(flow)).toContain('"id":"ambiguous_expected_date_uses_tool_example"');
     expect(JSON.stringify(flow)).toContain('\\"expected_payment_date_phrase\\":\\"Friday\\"');
   });
 

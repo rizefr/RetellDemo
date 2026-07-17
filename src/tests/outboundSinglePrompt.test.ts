@@ -27,6 +27,8 @@ describe("outbound single-prompt comparison agent", () => {
     expect(prompt).toContain("May I ask the reason, so I can note it correctly for the team?");
     expect(prompt).toContain("Good to hear. Do you need the secure payment link?");
     expect(prompt).toContain("By what date should we expect payment?");
+    expect(prompt).toContain('If the caller answers only yes, ask exactly: "Would you prefer text or email?"');
+    expect(prompt).toContain("Even vague phrases such as soon, later, or sometime");
     expect(prompt).toContain("schedule_callback with confirmed=false");
     expect(prompt).toContain("send_payment_email returns sent=true");
     expect(prompt).toContain("SMS is disabled/manual");

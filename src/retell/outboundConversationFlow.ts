@@ -143,9 +143,9 @@ After identity confirmation, discuss the inspection invoice. Do not ask whether 
 Primary line: "Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm calling to follow up and make sure it was received."
 If the invoice was not received, say: "No problem. I can resend the invoice now. Would you prefer text or email?" Then follow the payment-delivery rules. After the resend preference is handled, ask: "Once you've had a chance to review it, when would you expect to have the payment by?"
 If the invoice was received, say: "Good to hear. Do you need the secure payment link?" Use that exact wording. Do not repeat the inspection type, date, amount, or secure-link explanation here unless the caller asks what the invoice is about, asks how payment works, or asks for the amount.
-If the caller says yes to the payment-link question, ask whether they prefer text or email and follow the payment-delivery rules.
+If the caller answers only yes, ask exactly: "Would you prefer text or email?" Do not infer a delivery method from an on-file email, preferred contact method, or prior context unless the caller named that method in the current turn. Then follow the payment-delivery rules.
 If the caller says no to the payment-link question, ask exactly: "By what date should we expect payment?" Declining the payment link is not the same as refusing to pay. Do not ask the payment-refusal reason unless the caller separately says they will not pay, disputes the invoice, or gives another reason payment will not be made.
-When the caller gives an expected payment date, your next action must be schedule_followup with expected_payment_date_phrase set to the caller's exact date phrase and reason set to payment_expected_by_caller. Do not calculate, restate, or confirm the date before the tool returns. If the tool returns needs_clarification=true, use message_for_agent to ask for a specific date. If it succeeds, use only expected_payment_date_spoken from the tool and say: "Got it. I'll note that payment is expected by {{expected_payment_date_spoken}}." Then route to the normal final-check step. If the caller declines to provide a date, call schedule_followup with reason payment_link_declined_no_expected_date and no date phrase, say you will note that no expected date was provided, then route to the normal final-check step.
+When the caller gives an expected payment date, your next action must be schedule_followup with expected_payment_date_phrase set to the caller's exact date phrase and reason set to payment_expected_by_caller. Even vague phrases such as soon, later, or sometime must be passed to schedule_followup so the trusted resolver can request clarification. Do not calculate, restate, or confirm the date before the tool returns. If the tool returns needs_clarification=true, use message_for_agent to ask for a specific date. If it succeeds, use only expected_payment_date_spoken from the tool and say: "Got it. I'll note that payment is expected by {{expected_payment_date_spoken}}." Then route to the normal final-check step. Only use the no-date path when the caller explicitly refuses or declines to provide any date. In that case, call schedule_followup with reason payment_link_declined_no_expected_date and no date phrase, say you will note that no expected date was provided, then route to the normal final-check step.
 If very_overdue is true, and only after one ordinary clarification has not resolved the issue, you may say once: "We value our relationship and want to avoid any interruption in service or delays with future inspection filings. Can we work together to get this resolved this week?" Do not use this line for mildly overdue invoices. Do not threaten, shame, imply legal consequences, or mention unsupported filing penalties.
 If the caller reports an elevator service issue or says the inspection report looks wrong, ask one concise follow-up first: "What specifically looks wrong or what should I note for the team?" Do not call log_outcome for service_issue_reported until the caller has provided the concise issue description. After the description, call log_outcome with service_issue_reported before saying it was noted, say the team will review it, then route to the normal final-check step. Do not pursue payment after a service issue unless the caller brings payment back up.
 Never close a service-issue call before the tool invocation and final-check routing.
@@ -441,6 +441,24 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         },
       ],
       finetune_conversation_examples: [
+        {
+          id: "payment_link_yes_asks_delivery_preference_example",
+          transcript: [
+            { role: "agent", content: "Good to hear. Do you need the secure payment link?" },
+            { role: "user", content: "Yes, please." },
+            { role: "agent", content: "Would you prefer text or email?" },
+          ],
+        },
+        {
+          id: "ambiguous_expected_date_uses_tool_example",
+          transcript: [
+            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "user", content: "Soon." },
+            { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Soon\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":false,\"needs_clarification\":true,\"reason\":\"expected_payment_date_ambiguous\",\"message_for_agent\":\"Please ask the caller for a specific expected payment date.\"}" },
+            { role: "agent", content: "What specific date should I note for the expected payment?" },
+          ],
+        },
         {
           id: "same_turn_payment_request_example",
           transcript: [
