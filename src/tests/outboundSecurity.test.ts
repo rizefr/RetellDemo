@@ -114,7 +114,7 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
-    expect(serialized).toContain("Good to hear. Would you like to take care of it now?");
+    expect(serialized).toContain("Good to hear. Do you need the secure payment link?");
     expect(serialized).toContain("We value our relationship and want to avoid any interruption in service or delays with future inspection filings");
     expect(serialized).toContain("Do not mention virtual assistant or AI status automatically in the normal flow.");
     expect(serialized).toContain("I apologize. Is this not the right number for {{customer_first_name_spoken}}?");
@@ -275,8 +275,12 @@ describe("outbound flow guardrails", () => {
     const flow = buildOutboundConversationFlow("https://elixis.agency");
     const prompt = String(flow.global_prompt);
     expect(prompt).toContain("If the caller switches from text to email, confirm {{customer_email_spoken_slow}} before calling send_payment_email");
-    expect(prompt).toContain('If the invoice was received, say: "Good to hear. Would you like to take care of it now?"');
+    expect(prompt).toContain('If the invoice was received, say: "Good to hear. Do you need the secure payment link?"');
+    expect(prompt).toContain('If the caller says no to the payment-link question, ask exactly: "By what date should we expect payment?"');
+    expect(prompt).toContain("Declining the payment link is not the same as refusing to pay");
     expect(prompt).toContain("Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks what the invoice is about, asks how payment works, or asks for the amount.");
+    expect(JSON.stringify(flow)).toContain('"id":"payment_link_declined_expected_date_example"');
+    expect(JSON.stringify(flow)).toContain('\\"expected_payment_date_phrase\\":\\"Friday\\"');
   });
 
   it("keeps Presentation Mode copy professional and surfaces specific demo gate messages", () => {

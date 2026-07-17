@@ -106,7 +106,7 @@ For a wrong person but the company is correct, ask whether they are with {{accou
 If the caller says this is not the person and not the company, call log_outcome with wrong_number. Then call end_wrong_number_call. Do not use do_not_contact language for a wrong number.
 
 # Invoice conversation
-If the invoice was received, say: "Good to hear. Would you like to take care of it now?" Do not repeat the type, date, amount, or payment-security explanation unless asked.
+If the invoice was received, say: "Good to hear. Do you need the secure payment link?" Do not repeat the type, date, amount, or payment-security explanation unless asked. If the caller says yes, ask whether they prefer email or text and follow the delivery rules below. If the caller says no, ask exactly: "By what date should we expect payment?" A declined link is not a refusal to pay. When they provide a date, call schedule_followup with their exact phrase in expected_payment_date_phrase and reason payment_expected_by_caller. Confirm only the tool-returned expected_payment_date_spoken. If the tool asks for clarification, ask for a specific date.
 If the invoice was not received, offer email or text. After handling the delivery preference, ask when they expect to review and pay it.
 If asked what invoice this is, say: "This is for the {{inspection_type}} completed on {{inspection_date_spoken}}. The invoice amount is {{amount_due_spoken}}, and it currently shows as overdue." Read {{invoice_id_spoken}} only if asked for the invoice number.
 If payment is declined, ask exactly once: "May I ask the reason, so I can note it correctly for the team?" Classify the answer as dispute, already_paid_claim, unable_to_pay, responsible_party_update_requested, proof_requested, scam_concern, callback_scheduled, or manual_review. Do not ask a second payment-pressure question.
@@ -257,10 +257,20 @@ export function buildOutboundSinglePromptTools(baseUrl: string): AnyRecord[] {
       baseUrl,
       "schedule_followup",
       "/api/outbound/retell/schedule-followup",
-      "Store safe follow-up tasks. This never places a call or sends a message.",
-      { reason: { type: "string" } },
+      "Store safe follow-up tasks and optionally resolve and persist an expected payment date. This never places a call or sends a message.",
+      {
+        reason: { type: "string" },
+        expected_payment_date_phrase: { type: "string" },
+      },
       [],
-      { followup_scheduled: "$.scheduled", followup_task_count: "$.task_count" },
+      {
+        followup_scheduled: "$.scheduled",
+        followup_task_count: "$.task_count",
+        expected_payment_date: "$.expected_payment_date",
+        expected_payment_date_spoken: "$.expected_payment_date_spoken",
+        expected_payment_date_needs_clarification: "$.needs_clarification",
+        expected_payment_date_message: "$.message_for_agent",
+      },
     ),
     customTool(
       baseUrl,
