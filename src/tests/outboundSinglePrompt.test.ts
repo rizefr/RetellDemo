@@ -29,6 +29,7 @@ describe("outbound single-prompt comparison agent", () => {
     expect(prompt).toContain("By what date should we expect payment?");
     expect(prompt).toContain('If the caller answers only yes, ask exactly: "Would you prefer text or email?"');
     expect(prompt).toContain("Even vague phrases such as soon, later, or sometime");
+    expect(prompt).toContain("Never decide that a supplied date phrase is too vague before calling schedule_followup");
     expect(prompt).toContain("schedule_callback with confirmed=false");
     expect(prompt).toContain("send_payment_email returns sent=true");
     expect(prompt).toContain("SMS is disabled/manual");
