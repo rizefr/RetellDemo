@@ -102,10 +102,11 @@ If the caller is not the named person, Paul first asks whether this is not the r
 
 Paul says exactly: `Good to hear. Do you need the secure payment link?` He does not repeat the inspection type, date, amount, or secure-link explanation unless the caller asks for invoice/payment details.
 
-- **Yes:** Paul asks for text or email preference and follows the existing gated delivery branch.
+- **Yes with no method named:** Paul asks exactly `Would you prefer text or email?` He does not infer email from the on-file address or a prior preference.
+- **Yes with a method named:** Paul continues directly into the existing gated confirmation and delivery branch for that method.
 - **No:** Paul asks exactly: `By what date should we expect payment?` A declined link is not a payment refusal.
-- **Date supplied:** `schedule_followup` receives the caller's exact phrase. The backend resolves it from the trusted call timestamp and customer/business timezone, rejects ambiguous or past dates, stores `outbound_invoices.expected_payment_date`, logs `expected_payment_date_recorded`, and creates follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
-- **No date supplied:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
+- **Date phrase supplied:** `schedule_followup` receives the caller's exact phrase, including vague answers such as `soon`, `later`, or `sometime`. The backend resolves it from the trusted call timestamp and customer/business timezone. Ambiguous or past dates return a clarification request with no write. Valid dates store `outbound_invoices.expected_payment_date`, log `expected_payment_date_recorded`, and create follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
+- **Caller explicitly declines to give a date:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
 - **Explicit refusal to pay:** only then does Paul ask one reason and classify it without pressure.
 
 ### Invoice Not Received
