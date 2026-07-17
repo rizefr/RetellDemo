@@ -1,4 +1,5 @@
 import express from "express";
+import { DateTime } from "luxon";
 import { env } from "../config/env";
 import {
   logOutcomeArgsSchema,
@@ -16,12 +17,14 @@ import {
   recordOutboundOutcome,
   createOutboundCallbackTask,
   updateOutboundCustomer,
+  updateOutboundInvoice,
 } from "../services/outboundRepository";
 import { trustedRetellMetadata, verifyOutboundRetellSignature } from "../services/outboundRetell";
 import { createOutboundCheckoutSession } from "../services/outboundStripe";
 import { sendOutboundPaymentEmailForInvoice } from "../services/outboundEmail";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
 import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
+import { resolveOutboundExpectedPaymentDate } from "../services/outboundExpectedPaymentDate";
 
 export const outboundRetellToolsRouter = express.Router();
 
@@ -287,17 +290,62 @@ outboundRetellToolsRouter.post(
     if (context.invoice.status === "paid" || context.customer.outreach_paused) {
       return { scheduled: false, reason: context.invoice.status === "paid" ? "invoice_paid" : "outreach_paused" };
     }
+    let expectedPaymentDate: string | null = null;
+    let expectedPaymentDateSpoken: string | null = null;
+    let followupBase = new Date().toISOString();
+    const timezone = String(context.customer.timezone || context.business.default_timezone || "America/New_York");
+    if (args.expected_payment_date_phrase) {
+      const started = Number(envelope.call.start_timestamp);
+      const resolution = resolveOutboundExpectedPaymentDate({
+        datePhrase: args.expected_payment_date_phrase,
+        timezone,
+        referenceTime: Number.isFinite(started) && started > 0 ? new Date(started) : new Date(),
+      });
+      if (!resolution.ok) {
+        return {
+          scheduled: false,
+          needs_clarification: true,
+          reason: resolution.reason,
+          message_for_agent: resolution.message,
+        };
+      }
+      expectedPaymentDate = resolution.expectedPaymentDate;
+      expectedPaymentDateSpoken = resolution.expectedPaymentDateSpoken;
+      followupBase = DateTime.fromISO(expectedPaymentDate, { zone: resolution.timezone })
+        .set({ hour: 12 })
+        .toUTC()
+        .toISO() as string;
+      await updateOutboundInvoice(metadata.invoiceId, { expected_payment_date: expectedPaymentDate });
+      await insertOutboundEvent({
+        business_id: metadata.businessId,
+        customer_id: metadata.customerId,
+        invoice_id: metadata.invoiceId,
+        event_type: "expected_payment_date_recorded",
+        source: "retell_function",
+        payload: {
+          expected_payment_date: expectedPaymentDate,
+          timezone: resolution.timezone,
+          call_attempt_id: metadata.callAttemptId || null,
+        },
+      });
+    }
     const tasks = await insertOutboundFollowups(
       {
         businessId: metadata.businessId,
         customerId: metadata.customerId,
         invoiceId: metadata.invoiceId,
       },
-      buildBaselineFollowups(new Date().toISOString(), String(context.customer.timezone), 1).map((task) => ({
+      buildBaselineFollowups(followupBase, timezone, 1).map((task) => ({
         ...task,
         reason: `${task.reason}:${args.reason}`,
       })),
     );
-    return { scheduled: true, task_count: tasks.length };
+    return {
+      scheduled: true,
+      needs_clarification: false,
+      task_count: tasks.length,
+      expected_payment_date: expectedPaymentDate,
+      expected_payment_date_spoken: expectedPaymentDateSpoken,
+    };
   }),
 );

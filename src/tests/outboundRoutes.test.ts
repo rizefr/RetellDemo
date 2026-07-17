@@ -418,6 +418,117 @@ describe("outbound webhook contracts", () => {
     vi.resetModules();
   });
 
+  it("stores an expected payment date through the signed follow-up tool without changing invoice status", async () => {
+    process.env.NODE_ENV = "test";
+    process.env.RETELL_API_KEY = "retell-followup-api-key";
+    const updateOutboundInvoice = vi.fn().mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000003",
+      status: "unpaid",
+      expected_payment_date: "2026-07-17",
+    });
+    const insertOutboundFollowups = vi.fn().mockResolvedValue([{ id: "followup-1" }]);
+    const insertOutboundEvent = vi.fn().mockResolvedValue({ id: "event-1" });
+    vi.doMock("../services/outboundRepository", async () => {
+      const actual = await vi.importActual<typeof import("../services/outboundRepository")>(
+        "../services/outboundRepository",
+      );
+      return {
+        ...actual,
+        getOutboundInvoiceContext: vi.fn().mockResolvedValue({
+          invoice: { id: "00000000-0000-4000-8000-000000000003", status: "unpaid" },
+          customer: {
+            id: "00000000-0000-4000-8000-000000000002",
+            outreach_paused: false,
+            timezone: "America/New_York",
+          },
+          business: { id: "00000000-0000-4000-8000-000000000001" },
+        }),
+        updateOutboundInvoice,
+        insertOutboundFollowups,
+        insertOutboundEvent,
+      };
+    });
+    vi.resetModules();
+    const { createApp } = await import("../app");
+    const payload = JSON.stringify({
+      name: "schedule_followup",
+      args: {
+        reason: "payment_expected_by_caller",
+        expected_payment_date_phrase: "tomorrow",
+      },
+      call: {
+        call_id: "call_expected_payment_date",
+        agent_id: "agent_outbound_test",
+        start_timestamp: new Date("2026-07-16T14:00:00.000Z").getTime(),
+        metadata: {
+          business_id: "00000000-0000-4000-8000-000000000001",
+          customer_id: "00000000-0000-4000-8000-000000000002",
+          invoice_id: "00000000-0000-4000-8000-000000000003",
+          call_attempt_id: "00000000-0000-4000-8000-000000000004",
+        },
+      },
+    });
+    const signature = await sign(payload, "retell-followup-api-key");
+    const response = await request(createApp())
+      .post("/api/outbound/retell/schedule-followup")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      scheduled: true,
+      expected_payment_date: "2026-07-17",
+      expected_payment_date_spoken: "July seventeenth, twenty twenty-six",
+    });
+    expect(updateOutboundInvoice).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000003",
+      { expected_payment_date: "2026-07-17" },
+    );
+    expect(updateOutboundInvoice).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: expect.anything() }),
+    );
+    expect(insertOutboundEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event_type: "expected_payment_date_recorded" }),
+    );
+    expect(insertOutboundFollowups).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        expect.objectContaining({ reason: expect.stringContaining("payment_expected_by_caller") }),
+      ]),
+    );
+
+    updateOutboundInvoice.mockClear();
+    insertOutboundEvent.mockClear();
+    insertOutboundFollowups.mockClear();
+    const ambiguousPayload = JSON.stringify({
+      ...JSON.parse(payload),
+      args: {
+        reason: "payment_expected_by_caller",
+        expected_payment_date_phrase: "soon",
+      },
+    });
+    const ambiguousSignature = await sign(ambiguousPayload, "retell-followup-api-key");
+    const ambiguous = await request(createApp())
+      .post("/api/outbound/retell/schedule-followup")
+      .set("content-type", "application/json")
+      .set("x-retell-signature", ambiguousSignature)
+      .send(ambiguousPayload);
+
+    expect(ambiguous.status).toBe(200);
+    expect(ambiguous.body).toMatchObject({
+      scheduled: false,
+      needs_clarification: true,
+      reason: "expected_payment_date_ambiguous",
+    });
+    expect(updateOutboundInvoice).not.toHaveBeenCalled();
+    expect(insertOutboundEvent).not.toHaveBeenCalled();
+    expect(insertOutboundFollowups).not.toHaveBeenCalled();
+    vi.doUnmock("../services/outboundRepository");
+    vi.resetModules();
+  });
+
   it("rejects signed root-only Retell tool args because trusted call metadata is absent", async () => {
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "retell-tool-api-key";

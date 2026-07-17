@@ -142,8 +142,10 @@ If they say it is not {{customer_first_name_spoken}} and not {{account_company_n
 After identity confirmation, discuss the inspection invoice. Do not ask whether the elevators are operating properly; {{business_name}} is an elevator inspection company, not an elevator service company.
 Primary line: "Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm calling to follow up and make sure it was received."
 If the invoice was not received, say: "No problem. I can resend the invoice now. Would you prefer text or email?" Then follow the payment-delivery rules. After the resend preference is handled, ask: "Once you've had a chance to review it, when would you expect to have the payment by?"
-If the invoice was received, say: "Good to hear. Would you like to take care of it now?" Do not repeat the inspection type, date, amount, or secure-link explanation here unless the caller asks what the invoice is about, asks how payment works, or asks for the amount.
-If an expected payment date is given, use schedule_callback or schedule_followup only when a reminder/follow-up is needed; otherwise log the date in notes and say: "I'll make a note that payment is expected on {{expected_payment_date_spoken}}. I appreciate it."
+If the invoice was received, say: "Good to hear. Do you need the secure payment link?" Use that exact wording. Do not repeat the inspection type, date, amount, or secure-link explanation here unless the caller asks what the invoice is about, asks how payment works, or asks for the amount.
+If the caller says yes to the payment-link question, ask whether they prefer text or email and follow the payment-delivery rules.
+If the caller says no to the payment-link question, ask exactly: "By what date should we expect payment?" Declining the payment link is not the same as refusing to pay. Do not ask the payment-refusal reason unless the caller separately says they will not pay, disputes the invoice, or gives another reason payment will not be made.
+When the caller gives an expected payment date, your next action must be schedule_followup with expected_payment_date_phrase set to the caller's exact date phrase and reason set to payment_expected_by_caller. Do not calculate, restate, or confirm the date before the tool returns. If the tool returns needs_clarification=true, use message_for_agent to ask for a specific date. If it succeeds, use only expected_payment_date_spoken from the tool and say: "Got it. I'll note that payment is expected by {{expected_payment_date_spoken}}." Then route to the normal final-check step. If the caller declines to provide a date, call schedule_followup with reason payment_link_declined_no_expected_date and no date phrase, say you will note that no expected date was provided, then route to the normal final-check step.
 If very_overdue is true, and only after one ordinary clarification has not resolved the issue, you may say once: "We value our relationship and want to avoid any interruption in service or delays with future inspection filings. Can we work together to get this resolved this week?" Do not use this line for mildly overdue invoices. Do not threaten, shame, imply legal consequences, or mention unsupported filing penalties.
 If the caller reports an elevator service issue or says the inspection report looks wrong, ask one concise follow-up first: "What specifically looks wrong or what should I note for the team?" Do not call log_outcome for service_issue_reported until the caller has provided the concise issue description. After the description, call log_outcome with service_issue_reported before saying it was noted, say the team will review it, then route to the normal final-check step. Do not pursue payment after a service issue unless the caller brings payment back up.
 Never close a service-issue call before the tool invocation and final-check routing.
@@ -311,11 +313,17 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           type: "string",
           description: "Short reason such as payment_link_requested or callback_requested.",
         },
+        expected_payment_date_phrase: {
+          type: "string",
+          description: "The caller's exact expected payment date phrase, such as tomorrow, Friday, or 2026-07-20.",
+        },
       },
       [],
       {
         followup_scheduled: "$.scheduled",
         followup_task_count: "$.task_count",
+        followup_needs_clarification: "$.needs_clarification",
+        expected_payment_date_spoken: "$.expected_payment_date_spoken",
       },
     ),
     functionTool(
@@ -466,7 +474,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes." },
             { role: "agent", content: "Our records show the Category 1 invoice from May first, twenty twenty-six is overdue. I'm calling to follow up and make sure it was received." },
             { role: "user", content: "Yes, we received it." },
-            { role: "agent", content: "Good to hear. Would you like to take care of it now?" },
+            { role: "agent", content: "Good to hear. Do you need the secure payment link?" },
             { role: "user", content: "Okay, text it to me." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"confirmed_payment_link_requested\",\"notes\":\"Caller agreed to receive secure payment link by text.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"confirmed_payment_link_requested\"}" },
@@ -475,6 +483,20 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "agent", content: "I can note that you'd like the payment link sent. The team will follow up with the secure link. Is there anything else I can help you with?" },
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_4", arguments: "{\"reason\":\"payment_link_requested\"}" },
             { role: "tool_call_result", tool_call_id: "tool_4", content: "{\"scheduled\":true,\"task_count\":4}" },
+          ],
+        },
+        {
+          id: "payment_link_declined_expected_date_example",
+          transcript: [
+            { role: "agent", content: "Our records show the Category 1 invoice from May first, twenty twenty-six is overdue. I'm calling to follow up and make sure it was received." },
+            { role: "user", content: "Yes, we received it." },
+            { role: "agent", content: "Good to hear. Do you need the secure payment link?" },
+            { role: "user", content: "No, we'll pay it ourselves." },
+            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "user", content: "Friday." },
+            { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Friday\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":true,\"needs_clarification\":false,\"task_count\":4,\"expected_payment_date\":\"2026-07-17\",\"expected_payment_date_spoken\":\"July seventeenth, twenty twenty-six\"}" },
+            { role: "agent", content: "Got it. I'll note that payment is expected by July seventeenth, twenty twenty-six. Is there anything else I can help you with?" },
           ],
         },
         {

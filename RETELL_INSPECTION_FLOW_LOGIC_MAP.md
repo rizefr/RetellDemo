@@ -44,7 +44,7 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 | `invoice_id`, `invoice_id_spoken` | selected invoice external ID | Read spoken form only when asked. |
 | `open_invoice_count_spoken`, `total_amount_due_spoken` | account summary | Derived from unpaid/payment-link-sent records. |
 | `last_payment_date_spoken` | paid invoices, then imported fallback | Blank if no trusted history exists. |
-| `expected_payment_date_spoken` | invoice expected payment date | Used after payment-date capture. |
+| `expected_payment_date_spoken` | invoice expected payment date | Pre-call value comes from Supabase. During a call, `schedule_followup` returns the newly resolved spoken value after persistence. |
 | `call_purpose`, `demo_call_mode` | follow-up task or invoice/demo authorization | Script mode is separate from invoice payment status. |
 | `payment_provider` | business setting | Stripe is current default. QuickBooks remains scaffold-only. |
 | `quickbooks_connected`, `manual_payment_followup_required` | business QuickBooks status/provider setting | Prevents claiming unsupported QuickBooks payment links. |
@@ -63,10 +63,30 @@ All custom tools are wrapped Retell requests signed by Retell. Backend endpoints
 | `send_payment_email` | `/api/outbound/retell/send-payment-email` | same | Sends to trusted on-file/preferred email only when provider, business setting, and test allowlist gates pass; returns `sent:true`. | Returns pending/manual or failed; agent must not claim sent. |
 | `send_payment_sms` | `/api/outbound/retell/send-payment-sms` | same | Future path only. | Current expected result is `sms_pending_manual`; agent must not claim a text was sent. |
 | `request_human_transfer` | `/api/outbound/retell/request-human-transfer` | same | Allows transfer only when configured transfer number exists. | Logs human request and routes to manual follow-up/final-check. |
-| `schedule_followup` | `/api/outbound/retell/schedule-followup` | same | Stores baseline/manual-review follow-up tasks. | Does not execute calls, texts, or emails. |
+| `schedule_followup` | `/api/outbound/retell/schedule-followup` | same | With `expected_payment_date_phrase`, resolves the caller's exact phrase from the trusted call time/timezone, stores `outbound_invoices.expected_payment_date`, logs `expected_payment_date_recorded`, and creates follow-up tasks from that date. Without a date, it preserves the existing manual-follow-up behavior. | Ambiguous or past dates return `needs_clarification:true` and do not write a date. It never changes invoice payment status and never executes calls, texts, or emails. |
 | `schedule_callback` | `/api/outbound/retell/schedule-callback` | same | Resolves relative/exact callback requests, requires confirmation, then stores callback task. | If ambiguous, past, weekend, or outside-window, returns clarification text. |
 
 ## Conversation Branches
+
+```mermaid
+flowchart TD
+  A["Identity confirmed"] --> B{"Invoice received?"}
+  B -->|No| C["Offer invoice resend by email or text"]
+  C --> D["Ask when payment is expected after review"]
+  B -->|Yes| E["Ask: Do you need the secure payment link?"]
+  E -->|Yes| F["Ask email or text preference"]
+  F --> G["Use existing gated payment-link delivery flow"]
+  E -->|No| H["Ask: By what date should we expect payment?"]
+  H -->|Specific date| I["schedule_followup with caller's exact date phrase"]
+  I --> J{"Date resolves?"}
+  J -->|Yes| K["Persist expected date, log event, create follow-ups"]
+  J -->|No| L["Ask tool-provided clarification; write nothing"]
+  H -->|No date supplied| M["Schedule manual follow-up; invoice status unchanged"]
+  K --> N["Confirm tool-returned spoken date"]
+  N --> O["Normal final-check and native end-call"]
+  M --> O
+  E -->|Explicit refusal to pay| P["Ask one non-pushy reason and classify"]
+```
 
 ### Opening
 
@@ -80,7 +100,13 @@ If the caller is not the named person, Paul first asks whether this is not the r
 
 ### Invoice Received
 
-Paul says `Good to hear. Would you like to take care of it now?` He does not repeat the inspection type, date, amount, or secure-link explanation unless the caller asks for invoice/payment details. If payment is declined, he asks one reason and classifies it without pressure. If a date is given, he notes/stores it.
+Paul says exactly: `Good to hear. Do you need the secure payment link?` He does not repeat the inspection type, date, amount, or secure-link explanation unless the caller asks for invoice/payment details.
+
+- **Yes:** Paul asks for text or email preference and follows the existing gated delivery branch.
+- **No:** Paul asks exactly: `By what date should we expect payment?` A declined link is not a payment refusal.
+- **Date supplied:** `schedule_followup` receives the caller's exact phrase. The backend resolves it from the trusted call timestamp and customer/business timezone, rejects ambiguous or past dates, stores `outbound_invoices.expected_payment_date`, logs `expected_payment_date_recorded`, and creates follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
+- **No date supplied:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
+- **Explicit refusal to pay:** only then does Paul ask one reason and classify it without pressure.
 
 ### Invoice Not Received
 
@@ -163,6 +189,7 @@ Explicit do-not-contact, attorney represented, and hostile/abusive outcomes rout
 - Start: `/api/outbound/calls/start` and `/api/outbound/demo-call/start` call the real `startOutboundCall` service. Do not invoke without explicit user approval for a real call.
 - Retell call creation: `startOutboundCall` sends `override_agent_id`, signed metadata, and `retell_llm_dynamic_variables` to Retell.
 - Events: admin actions, tool results, Retell webhooks, Stripe webhooks, email outcomes, demo authorization, and call-start/preflight outcomes are persisted in `outbound_events`.
+- Unified backend: `/backend` authenticates with the same `OUTBOUND_ADMIN_TOKEN`, sets both backend and outbound HttpOnly cookies, embeds the protected `/outbound` dashboard for outbound operations, and obtains readiness through the same `getOutboundSetupStatus` service. It does not maintain a second call implementation: preflight and manual start still use the protected `/api/outbound/*` routes above.
 
 ## Retell API Migration Note
 

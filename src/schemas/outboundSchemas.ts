@@ -88,6 +88,7 @@ export const logOutcomeArgsSchema = z.object({
 
 export const scheduleFollowupArgsSchema = z.object({
   reason: z.string().max(500).optional().default("agent_requested_followup"),
+  expected_payment_date_phrase: nullableToolString(z.string().max(100)),
 });
 
 export const scheduleCallbackArgsSchema = z.object({

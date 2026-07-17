@@ -25,6 +25,8 @@ describe("outbound single-prompt comparison agent", () => {
     expect(prompt).toContain("{{amount_due_spoken}}");
     expect(prompt).toContain("wrong person but the company is correct");
     expect(prompt).toContain("May I ask the reason, so I can note it correctly for the team?");
+    expect(prompt).toContain("Good to hear. Do you need the secure payment link?");
+    expect(prompt).toContain("By what date should we expect payment?");
     expect(prompt).toContain("schedule_callback with confirmed=false");
     expect(prompt).toContain("send_payment_email returns sent=true");
     expect(prompt).toContain("SMS is disabled/manual");
@@ -69,6 +71,16 @@ describe("outbound single-prompt comparison agent", () => {
       speak_during_execution: true,
       execution_message_type: "static_text",
       execution_message_description: "One moment.",
+    });
+    expect(customTools.find((tool) => tool.name === "schedule_followup")).toMatchObject({
+      parameters: {
+        properties: expect.objectContaining({
+          expected_payment_date_phrase: { type: "string" },
+        }),
+      },
+      response_variables: expect.objectContaining({
+        expected_payment_date_spoken: "$.expected_payment_date_spoken",
+      }),
     });
     expect(tools).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: "end_call", name: "end_polite_call" }),
