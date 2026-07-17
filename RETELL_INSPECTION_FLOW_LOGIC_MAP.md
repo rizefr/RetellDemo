@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V71. Read back Retell before any future publish.
+- Current published version: V74. Read back Retell before any future publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
@@ -105,7 +105,8 @@ Paul says exactly: `Good to hear. Do you need the secure payment link?` He does 
 - **Yes with no method named:** Paul asks exactly `Would you prefer text or email?` He does not infer email from the on-file address or a prior preference.
 - **Yes with a method named:** Paul continues directly into the existing gated confirmation and delivery branch for that method.
 - **No:** Paul asks exactly: `By what date should we expect payment?` A declined link is not a payment refusal.
-- **Date phrase supplied:** `schedule_followup` receives the caller's exact phrase, including vague answers such as `soon`, `later`, or `sometime`. The backend resolves it from the trusted call timestamp and customer/business timezone. Ambiguous or past dates return a clarification request with no write. Valid dates store `outbound_invoices.expected_payment_date`, log `expected_payment_date_recorded`, and create follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
+- **Vague non-date supplied:** Paul asks for a specific date and makes no write. If the vague phrase reaches `schedule_followup`, the backend also returns a no-write clarification.
+- **Concrete date supplied:** `schedule_followup` receives the caller's exact phrase. The backend resolves it from the trusted call timestamp and customer/business timezone. Past dates return a clarification request with no write. Valid dates store `outbound_invoices.expected_payment_date`, log `expected_payment_date_recorded`, and create follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
 - **Caller explicitly declines to give a date:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
 - **Explicit refusal to pay:** only then does Paul ask one reason and classify it without pressure.
 
