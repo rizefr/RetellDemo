@@ -4,9 +4,7 @@ dist/
 .env
 .env.*
 !.env.example
-coverage/
-!public/coverage/
-!public/coverage/**
+/coverage/
 generated/
 output/
 sop-test-results.json

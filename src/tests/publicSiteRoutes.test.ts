@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../app";
@@ -93,5 +95,16 @@ describe("public site routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toContain(contentType);
+  });
+
+  it("keeps the public coverage route in Vercel deployment bundles", () => {
+    const ignoreRules = fs
+      .readFileSync(path.resolve(process.cwd(), ".vercelignore"), "utf8")
+      .split("\n")
+      .map((rule) => rule.trim())
+      .filter(Boolean);
+
+    expect(ignoreRules).toContain("/coverage/");
+    expect(ignoreRules).not.toContain("coverage/");
   });
 });
