@@ -2,6 +2,7 @@ const views = {
   overview: document.querySelector("#view-overview"),
   outbound: document.querySelector("#view-outbound"),
   inbound: document.querySelector("#view-inbound"),
+  "landing-pages": document.querySelector("#view-landing-pages"),
   settings: document.querySelector("#view-settings"),
   docs: document.querySelector("#view-docs"),
 };
@@ -9,11 +10,13 @@ const titles = {
   overview: "Overview",
   outbound: "Outbound Collections",
   inbound: "Inbound Receptionist",
+  "landing-pages": "Landing Pages",
   settings: "Settings / Setup",
   docs: "Docs / Runbooks",
 };
 
 let latestStatus = null;
+let landingLoaded = false;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -82,6 +85,35 @@ function cell(value) {
   return `<td>${escapeHtml(text(value, ""))}</td>`;
 }
 
+function rate(value) {
+  return typeof value === "number" ? `${value.toFixed(1)}%` : "—";
+}
+
+function landingLabel(value) {
+  const labels = {
+    answer: "Availability",
+    ready: "Scenario proof / QA",
+    coverage: "Coverage / Backup path",
+    full_receptionist: "Full receptionist",
+    defined_coverage_gap: "Defined gap / Backup",
+    explore_both: "Explore both",
+    owner_or_techs: "Owner / technicians",
+    office_team: "Office team",
+    answering_service: "Answering service",
+    voicemail_or_mix: "Voicemail / mix",
+    after_hours: "After-hours",
+    overflow: "Overflow",
+    lunch_weekends: "Lunch / weekends",
+    missed_or_unsure: "Missed / unsure",
+    under_50: "Under 50",
+    "50_150": "50–150",
+    "151_400": "151–400",
+    "400_plus": "400+",
+    unsure: "Unsure",
+  };
+  return labels[value] || String(value || "—").replaceAll("_", " ");
+}
+
 function setView(id) {
   Object.entries(views).forEach(([viewId, node]) => node.classList.toggle("active", viewId === id));
   document.querySelectorAll("[data-view-button]").forEach((button) => {
@@ -92,6 +124,7 @@ function setView(id) {
     const frame = document.querySelector("#outbound-frame");
     if (!frame.src) frame.src = frame.dataset.src;
   }
+  if (id === "landing-pages" && !landingLoaded) loadLandingPages();
   history.replaceState(null, "", `#${id}`);
 }
 
@@ -204,6 +237,102 @@ function renderInbound(status) {
     : `<tr><td colspan="6">No inbound leads found yet.</td></tr>`;
 }
 
+function renderLandingPages(data) {
+  const diagnostics = data.diagnostics || {};
+  document.querySelector("#landing-availability").innerHTML = statusRow(
+    "Analytics storage",
+    data.available
+      ? `Reachable. Showing ${data.range_days} day${data.range_days === 1 ? "" : "s"}${data.include_test ? " with test data" : " excluding test data"}.`
+      : [diagnostics.events_error, diagnostics.leads_error].filter(Boolean).join(" · ") || "Unavailable",
+    data.available ? "ready" : "warning",
+  );
+
+  const totals = data.totals || {};
+  document.querySelector("#landing-total-cards").innerHTML = [
+    metric("Page views", text(totals.page_views, "0"), "First-party recorded views", "neutral"),
+    metric("Unique-session estimate", text(totals.unique_session_estimates, "0"), "Random sessionStorage UUID; not people", "neutral"),
+    metric("Form starts", text(totals.form_starts, "0"), "First meaningful form interaction", "neutral"),
+    metric("Lead submissions", text(totals.submissions, "0"), "Deduplicated lead rows", "ready"),
+    metric("View → submit", rate(totals.view_to_submit_rate), "Directional while traffic is low", "neutral"),
+    metric("Booking / demo clicks", `${text(totals.booking_clicks, "0")} / ${text(totals.demo_clicks, "0")}`, "Click intent; not completed bookings", "neutral"),
+  ].join("");
+
+  const variants = data.variants || [];
+  document.querySelector("#landing-variant-rows").innerHTML = variants.length
+    ? variants
+        .map(
+          (item) => `<tr>
+            <td><strong>${escapeHtml(landingLabel(item.variant))}</strong><br /><code>${escapeHtml(item.route)}</code></td>
+            ${cell(item.page_views)}${cell(item.unique_sessions)}${cell(item.form_starts)}${cell(item.submissions)}
+            ${cell(item.booking_clicks)}${cell(item.demo_clicks)}${cell(rate(item.view_to_submit_rate))}${cell(rate(item.start_to_submit_rate))}
+          </tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="9">No variant data in this range.</td></tr>`;
+
+  const sources = data.sources || [];
+  document.querySelector("#landing-source-rows").innerHTML = sources.length
+    ? sources
+        .map((item) => `<tr>${cell(item.source)}${cell(item.medium)}${cell(item.campaign)}${cell(item.page_views)}${cell(item.submissions)}</tr>`)
+        .join("")
+    : `<tr><td colspan="5">No source data in this range.</td></tr>`;
+
+  const privacy = diagnostics.privacy || {};
+  const eventCounts = diagnostics.event_counts || {};
+  document.querySelector("#landing-diagnostics").innerHTML = [
+    statusRow("Events table", diagnostics.events_table_reachable ? "Reachable" : diagnostics.events_error || "Unavailable", diagnostics.events_table_reachable ? "ready" : "warning"),
+    statusRow("Leads table", diagnostics.leads_table_reachable ? "Reachable" : diagnostics.leads_error || "Unavailable", diagnostics.leads_table_reachable ? "ready" : "warning"),
+    statusRow("Latest event", formatTime(diagnostics.latest_event_at), "neutral"),
+    statusRow("Latest submission", formatTime(diagnostics.latest_lead_at), "neutral"),
+    statusRow("Event alignment", `Successful-event minus lead delta: ${text(diagnostics.successful_event_lead_delta, "0")}`, diagnostics.successful_event_lead_delta === 0 ? "ready" : "warning"),
+    statusRow("Attribution", `${rate(diagnostics.missing_utm_page_view_rate)} of page views have no UTM values (direct/referrer may still be present).`, "neutral"),
+    statusRow("Form health", `${text(eventCounts.form_error, "0")} form_error event(s); ${text(eventCounts.form_submit, "0")} form_submit event(s).`, eventCounts.form_error ? "warning" : "ready"),
+    statusRow("Test exclusions", `${text(diagnostics.test_events_excluded, "0")} event(s), ${text(diagnostics.test_leads_excluded, "0")} lead(s) excluded.`, "neutral"),
+    statusRow("Data caps", `Events: ${diagnostics.event_data_cap_reached ? "reached" : "not reached"}. Leads: ${diagnostics.lead_data_cap_reached ? "reached" : "not reached"}.`, diagnostics.event_data_cap_reached || diagnostics.lead_data_cap_reached ? "warning" : "ready"),
+    statusRow("Privacy", `Cookies ${privacy.cookies || "none"}; fingerprinting ${privacy.fingerprinting || "none"}; raw IP stored ${text(privacy.raw_ip_stored, "no")}; user agent stored ${text(privacy.user_agent_stored, "no")}; fbclid stored ${text(privacy.fbclid_stored, "no")}.`, "ready"),
+  ].join("");
+
+  const leads = data.recent_leads || [];
+  document.querySelector("#landing-lead-rows").innerHTML = leads.length
+    ? leads
+        .map(
+          (lead) => `<tr>${cell(formatTime(lead.created_at))}${cell(landingLabel(lead.variant))}${cell(lead.business_name)}${cell(lead.full_name)}${cell(lead.email)}${cell(lead.phone)}${cell(landingLabel(lead.interest))}${cell(landingLabel(lead.current_handling))}${cell(landingLabel(lead.coverage_gap))}${cell(landingLabel(lead.call_volume_band))}${cell(lead.source)}</tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="11">No landing-page leads in this range.</td></tr>`;
+
+  const events = data.recent_events || [];
+  document.querySelector("#landing-event-rows").innerHTML = events.length
+    ? events
+        .map(
+          (event) => `<tr>${cell(formatTime(event.created_at))}${cell(event.event_name)}${cell(landingLabel(event.variant))}${cell(event.route)}${cell(event.source)}${cell(event.utm_campaign)}${cell(JSON.stringify(event.metadata || {}))}${cell(event.is_test ? "test" : "live")}</tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="8">No landing-page events in this range.</td></tr>`;
+}
+
+async function loadLandingPages() {
+  const range = document.querySelector("#landing-range").value;
+  const includeTest = document.querySelector("#landing-include-test").checked;
+  document.querySelector("#landing-availability").innerHTML = statusRow("Analytics storage", "Loading…", "neutral");
+  try {
+    const response = await fetch(`/api/backend/landing-pages?range=${encodeURIComponent(range)}&include_test=${includeTest}`, { credentials: "same-origin" });
+    if (response.status === 401) {
+      location.reload();
+      return;
+    }
+    if (!response.ok) throw new Error(`Landing-page analytics failed (${response.status})`);
+    renderLandingPages(await response.json());
+    landingLoaded = true;
+  } catch (error) {
+    document.querySelector("#landing-availability").innerHTML = statusRow(
+      "Landing-page analytics unavailable",
+      error instanceof Error ? error.message : "Status failed.",
+      "warning",
+    );
+  }
+}
+
 function renderSettings(status) {
   const routes = status.app.routes;
   document.querySelector("#settings-grid").innerHTML = [
@@ -264,7 +393,12 @@ document.querySelectorAll("[data-view-button]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.viewButton));
 });
 
-document.querySelector("#refresh").addEventListener("click", loadStatus);
+document.querySelector("#refresh").addEventListener("click", async () => {
+  await loadStatus();
+  if (document.querySelector("#view-landing-pages").classList.contains("active")) await loadLandingPages();
+});
+document.querySelector("#landing-range").addEventListener("change", loadLandingPages);
+document.querySelector("#landing-include-test").addEventListener("change", loadLandingPages);
 document.querySelector("#logout").addEventListener("click", async () => {
   await fetch("/api/backend/auth/logout", { method: "POST", credentials: "same-origin" });
   location.reload();

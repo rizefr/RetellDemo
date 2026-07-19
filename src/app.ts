@@ -5,6 +5,7 @@ import { backendPageRouter } from "./routes/backendPage";
 import { healthRouter } from "./routes/health";
 import { inboundApiRouter } from "./routes/inboundApi";
 import { inboundPageRouter } from "./routes/inboundPage";
+import { landingApiRouter } from "./routes/landingApi";
 import { outboundApiRouter } from "./routes/outboundApi";
 import { outboundPageRouter } from "./routes/outboundPage";
 import { outboundRetellToolsRouter } from "./routes/outboundRetellTools";
@@ -32,6 +33,7 @@ export function createApp() {
     outboundRetellToolsRouter,
   );
   app.use("/retell/webhook", express.raw({ type: "application/json" }), retellWebhookRouter);
+  app.use("/api/landing", express.json({ limit: "32kb", strict: true }), landingApiRouter);
   app.use(express.json({ limit: "2mb" }));
 
   app.use("/health", healthRouter);
