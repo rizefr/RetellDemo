@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/backend/backend.css?v=20260710" />
+    <link rel="stylesheet" href="/backend/backend.css?v=20260719" />
   </head>
   <body>
     <div class="backend-shell">
@@ -20,6 +20,7 @@
           <button class="nav-item active" type="button" data-view-button="overview">Overview</button>
           <button class="nav-item" type="button" data-view-button="outbound">Outbound Collections</button>
           <button class="nav-item" type="button" data-view-button="inbound">Inbound Receptionist</button>
+          <button class="nav-item" type="button" data-view-button="landing-pages">Landing Pages</button>
           <button class="nav-item" type="button" data-view-button="settings">Settings / Setup</button>
           <button class="nav-item" type="button" data-view-button="docs">Docs / Runbooks</button>
         </nav>
@@ -152,6 +153,52 @@
             </section>
           </section>
 
+          <section id="view-landing-pages" class="view" aria-labelledby="landing-pages-heading">
+            <div class="section-heading">
+              <div>
+                <h3 id="landing-pages-heading">Landing Pages</h3>
+                <p>First-party experiment analytics for the three pest-receptionist routes. Session counts are estimates; lead submissions are authoritative database rows.</p>
+              </div>
+              <div class="landing-controls">
+                <label for="landing-range">Range</label>
+                <select id="landing-range">
+                  <option value="7">7 days</option>
+                  <option value="30" selected>30 days</option>
+                  <option value="90">90 days</option>
+                </select>
+                <label class="check-control"><input id="landing-include-test" type="checkbox" /> Include test data</label>
+              </div>
+            </div>
+            <div id="landing-availability" class="status-list"></div>
+            <div id="landing-total-cards" class="metric-grid"></div>
+
+            <section class="panel">
+              <div class="section-heading compact"><div><h3>Variant performance</h3><p>Submissions come from deduplicated lead rows. Rates use page views or form starts as noted.</p></div></div>
+              <div class="table-wrap"><table class="landing-table"><thead><tr><th>Variant / route</th><th>Views</th><th>Unique sessions</th><th>Form starts</th><th>Submissions</th><th>Booking clicks</th><th>Demo clicks</th><th>View → submit</th><th>Start → submit</th></tr></thead><tbody id="landing-variant-rows"></tbody></table></div>
+            </section>
+
+            <div class="two-column landing-two-column">
+              <section class="panel">
+                <div class="section-heading compact"><div><h3>UTM and source</h3><p>First-party UTM values and referrer host only. Raw Meta click IDs are not stored.</p></div></div>
+                <div class="table-wrap"><table class="landing-source-table"><thead><tr><th>Source</th><th>Medium</th><th>Campaign</th><th>Views</th><th>Submissions</th></tr></thead><tbody id="landing-source-rows"></tbody></table></div>
+              </section>
+              <section class="panel">
+                <div class="section-heading compact"><div><h3>Site and form diagnostics</h3><p>Storage health, event alignment, attribution coverage, test exclusions, and privacy behavior.</p></div></div>
+                <div id="landing-diagnostics" class="status-list"></div>
+              </section>
+            </div>
+
+            <section class="panel">
+              <div class="section-heading compact"><div><h3>Recent landing leads</h3><p>Contact data is visible only inside this authenticated backend.</p></div></div>
+              <div class="table-wrap"><table class="landing-lead-table"><thead><tr><th>Time</th><th>Variant</th><th>Business</th><th>Contact</th><th>Email</th><th>Phone</th><th>Interest</th><th>Handling</th><th>Gap</th><th>Volume</th><th>Source</th></tr></thead><tbody id="landing-lead-rows"></tbody></table></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-heading compact"><div><h3>Recent events</h3><p>Non-PII events only. The browser does not send raw IP, user agent, fingerprint, or full referrer URL.</p></div></div>
+              <div class="table-wrap"><table class="landing-event-table"><thead><tr><th>Time</th><th>Event</th><th>Variant</th><th>Route</th><th>Source</th><th>Campaign</th><th>Context</th><th>Test</th></tr></thead><tbody id="landing-event-rows"></tbody></table></div>
+            </section>
+          </section>
+
           <section id="view-settings" class="view" aria-labelledby="settings-heading">
             <div class="section-heading">
               <div>
@@ -178,6 +225,6 @@
         </main>
       </div>
     </div>
-    <script src="/backend/backend.js?v=20260710" defer></script>
+    <script src="/backend/backend.js?v=20260719" defer></script>
   </body>
 </html>

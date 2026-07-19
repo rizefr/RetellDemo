@@ -139,6 +139,7 @@ export function getBackendNavigation() {
       { id: "overview", label: "Overview", href: "#overview" },
       { id: "outbound", label: "Outbound Collections", href: "#outbound" },
       { id: "inbound", label: "Inbound Receptionist", href: "#inbound" },
+      { id: "landing-pages", label: "Landing Pages", href: "#landing-pages" },
       { id: "settings", label: "Settings / Setup", href: "#settings" },
       { id: "docs", label: "Docs / Runbooks", href: "#docs" },
     ],
