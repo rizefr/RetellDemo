@@ -6,6 +6,7 @@ import { healthRouter } from "./routes/health";
 import { inboundApiRouter } from "./routes/inboundApi";
 import { inboundPageRouter } from "./routes/inboundPage";
 import { landingApiRouter } from "./routes/landingApi";
+import { landingHostPageRouter, landingPreviewPathGuard } from "./routes/landingHosts";
 import { outboundApiRouter } from "./routes/outboundApi";
 import { outboundPageRouter } from "./routes/outboundPage";
 import { outboundRetellToolsRouter } from "./routes/outboundRetellTools";
@@ -50,6 +51,8 @@ export function createApp() {
   app.use("/backend-assets", express.static(path.join(process.cwd(), "public", "backend")));
   app.use("/inbound-assets", express.static(path.join(process.cwd(), "public", "inbound")));
   app.use("/outbound-assets", express.static(path.join(process.cwd(), "public", "outbound")));
+  app.use(landingHostPageRouter);
+  app.use(landingPreviewPathGuard);
   app.use(express.static(path.join(process.cwd(), "public")));
 
   app.use((_req, res) => {

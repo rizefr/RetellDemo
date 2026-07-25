@@ -126,7 +126,7 @@ landingApiRouter.post("/leads", async (req, res) => {
       submitted: true,
       duplicate: lead.duplicate,
       lead_id: lead.id,
-      booking_url: "/booking/",
+      booking_url: "https://elixis.agency/booking/",
     });
   } catch (error) {
     if (!(error instanceof LandingStorageError)) {

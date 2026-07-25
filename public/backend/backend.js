@@ -91,9 +91,10 @@ function rate(value) {
 
 function landingLabel(value) {
   const labels = {
-    answer: "Availability",
-    ready: "Scenario proof / QA",
-    coverage: "Coverage / Backup path",
+    answer: "Direct receptionist",
+    nevermiss: "Missed-call pain",
+    pestline: "Pest operations",
+    hear: "Scenario proof",
     full_receptionist: "Full receptionist",
     defined_coverage_gap: "Defined gap / Backup",
     explore_both: "Explore both",
@@ -250,7 +251,8 @@ function renderLandingPages(data) {
   const totals = data.totals || {};
   document.querySelector("#landing-total-cards").innerHTML = [
     metric("Page views", text(totals.page_views, "0"), "First-party recorded views", "neutral"),
-    metric("Unique-session estimate", text(totals.unique_session_estimates, "0"), "Random sessionStorage UUID; not people", "neutral"),
+    metric("Unique-session estimate", text(totals.unique_session_estimates, "0"), "Origin-scoped session UUID; not people; skipped for GPC/DNT", "neutral"),
+    metric("Primary CTA clicks", text(totals.primary_cta_clicks, "0"), "Focused action clicks before form or demo", "neutral"),
     metric("Form starts", text(totals.form_starts, "0"), "First meaningful form interaction", "neutral"),
     metric("Lead submissions", text(totals.submissions, "0"), "Deduplicated lead rows", "ready"),
     metric("View → submit", rate(totals.view_to_submit_rate), "Directional while traffic is low", "neutral"),
@@ -263,12 +265,12 @@ function renderLandingPages(data) {
         .map(
           (item) => `<tr>
             <td><strong>${escapeHtml(landingLabel(item.variant))}</strong><br /><code>${escapeHtml(item.route)}</code></td>
-            ${cell(item.page_views)}${cell(item.unique_sessions)}${cell(item.form_starts)}${cell(item.submissions)}
+            ${cell(item.page_views)}${cell(item.unique_sessions)}${cell(item.primary_cta_clicks)}${cell(item.form_starts)}${cell(item.submissions)}
             ${cell(item.booking_clicks)}${cell(item.demo_clicks)}${cell(rate(item.view_to_submit_rate))}${cell(rate(item.start_to_submit_rate))}
           </tr>`,
         )
         .join("")
-    : `<tr><td colspan="9">No variant data in this range.</td></tr>`;
+    : `<tr><td colspan="10">No variant data in this range.</td></tr>`;
 
   const sources = data.sources || [];
   document.querySelector("#landing-source-rows").innerHTML = sources.length
@@ -288,6 +290,7 @@ function renderLandingPages(data) {
     statusRow("Attribution", `${rate(diagnostics.missing_utm_page_view_rate)} of page views have no UTM values (direct/referrer may still be present).`, "neutral"),
     statusRow("Form health", `${text(eventCounts.form_error, "0")} form_error event(s); ${text(eventCounts.form_submit, "0")} form_submit event(s).`, eventCounts.form_error ? "warning" : "ready"),
     statusRow("Test exclusions", `${text(diagnostics.test_events_excluded, "0")} event(s), ${text(diagnostics.test_leads_excluded, "0")} lead(s) excluded.`, "neutral"),
+    statusRow("Superseded rows", `${text(diagnostics.legacy_event_rows_preserved, "0")} legacy event row(s), ${text(diagnostics.legacy_lead_rows_preserved, "0")} legacy lead row(s) preserved outside current totals.`, "neutral"),
     statusRow("Data caps", `Events: ${diagnostics.event_data_cap_reached ? "reached" : "not reached"}. Leads: ${diagnostics.lead_data_cap_reached ? "reached" : "not reached"}.`, diagnostics.event_data_cap_reached || diagnostics.lead_data_cap_reached ? "warning" : "ready"),
     statusRow("Privacy", `Cookies ${privacy.cookies || "none"}; fingerprinting ${privacy.fingerprinting || "none"}; raw IP stored ${text(privacy.raw_ip_stored, "no")}; user agent stored ${text(privacy.user_agent_stored, "no")}; fbclid stored ${text(privacy.fbclid_stored, "no")}.`, "ready"),
   ].join("");

@@ -15,8 +15,8 @@ function event(overrides: Record<string, unknown> = {}) {
     id: crypto.randomUUID(),
     created_at: "2026-07-19T12:00:00.000Z",
     event_name: "page_view",
-    variant: "ready",
-    route: "/ready/",
+    variant: "pestline",
+    route: "/pestline/",
     session_id: sessionOne,
     page_load_id: pageOne,
     submission_id: null,
@@ -37,8 +37,8 @@ function lead(overrides: Record<string, unknown> = {}) {
   return {
     id: crypto.randomUUID(),
     created_at: "2026-07-19T12:05:00.000Z",
-    variant: "ready",
-    route: "/ready/",
+    variant: "pestline",
+    route: "/pestline/",
     session_id: sessionOne,
     submission_id: submissionOne,
     interest: "full_receptionist",
@@ -67,6 +67,7 @@ describe("landing-page analytics", () => {
     const events = [
       event(),
       event({ id: crypto.randomUUID(), session_id: sessionTwo }),
+      event({ id: crypto.randomUUID(), event_name: "cta_click" }),
       event({ id: crypto.randomUUID(), event_name: "form_start" }),
       event({ id: crypto.randomUUID(), event_name: "form_success", submission_id: submissionOne }),
       event({ id: crypto.randomUUID(), event_name: "booking_click" }),
@@ -77,11 +78,12 @@ describe("landing-page analytics", () => {
       includeTest: false,
     });
 
-    const ready = dashboard.variants.find((item) => item.variant === "ready");
-    expect(ready).toMatchObject({
-      route: "/ready/",
+    const pestline = dashboard.variants.find((item) => item.variant === "pestline");
+    expect(pestline).toMatchObject({
+      route: "/pestline/",
       page_views: 2,
       unique_sessions: 2,
+      primary_cta_clicks: 1,
       form_starts: 1,
       submissions: 1,
       booking_clicks: 1,
@@ -130,15 +132,15 @@ describe("landing-page analytics", () => {
   it("accepts only fixed route/variant pairs and non-PII event metadata", () => {
     const valid = landingEventSchema.safeParse({
       event_name: "page_view",
-      variant: "ready",
-      route: "/ready/",
+      variant: "hear",
+      route: "/hear/",
       session_id: sessionOne,
       page_load_id: pageOne,
       metadata: { target: "demo" },
     });
     const mismatched = landingEventSchema.safeParse({
       event_name: "page_view",
-      variant: "ready",
+      variant: "hear",
       route: "/answer/",
       session_id: sessionOne,
       page_load_id: pageOne,
@@ -146,8 +148,8 @@ describe("landing-page analytics", () => {
     });
     const piiMetadata = landingEventSchema.safeParse({
       event_name: "form_start",
-      variant: "ready",
-      route: "/ready/",
+      variant: "hear",
+      route: "/hear/",
       session_id: sessionOne,
       page_load_id: pageOne,
       metadata: { email: "should-not-store@example.com" },
@@ -160,8 +162,8 @@ describe("landing-page analytics", () => {
 
   it("validates the minimum lead qualification and contact shape", () => {
     const parsed = landingLeadSchema.safeParse({
-      variant: "coverage",
-      route: "/coverage/",
+      variant: "nevermiss",
+      route: "/nevermiss/",
       session_id: sessionOne,
       page_load_id: pageOne,
       submission_id: submissionOne,
@@ -177,5 +179,18 @@ describe("landing-page analytics", () => {
       website: "",
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it("preserves superseded rows outside the current four-funnel totals", () => {
+    const dashboard = buildLandingDashboard(
+      [event({ variant: "ready", route: "/ready/" })] as any,
+      [lead({ variant: "coverage", route: "/coverage/" })] as any,
+      { rangeDays: 30, includeTest: false },
+    );
+
+    expect(dashboard.totals.page_views).toBe(0);
+    expect(dashboard.totals.submissions).toBe(0);
+    expect(dashboard.diagnostics.legacy_event_rows_preserved).toBe(1);
+    expect(dashboard.diagnostics.legacy_lead_rows_preserved).toBe(1);
   });
 });

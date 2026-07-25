@@ -4,7 +4,12 @@
 
   const variant = page.dataset.variant;
   const route = page.dataset.route;
-  const landingRoutes = { answer: "/answer/", ready: "/ready/", coverage: "/coverage/" };
+  const landingRoutes = {
+    answer: "/answer/",
+    nevermiss: "/nevermiss/",
+    pestline: "/pestline/",
+    hear: "/hear/",
+  };
   if (!variant || landingRoutes[variant] !== route) return;
 
   const createUuid = () => {
@@ -29,25 +34,29 @@
   };
 
   const query = new URLSearchParams(location.search);
+  const privacyLimited =
+    navigator.globalPrivacyControl === true || navigator.doNotTrack === "1" || window.doNotTrack === "1";
   const trackingKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
   const currentAttribution = Object.fromEntries(
     trackingKeys.map((key) => [key, (query.get(key) || "").trim().slice(0, 160)]),
   );
   const hasCurrentAttribution = trackingKeys.some((key) => currentAttribution[key]);
   let attribution = currentAttribution;
-  try {
-    if (hasCurrentAttribution) {
-      sessionStorage.setItem("elixis_lp_attribution", JSON.stringify(currentAttribution));
-    } else {
-      const saved = JSON.parse(sessionStorage.getItem("elixis_lp_attribution") || "null");
-      if (saved && typeof saved === "object") {
-        attribution = Object.fromEntries(
-          trackingKeys.map((key) => [key, typeof saved[key] === "string" ? saved[key].slice(0, 160) : ""]),
-        );
+  if (!privacyLimited) {
+    try {
+      if (hasCurrentAttribution) {
+        sessionStorage.setItem("elixis_lp_attribution", JSON.stringify(currentAttribution));
+      } else {
+        const saved = JSON.parse(sessionStorage.getItem("elixis_lp_attribution") || "null");
+        if (saved && typeof saved === "object") {
+          attribution = Object.fromEntries(
+            trackingKeys.map((key) => [key, typeof saved[key] === "string" ? saved[key].slice(0, 160) : ""]),
+          );
+        }
       }
+    } catch {
+      attribution = currentAttribution;
     }
-  } catch {
-    attribution = currentAttribution;
   }
 
   let referrerHost = "";
@@ -57,11 +66,9 @@
     referrerHost = "";
   }
 
-  const sessionId = readSessionId();
+  const sessionId = privacyLimited ? createUuid() : readSessionId();
   const pageLoadId = createUuid();
   const isTest = query.get("test") === "1";
-  const privacyLimited =
-    navigator.globalPrivacyControl === true || navigator.doNotTrack === "1" || window.doNotTrack === "1";
 
   const basePayload = () => ({
     variant,
@@ -99,14 +106,16 @@
   });
 
   const linkedAttribution = (href) => {
-    const url = new URL(href, location.origin);
-    if (url.origin !== location.origin) return href;
+    const url = new URL(href, location.href);
+    const isElixisHost = url.hostname === "elixis.agency" || url.hostname.endsWith(".elixis.agency");
+    if (!isElixisHost && url.origin !== location.origin) return href;
     url.searchParams.set("lp_variant", variant);
     trackingKeys.forEach((key) => {
       if (attribution[key]) url.searchParams.set(key, attribution[key]);
     });
     if (isTest) url.searchParams.set("test", "1");
-    return `${url.pathname}${url.search}${url.hash}`;
+    if (url.origin === location.origin) return `${url.pathname}${url.search}${url.hash}`;
+    return url.href;
   };
 
   document.querySelectorAll("a[data-track]").forEach((link) => {
@@ -118,6 +127,13 @@
     });
   });
 
+  document.querySelectorAll("[data-primary-cta]").forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      const target = trigger.dataset.primaryCta === "demo" ? "primary_demo" : "primary_form";
+      postEvent("cta_click", { target }).catch(() => {});
+    });
+  });
+
   document.querySelectorAll("[data-scroll-form]").forEach((trigger) => {
     trigger.addEventListener("click", () => {
       const formHeading = document.querySelector("#fit-check-heading");
@@ -125,14 +141,14 @@
     });
   });
 
-  const mobileCta = document.querySelector(".mobile-cta");
-  const heroActions = document.querySelector(".hero-actions");
-  if (mobileCta && heroActions) {
+  const mobileCta = document.querySelector(".mobile-action");
+  const heroPrimaryAction = document.querySelector(".hero-copy .funnel-button, .hero-copy [data-live-demo]");
+  if (mobileCta && heroPrimaryAction) {
     if ("IntersectionObserver" in window) {
       const mobileCtaObserver = new IntersectionObserver((entries) => {
         mobileCta.classList.toggle("is-visible", !entries[0]?.isIntersecting);
       });
-      mobileCtaObserver.observe(heroActions);
+      mobileCtaObserver.observe(heroPrimaryAction);
     } else {
       mobileCta.classList.add("is-visible");
     }
@@ -147,8 +163,10 @@
     const submitButton = form.querySelector('[type="submit"]');
     const submitLabel = submitButton?.querySelector("[data-submit-label]");
     const status = form.querySelector("[data-form-status]");
+    const fallback = form.querySelector("[data-form-fallback]");
     const success = document.querySelector("[data-form-success]");
     const startedAt = new Date().toISOString();
+    const submitText = submitLabel?.textContent || "Send my request";
     let formStarted = false;
     let submissionId = createUuid();
 
@@ -203,6 +221,7 @@
       if (submitLabel) submitLabel.textContent = "Sending…";
       status.textContent = "Saving your request securely…";
       status.className = "form-status";
+      if (fallback) fallback.hidden = true;
 
       const values = Object.fromEntries(new FormData(form).entries());
       const payload = {
@@ -251,15 +270,83 @@
         target?.focus();
         status.textContent = error.message || "We could not save the request. Please try again or use the booking link.";
         status.className = "form-status error";
-        const errorCode = error.status >= 500 ? "server" : error.status ? "validation" : "network";
+        if (fallback && error.status >= 500) fallback.hidden = false;
+        const errorCode = error.status === 503 ? "storage" : error.status >= 500 ? "server" : error.status ? "validation" : "network";
         postEvent("form_error", { target: "form_retry", step: 2, error_code: errorCode }, submissionId).catch(() => {});
         if (error.status === 409) submissionId = createUuid();
       } finally {
         submitButton.disabled = false;
-        if (submitLabel) submitLabel.textContent = "Request my demo plan";
+        if (submitLabel) submitLabel.textContent = submitText;
       }
     });
   }
+
+  const liveDemoModal = document.querySelector("[data-live-demo-modal]");
+  const liveDemoFrame = liveDemoModal?.querySelector("[data-live-demo-frame]");
+  const liveDemoStatus = liveDemoModal?.querySelector("[data-live-demo-status]");
+  const liveDemoOpeners = document.querySelectorAll("[data-live-demo]");
+  let liveDemoOpener = null;
+
+  const validDemoUrl = () => {
+    const value = window.ELIXIS_SITE_CONFIG?.AI_DEMO_ORB_URL || "";
+    try {
+      const url = new URL(value);
+      return url.href.startsWith("https://agent.retellai.com/orb/") ? url.href : "";
+    } catch {
+      return "";
+    }
+  };
+
+  const closeLiveDemo = () => {
+    if (!liveDemoModal?.classList.contains("is-open")) return;
+    liveDemoModal.classList.remove("is-open");
+    liveDemoModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+    liveDemoOpener?.focus?.();
+  };
+
+  liveDemoOpeners.forEach((opener) => {
+    opener.addEventListener("click", () => {
+      postEvent("demo_click", { target: "demo" }).catch(() => {});
+      if (!liveDemoModal) return;
+      liveDemoOpener = opener;
+      const source = validDemoUrl();
+      if (source && liveDemoFrame && !liveDemoFrame.getAttribute("src")) {
+        liveDemoFrame.setAttribute("src", source);
+      } else if (!source && liveDemoStatus) {
+        liveDemoStatus.hidden = false;
+      }
+      liveDemoModal.classList.add("is-open");
+      liveDemoModal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+      window.requestAnimationFrame(() => liveDemoModal.querySelector("[data-close-live-demo]")?.focus());
+    });
+  });
+
+  liveDemoModal?.querySelectorAll("[data-close-live-demo]").forEach((closer) => {
+    closer.addEventListener("click", closeLiveDemo);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeLiveDemo();
+      return;
+    }
+    if (event.key !== "Tab" || !liveDemoModal?.classList.contains("is-open")) return;
+    const focusable = [
+      ...liveDemoModal.querySelectorAll("button:not([disabled]), a[href], iframe, [tabindex]:not([tabindex='-1'])"),
+    ].filter((node) => !node.hasAttribute("hidden"));
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
 
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const reveals = document.querySelectorAll("[data-reveal]");

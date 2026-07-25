@@ -40,8 +40,8 @@ const headers = { "Content-Type": "application/json", "X-Elixis-Form": "landing-
 function validLead() {
   return {
     ...ids,
-    variant: "ready",
-    route: "/ready/",
+    variant: "nevermiss",
+    route: "/nevermiss/",
     interest: "full_receptionist",
     current_handling: "office_team",
     coverage_gap: "overflow",
@@ -72,8 +72,8 @@ describe("landing-page API routes", () => {
         ...ids,
         submission_id: null,
         event_name: "page_view",
-        variant: "ready",
-        route: "/ready/",
+        variant: "hear",
+        route: "/hear/",
         metadata: { target: "demo" },
         is_test: true,
       });
@@ -100,8 +100,8 @@ describe("landing-page API routes", () => {
         ...ids,
         submission_id: null,
         event_name: "form_start",
-        variant: "ready",
-        route: "/ready/",
+        variant: "hear",
+        route: "/hear/",
         metadata: { email: "do-not-store@example.com" },
       });
     expect(metadata.status).toBe(422);
@@ -111,7 +111,11 @@ describe("landing-page API routes", () => {
   it("persists a valid lead, rejects implausibly fast submissions, and absorbs honeypot spam", async () => {
     const success = await request(app).post("/api/landing/leads").set(headers).send(validLead());
     expect(success.status).toBe(201);
-    expect(success.body).toMatchObject({ submitted: true, duplicate: false, booking_url: "/booking/" });
+    expect(success.body).toMatchObject({
+      submitted: true,
+      duplicate: false,
+      booking_url: "https://elixis.agency/booking/",
+    });
     expect(landingMocks.recordLead).toHaveBeenCalledOnce();
 
     const fast = await request(app)

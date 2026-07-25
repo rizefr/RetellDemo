@@ -2,9 +2,10 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase";
 
-export const LANDING_VARIANTS = ["answer", "ready", "coverage"] as const;
+export const LANDING_VARIANTS = ["answer", "nevermiss", "pestline", "hear"] as const;
 export const LANDING_EVENT_NAMES = [
   "page_view",
+  "cta_click",
   "form_start",
   "form_step_complete",
   "form_submit",
@@ -17,11 +18,14 @@ export const LANDING_EVENT_NAMES = [
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
 export type LandingEventName = (typeof LANDING_EVENT_NAMES)[number];
 
-const routeByVariant: Record<LandingVariant, string> = {
+export const LANDING_ROUTE_BY_VARIANT: Record<LandingVariant, string> = {
   answer: "/answer/",
-  ready: "/ready/",
-  coverage: "/coverage/",
+  nevermiss: "/nevermiss/",
+  pestline: "/pestline/",
+  hear: "/hear/",
 };
+
+const LANDING_ROUTES = ["/answer/", "/nevermiss/", "/pestline/", "/hear/"] as const;
 
 const optionalTrackingText = z
   .string()
@@ -52,7 +56,17 @@ const attributionSchema = {
 const eventMetadataSchema = z
   .object({
     target: z
-      .enum(["hero_form", "nav_form", "booking", "demo", "form_next", "form_submit", "form_retry"])
+      .enum([
+        "hero_form",
+        "nav_form",
+        "primary_form",
+        "primary_demo",
+        "booking",
+        "demo",
+        "form_next",
+        "form_submit",
+        "form_retry",
+      ])
       .optional(),
     step: z.number().int().min(1).max(2).optional(),
     error_code: z.enum(["validation", "network", "server", "storage"]).optional(),
@@ -63,7 +77,7 @@ export const landingEventSchema = z
   .object({
     event_name: z.enum(LANDING_EVENT_NAMES),
     variant: z.enum(LANDING_VARIANTS),
-    route: z.enum(["/answer/", "/ready/", "/coverage/"]),
+    route: z.enum(LANDING_ROUTES),
     session_id: z.string().uuid(),
     page_load_id: z.string().uuid(),
     submission_id: z.string().uuid().nullable().optional().default(null),
@@ -73,7 +87,7 @@ export const landingEventSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (routeByVariant[value.variant] !== value.route) {
+    if (LANDING_ROUTE_BY_VARIANT[value.variant] !== value.route) {
       context.addIssue({ code: "custom", path: ["route"], message: "Route does not match variant" });
     }
   });
@@ -81,7 +95,7 @@ export const landingEventSchema = z
 export const landingLeadSchema = z
   .object({
     variant: z.enum(LANDING_VARIANTS),
-    route: z.enum(["/answer/", "/ready/", "/coverage/"]),
+    route: z.enum(LANDING_ROUTES),
     session_id: z.string().uuid(),
     page_load_id: z.string().uuid(),
     submission_id: z.string().uuid(),
@@ -100,7 +114,7 @@ export const landingLeadSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (routeByVariant[value.variant] !== value.route) {
+    if (LANDING_ROUTE_BY_VARIANT[value.variant] !== value.route) {
       context.addIssue({ code: "custom", path: ["route"], message: "Route does not match variant" });
     }
   });
@@ -235,11 +249,14 @@ export async function recordLandingLead(input: LandingLeadInput): Promise<{ id: 
   return { id: leadId, duplicate };
 }
 
+type LegacyLandingVariant = "ready" | "coverage";
+type StoredLandingVariant = LandingVariant | LegacyLandingVariant;
+
 type LandingEventRow = {
   id: string;
   created_at: string;
   event_name: LandingEventName;
-  variant: LandingVariant;
+  variant: StoredLandingVariant;
   route: string;
   session_id: string;
   submission_id: string | null;
@@ -257,7 +274,7 @@ type LandingEventRow = {
 type LandingLeadRow = {
   id: string;
   created_at: string;
-  variant: LandingVariant;
+  variant: StoredLandingVariant;
   route: string;
   session_id: string;
   submission_id: string;
@@ -288,9 +305,10 @@ function percentage(numerator: number, denominator: number): number | null {
 function emptyVariant(variant: LandingVariant) {
   return {
     variant,
-    route: routeByVariant[variant],
+    route: LANDING_ROUTE_BY_VARIANT[variant],
     page_views: 0,
     unique_sessions: 0,
+    primary_cta_clicks: 0,
     form_starts: 0,
     submissions: 0,
     booking_clicks: 0,
@@ -298,7 +316,12 @@ function emptyVariant(variant: LandingVariant) {
     view_to_submit_rate: null as number | null,
     start_to_submit_rate: null as number | null,
     booking_click_rate: null as number | null,
+    primary_cta_click_rate: null as number | null,
   };
+}
+
+function isCurrentVariant(variant: StoredLandingVariant): variant is LandingVariant {
+  return LANDING_VARIANTS.includes(variant as LandingVariant);
 }
 
 export function buildLandingDashboard(
@@ -317,12 +340,15 @@ export function buildLandingDashboard(
   const testLeads = allLeads.filter((lead) => lead.is_test).length;
   const events = options.includeTest ? allEvents : allEvents.filter((event) => !event.is_test);
   const leads = options.includeTest ? allLeads : allLeads.filter((lead) => !lead.is_test);
+  const currentEvents = events.filter((event) => isCurrentVariant(event.variant));
+  const currentLeads = leads.filter((lead) => isCurrentVariant(lead.variant));
 
   const variants = LANDING_VARIANTS.map((variant) => {
-    const variantEvents = events.filter((event) => event.variant === variant);
+    const variantEvents = currentEvents.filter((event) => event.variant === variant);
     const pageViews = variantEvents.filter((event) => event.event_name === "page_view");
+    const primaryCtaClicks = variantEvents.filter((event) => event.event_name === "cta_click").length;
     const formStarts = variantEvents.filter((event) => event.event_name === "form_start").length;
-    const submissions = leads.filter((lead) => lead.variant === variant).length;
+    const submissions = currentLeads.filter((lead) => lead.variant === variant).length;
     const bookingClicks = variantEvents.filter((event) => event.event_name === "booking_click").length;
     const demoClicks = variantEvents.filter((event) => event.event_name === "demo_click").length;
 
@@ -330,6 +356,7 @@ export function buildLandingDashboard(
       ...emptyVariant(variant),
       page_views: pageViews.length,
       unique_sessions: new Set(pageViews.map((event) => event.session_id)).size,
+      primary_cta_clicks: primaryCtaClicks,
       form_starts: formStarts,
       submissions,
       booking_clicks: bookingClicks,
@@ -337,6 +364,7 @@ export function buildLandingDashboard(
       view_to_submit_rate: percentage(submissions, pageViews.length),
       start_to_submit_rate: percentage(submissions, formStarts),
       booking_click_rate: percentage(bookingClicks, pageViews.length),
+      primary_cta_click_rate: percentage(primaryCtaClicks, pageViews.length),
     };
   });
 
@@ -356,27 +384,27 @@ export function buildLandingDashboard(
     if (!sourceMap.has(key)) sourceMap.set(key, { source, medium, campaign, page_views: 0, submissions: 0 });
     return sourceMap.get(key)!;
   };
-  events
+  currentEvents
     .filter((event) => event.event_name === "page_view")
     .forEach((event) => {
       sourceRow(event).page_views += 1;
     });
-  leads.forEach((lead) => {
+  currentLeads.forEach((lead) => {
     sourceRow(lead).submissions += 1;
   });
 
   const eventCounts = Object.fromEntries(
     LANDING_EVENT_NAMES.map((eventName) => [
       eventName,
-      events.filter((event) => event.event_name === eventName).length,
+      currentEvents.filter((event) => event.event_name === eventName).length,
     ]),
   );
   const pageViews = eventCounts.page_view ?? 0;
-  const missingUtmViews = events.filter(
+  const missingUtmViews = currentEvents.filter(
     (event) => event.event_name === "page_view" && !event.utm_source && !event.utm_medium && !event.utm_campaign,
   ).length;
-  const latestEventAt = events[0]?.created_at ?? null;
-  const latestLeadAt = leads[0]?.created_at ?? null;
+  const latestEventAt = currentEvents[0]?.created_at ?? null;
+  const latestLeadAt = currentLeads[0]?.created_at ?? null;
 
   return {
     available: !options.eventsError && !options.leadsError,
@@ -387,19 +415,20 @@ export function buildLandingDashboard(
     totals: {
       page_views: variants.reduce((sum, item) => sum + item.page_views, 0),
       unique_session_estimates: new Set(
-        events.filter((event) => event.event_name === "page_view").map((event) => event.session_id),
+        currentEvents.filter((event) => event.event_name === "page_view").map((event) => event.session_id),
       ).size,
+      primary_cta_clicks: variants.reduce((sum, item) => sum + item.primary_cta_clicks, 0),
       form_starts: variants.reduce((sum, item) => sum + item.form_starts, 0),
-      submissions: leads.length,
+      submissions: currentLeads.length,
       booking_clicks: variants.reduce((sum, item) => sum + item.booking_clicks, 0),
       demo_clicks: variants.reduce((sum, item) => sum + item.demo_clicks, 0),
-      view_to_submit_rate: percentage(leads.length, pageViews),
+      view_to_submit_rate: percentage(currentLeads.length, pageViews),
     },
     sources: [...sourceMap.values()].sort(
       (left, right) => right.submissions - left.submissions || right.page_views - left.page_views,
     ),
-    recent_events: events.slice(0, 40),
-    recent_leads: leads.slice(0, 30),
+    recent_events: currentEvents.slice(0, 40),
+    recent_leads: currentLeads.slice(0, 30),
     diagnostics: {
       supabase_configured: isSupabaseConfigured(),
       events_table_reachable: !options.eventsError,
@@ -413,16 +442,21 @@ export function buildLandingDashboard(
       missing_utm_page_view_rate: percentage(missingUtmViews, pageViews),
       test_events_excluded: options.includeTest ? 0 : testEvents,
       test_leads_excluded: options.includeTest ? 0 : testLeads,
+      legacy_event_rows_preserved: events.filter((event) => !isCurrentVariant(event.variant)).length,
+      legacy_lead_rows_preserved: leads.filter((lead) => !isCurrentVariant(lead.variant)).length,
       event_data_cap_reached: allEvents.length >= (options.eventCap ?? 10_000),
       lead_data_cap_reached: allLeads.length >= (options.leadCap ?? 5_000),
       privacy: {
         cookies: "none",
-        session_estimate: "random UUID in sessionStorage",
+        session_estimate: "random UUID in origin-scoped sessionStorage; skipped when GPC or DNT is active",
+        cross_subdomain_behavior:
+          "sessions remain isolated by browser origin; UTM and variant values are appended to Elixis booking links",
         fingerprinting: "none",
         raw_ip_stored: false,
         user_agent_stored: false,
         fbclid_stored: false,
-        privacy_signal_behavior: "nonessential events are skipped; submitted lead requests still persist",
+        privacy_signal_behavior:
+          "nonessential events and session storage are skipped; explicitly submitted lead requests still persist with ephemeral request identifiers",
       },
     },
   };
