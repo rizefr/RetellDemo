@@ -9,6 +9,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Agent: `Elevator Inspection Collections — Paul`
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Flow ID: `conversation_flow_bebdceabc801`
+- Current published version: V75
 - Voice: `11labs-Gilfoy`
 - Spoken name: `Paul`
 - Model: GPT-4.1
@@ -44,7 +45,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Normal terminal paths route to the final-check node: “Is there anything else I can help you with?” Then the native end-call action says “Have a good day. Goodbye.”
 - Hard terminal paths are limited to explicit do-not-contact, attorney represented, or hostile/abusive requests. Wrong-number outcomes use the separate wrong-number terminal path with the neutral close “Sorry about that. We'll review the contact information. Goodbye.”
 - If payment is refused, ask one non-pushy clarification: “May I ask the reason, so I can note it correctly for the team?” Then classify and stop.
-- If the caller confirms the invoice was received, ask “Do you need the secure payment link?” A bare yes must be followed by “Would you prefer text or email?” rather than inferring email from the address on file. If they say no, ask “By what date should we expect payment?” A declined link is not a refusal to pay. Clarify vague non-dates such as “soon” without storing them. Pass a concrete date to `schedule_followup`, confirm only the backend-resolved spoken date, and keep invoice payment status unchanged.
+- If the caller confirms the invoice was received, ask “Do you need the secure payment link?” A bare yes must be followed by “Would you prefer text or email?” rather than inferring email from the address on file. If they say no, ask “By what date should we expect payment?” A declined link is not a refusal to pay. Clarify vague non-dates such as “soon” without storing them. V75 routes every concrete date through the dedicated expected-payment-date function node, waits for `schedule_followup`, confirms only the backend-resolved spoken date, and keeps invoice payment status unchanged.
 - If the caller says they are no longer responsible for payments, collect the new responsible party name, phone, and email only if they are willing. Do not transfer by default.
 - If the caller asks for a named person, log `named_contact_requested` and say that person or someone from their team will follow up.
 - For named-contact requests, log before promising the follow-up. This avoids call summaries that show a follow-up promise without the backing event.

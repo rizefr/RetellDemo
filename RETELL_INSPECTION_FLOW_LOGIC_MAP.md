@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V74. Read back Retell before any future publish.
+- Current published version: V75. Read back Retell before any future publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
@@ -77,8 +77,9 @@ flowchart TD
   E -->|Yes| F["Ask email or text preference"]
   F --> G["Use existing gated payment-link delivery flow"]
   E -->|No| H["Ask: By what date should we expect payment?"]
-  H -->|Specific date| I["schedule_followup with caller's exact date phrase"]
-  I --> J{"Date resolves?"}
+  H -->|Specific date| I["Enter expected-payment-date function node"]
+  I --> Q["schedule_followup with caller's exact date phrase"]
+  Q --> J{"Date resolves?"}
   J -->|Yes| K["Persist expected date, log event, create follow-ups"]
   J -->|No| L["Ask tool-provided clarification; write nothing"]
   H -->|No date supplied| M["Schedule manual follow-up; invoice status unchanged"]
@@ -107,6 +108,7 @@ Paul says exactly: `Good to hear. Do you need the secure payment link?` He does 
 - **No:** Paul asks exactly: `By what date should we expect payment?` A declined link is not a payment refusal.
 - **Vague non-date supplied:** Paul asks for a specific date and makes no write. If the vague phrase reaches `schedule_followup`, the backend also returns a no-write clarification.
 - **Concrete date supplied:** `schedule_followup` receives the caller's exact phrase. The backend resolves it from the trusted call timestamp and customer/business timezone. Past dates return a clarification request with no write. Valid dates store `outbound_invoices.expected_payment_date`, log `expected_payment_date_recorded`, and create follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
+- **Structural V75 route:** A concrete date transition enters the dedicated `outbound_expected_payment_date_function` node. That node invokes `schedule_followup` with `wait_for_result:true` and does not speak during execution. Only the success node may confirm `expected_payment_date_spoken`; clarification loops back through the function node after the caller supplies a new date. A five-run repeated Playground smoke invoked and confirmed the mocked resolver result in all five runs.
 - **Caller explicitly declines to give a date:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
 - **Explicit refusal to pay:** only then does Paul ask one reason and classify it without pressure.
 
