@@ -103,7 +103,9 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("email_pending_manual");
     expect(serialized).toContain("email_missing");
     expect(serialized).toContain("Elixis Elevator Systems");
-    expect(serialized).toContain("Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?");
+    expect(serialized).toContain(
+      "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?",
+    );
     expect(serialized).toContain("Speak as if the caller has already asked you to slow down.");
     expect(serialized).toContain("Keep a steady, lower-energy tone and do not rush the opening, names, emails, phone numbers, dates, or payment instructions.");
     expect(String(flow.global_prompt)).toContain('avoid saying the exact phrase "thank you"');
@@ -111,7 +113,9 @@ describe("outbound flow guardrails", () => {
     expect(String(flow.global_prompt)).not.toMatch(/wrong number[^\n]*hard terminal route/i);
     expect(String(flow.global_prompt)).not.toMatch(/hard terminal outcomes[^\n]*wrong_number/i);
     expect(String(flow.global_prompt)).toContain("use the dedicated wrong-number terminal route");
-    expect(serialized).toContain("Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue.");
+    expect(serialized).toContain(
+      "Got it. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm following up to make sure it was received.",
+    );
     expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
     expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
     expect(serialized).toContain("Good to hear. Do you need the secure payment link?");
@@ -276,7 +280,8 @@ describe("outbound flow guardrails", () => {
     const prompt = String(flow.global_prompt);
     expect(prompt).toContain("If the caller switches from text to email, confirm {{customer_email_spoken_slow}} before calling send_payment_email");
     expect(prompt).toContain('If the invoice was received, say: "Good to hear. Do you need the secure payment link?"');
-    expect(prompt).toContain('If the caller says no to the payment-link question, ask exactly: "By what date should we expect payment?"');
+    expect(prompt).toContain('If the caller says no to the payment-link question, ask exactly: "When can I expect the payment?"');
+    expect(prompt).not.toContain("By what date should we expect payment?");
     expect(prompt).toContain("Declining the payment link is not the same as refusing to pay");
     expect(prompt).toContain('If the caller answers only yes, ask exactly: "Would you prefer text or email?"');
     expect(prompt).toContain("Even vague phrases such as soon, later, or sometime must be passed to schedule_followup");
@@ -333,8 +338,11 @@ describe("outbound flow guardrails", () => {
     expect(clarificationNode.edges).toContainEqual(
       expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_function" }),
     );
-    expect(JSON.stringify(confirmationNode)).toContain("expected_payment_date_spoken");
-    expect(JSON.stringify(confirmationNode)).toContain("Is there anything else I can help you with?");
+    const serializedConfirmationNode = JSON.stringify(confirmationNode);
+    expect(serializedConfirmationNode).toContain("Got it. I'll expect your payment on {{expected_payment_date_spoken}}.");
+    expect(serializedConfirmationNode).toContain("immediately use this node's native end_call tool");
+    expect(serializedConfirmationNode).not.toContain("Can you confirm");
+    expect(serializedConfirmationNode).not.toContain("Is there anything else I can help you with?");
   });
 
   it("keeps Presentation Mode copy professional and surfaces specific demo gate messages", () => {
