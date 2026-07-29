@@ -541,7 +541,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Friday." },
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Friday\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":true,\"needs_clarification\":false,\"task_count\":4,\"expected_payment_date\":\"2026-07-17\",\"expected_payment_date_spoken\":\"July seventeenth, twenty twenty-six\"}" },
-            { role: "agent", content: "Got it. I'll note that payment is expected by July seventeenth, twenty twenty-six. Is there anything else I can help you with?" },
+            { role: "agent", content: "Got it. I'll expect your payment on July seventeenth, twenty twenty-six." },
           ],
         },
         {
