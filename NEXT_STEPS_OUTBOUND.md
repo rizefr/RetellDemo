@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Current published Conversation Flow: V74.
+- Current published Conversation Flow: V75.
 - Separate Single Prompt comparison: agent `agent_f5a392178f5afa39280b1489a0`, LLM `llm_b3f0e230981f653f0fa1195d0459`, V2, unbound. Use `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for the safe A/B workflow.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
@@ -15,6 +15,7 @@
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
 - Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
 - SMS remains disabled/manual. QuickBooks remains scaffold-only.
+- Custom-telephony allowlist notices apply to the separate `custom` SIP receptionist number `+18887809963`, not the managed `retell-twilio` outbound demo number `+19842075346`. Do not change the receptionist allowlist from an outbound-maintenance pass.
 
 ## Retell Model And Voice Maintenance
 
@@ -51,11 +52,11 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 - Keep `agent_f5a392178f5afa39280b1489a0` unbound. It is Playground-only and is not selectable through `/backend`, `/outbound`, or production call routes.
 - Production calls are fixed to `agent_4aa8074d7eabe311109ed6da89` / `conversation_flow_bebdceabc801` at `latest_published`. Signed webhook and tool traffic from any other Retell agent ID is rejected.
-- Published V74 is live. It includes outcome-specific native same-node fallbacks for wrong-number and hard-terminal endings when Retell selects an end action before completing the dedicated node transition.
+- Published V75 is live. It includes outcome-specific native same-node fallbacks for wrong-number and hard-terminal endings and a structural expected-payment-date function route. A concrete caller date enters `schedule_followup` before Paul confirms anything; ambiguous dates route to clarification without writing, and valid dates confirm only the backend-resolved value.
 - Keep the received-invoice branch explicit: ask whether the caller needs the payment link; after a bare yes, ask text or email instead of inferring a method. If not, ask by what date payment should be expected. Clarify vague non-dates without writing them, then pass a concrete date through `schedule_followup`; persist only the backend-resolved date without changing invoice status. Treat an explicit refusal to pay as a separate branch that asks one reason.
 - Retell SDK `5.31.1` is the current compatibility pin. Before upgrading to `5.32+`, verify Retell's supported replacement for the removed `sign`/`verify` helpers and rerun the raw-body webhook signature suite.
 - Keep its LLM `llm_b3f0e230981f653f0fa1195d0459` explicit in server environment settings. Never discover-and-update it by name.
-- Use the same demo variables and caller scenario when comparing it with the V74 Conversation Flow agent.
+- Use the same demo variables and caller scenario when comparing it with the V75 Conversation Flow agent.
 - Run `npm run outbound:test-single-prompt` before any live A/B call. Its tool results are mocked and do not prove production delivery.
 - Do not add the pest-control knowledge base. Trusted outbound invoice/customer data comes from call variables and signed metadata.
 - Read `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for exact tools, current V2 settings, update guards, and the no-call preflight workflow.
@@ -74,7 +75,7 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 ## V63 Gilfoy/Paul Opening Polish (Historical)
 
-- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V74 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
+- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V75 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
 - The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V63 introduced speed `0.82`, a longer first-message delay, a short Retell pause marker between the business name and name-confirmation question, and separate wrong-number versus explicit-opt-out handling.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
