@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V78. Read back Retell before any future publish.
+- Current published version: V79. Read back Retell before any future publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
@@ -84,7 +84,7 @@ flowchart TD
   J -->|No| L["Ask tool-provided clarification; write nothing"]
   H -->|No date supplied| M["Schedule manual follow-up; invoice status unchanged"]
   K --> N["Confirm tool-returned spoken date"]
-  N --> O["Normal final-check and native end-call"]
+  N --> O["Native End node states date, says goodbye, and ends"]
   M --> O
   E -->|Explicit refusal to pay| P["Ask one non-pushy reason and classify"]
 ```
@@ -108,7 +108,7 @@ Paul says exactly: `Good to hear. Do you need the secure payment link?` He does 
 - **No:** Paul asks exactly: `When can I expect the payment?` A declined link is not a payment refusal.
 - **Vague non-date supplied:** Paul asks for a specific date and makes no write. If the vague phrase reaches `schedule_followup`, the backend also returns a no-write clarification.
 - **Concrete date supplied:** `schedule_followup` receives the caller's exact phrase. The backend resolves it from the trusted call timestamp and customer/business timezone. Past dates return a clarification request with no write. Valid dates store `outbound_invoices.expected_payment_date`, log `expected_payment_date_recorded`, and create follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
-- **Structural date route:** A concrete date transition enters the dedicated `outbound_expected_payment_date_function` node. That node invokes `schedule_followup` with `wait_for_result:true` and does not speak during execution. The success node states `expected_payment_date_spoken` once, then immediately invokes its native end-call action. It does not ask the caller to reconfirm the persisted date. Clarification loops back through the function node only when the trusted resolver requests a more specific date.
+- **Structural date route:** A concrete date transition enters the dedicated `outbound_expected_payment_date_function` node. That node invokes `schedule_followup` with `wait_for_result:true` and does not speak during execution. Success transitions directly to a native End node whose static message states `expected_payment_date_spoken` once, says goodbye, and ends the call. It does not ask the caller to reconfirm the persisted date. Clarification loops back through the function node only when the trusted resolver requests a more specific date.
 - **Caller explicitly declines to give a date:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
 - **Explicit refusal to pay:** only then does Paul ask one reason and classify it without pressure.
 
