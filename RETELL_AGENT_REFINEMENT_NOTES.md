@@ -9,7 +9,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Agent: `Elevator Inspection Collections — Paul`
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V78
+- Current published version: V79
 - Voice: `11labs-Gilfoy`
 - Spoken name: `Paul`
 - Model: GPT-4.1
@@ -45,7 +45,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Normal terminal paths route to the final-check node: “Is there anything else I can help you with?” Then the native end-call action says “Have a good day. Goodbye.”
 - Hard terminal paths are limited to explicit do-not-contact, attorney represented, or hostile/abusive requests. Wrong-number outcomes use the separate wrong-number terminal path with the neutral close “Sorry about that. We'll review the contact information. Goodbye.”
 - If payment is refused, ask one non-pushy clarification: “May I ask the reason, so I can note it correctly for the team?” Then classify and stop.
-- If the caller confirms the invoice was received, ask “Do you need the secure payment link?” A bare yes must be followed by “Would you prefer text or email?” rather than inferring email from the address on file. If they say no, ask “When can I expect the payment?” A declined link is not a refusal to pay. Clarify vague non-dates such as “soon” without storing them. Route every concrete date through the dedicated expected-payment-date function node, wait for `schedule_followup`, then say “Got it. I'll expect your payment on {{expected_payment_date_spoken}}.” and immediately use the native closing action. Never ask the caller to confirm that stored date again.
+- If the caller confirms the invoice was received, ask “Do you need the secure payment link?” A bare yes must be followed by “Would you prefer text or email?” rather than inferring email from the address on file. If they say no, ask “When can I expect the payment?” A declined link is not a refusal to pay. Clarify vague non-dates such as “soon” without storing them. Route every concrete date through the dedicated expected-payment-date function node and wait for `schedule_followup`. The native End node then says “Got it. I'll expect your payment on {{expected_payment_date_spoken}}. Have a good day. Goodbye.” and ends. Never ask the caller to confirm that stored date again.
 - If the caller says they are no longer responsible for payments, collect the new responsible party name, phone, and email only if they are willing. Do not transfer by default.
 - If the caller asks for a named person, log `named_contact_requested` and say that person or someone from their team will follow up.
 - For named-contact requests, log before promising the follow-up. This avoids call summaries that show a follow-up promise without the backing event.

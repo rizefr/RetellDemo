@@ -287,7 +287,7 @@ describe("outbound flow guardrails", () => {
     expect(prompt).toContain("Even vague phrases such as soon, later, or sometime must be passed to schedule_followup");
     expect(prompt).toContain("Never decide that a supplied date phrase is too vague before calling schedule_followup");
     expect(prompt).toContain(
-      "The dedicated success node must say exactly: \"Got it. I'll expect your payment on {{expected_payment_date_spoken}}.\" and then immediately use its native end_call action.",
+      "The dedicated native End node must say exactly: \"Got it. I'll expect your payment on {{expected_payment_date_spoken}}. Have a good day. Goodbye.\" and end the call.",
     );
     expect(JSON.stringify(flow)).not.toContain("I'll note that payment is expected by");
     expect(JSON.stringify(flow)).toContain("Call this tool for every caller-supplied expected payment date phrase, including vague phrases");
@@ -307,11 +307,11 @@ describe("outbound flow guardrails", () => {
 
     expect(mainNode?.type).toBe("subagent");
     expect(resolverNode?.type).toBe("function");
-    expect(confirmationNode?.type).toBe("subagent");
+    expect(confirmationNode?.type).toBe("end");
     expect(clarificationNode?.type).toBe("subagent");
     if (mainNode?.type !== "subagent") throw new Error("Expected main outbound subagent");
     if (resolverNode?.type !== "function") throw new Error("Expected payment-date function node");
-    if (confirmationNode?.type !== "subagent") throw new Error("Expected payment-date confirmation subagent");
+    if (confirmationNode?.type !== "end") throw new Error("Expected payment-date native end node");
     if (clarificationNode?.type !== "subagent") throw new Error("Expected payment-date clarification subagent");
 
     expect(mainNode.edges).toContainEqual(
@@ -344,7 +344,8 @@ describe("outbound flow guardrails", () => {
     );
     const serializedConfirmationNode = JSON.stringify(confirmationNode);
     expect(serializedConfirmationNode).toContain("Got it. I'll expect your payment on {{expected_payment_date_spoken}}.");
-    expect(serializedConfirmationNode).toContain("immediately use this node's native end_call tool");
+    expect(serializedConfirmationNode).toContain("Have a good day. Goodbye.");
+    expect(confirmationNode).toMatchObject({ type: "end", speak_during_execution: true });
     expect(serializedConfirmationNode).not.toContain("Can you confirm");
     expect(serializedConfirmationNode).not.toContain("Is there anything else I can help you with?");
   });
