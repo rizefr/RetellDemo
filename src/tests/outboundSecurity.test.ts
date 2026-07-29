@@ -286,6 +286,10 @@ describe("outbound flow guardrails", () => {
     expect(prompt).toContain('If the caller answers only yes, ask exactly: "Would you prefer text or email?"');
     expect(prompt).toContain("Even vague phrases such as soon, later, or sometime must be passed to schedule_followup");
     expect(prompt).toContain("Never decide that a supplied date phrase is too vague before calling schedule_followup");
+    expect(prompt).toContain(
+      "The dedicated success node must say exactly: \"Got it. I'll expect your payment on {{expected_payment_date_spoken}}.\" and then immediately use its native end_call action.",
+    );
+    expect(prompt).not.toContain("I'll note that payment is expected by");
     expect(JSON.stringify(flow)).toContain("Call this tool for every caller-supplied expected payment date phrase, including vague phrases");
     expect(prompt).toContain("Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks what the invoice is about, asks how payment works, or asks for the amount.");
     expect(JSON.stringify(flow)).toContain('"id":"payment_link_declined_expected_date_example"');
