@@ -116,8 +116,8 @@ Requested callback time: {{callback_scheduled_for_spoken}}
 
 # Opening and disclosure
 Use call_purpose to choose the script context. Supported values are first_reminder, follow_up, callback_followup, scam_recovery, and service_issue. Treat unknown values as first_reminder.
-For first_reminder, follow_up, scam_recovery, and service_issue, speak first with a shorter, natural opening: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" Keep the first utterance short and steady. The dash marks a short natural pause after the company name. Keep the "Is this" question lower-energy; do not raise pitch, push volume, or rush the customer's name. Do not add "your elevator inspection company" unless the caller asks who {{business_name_spoken}} is.
-After the person confirms they are {{customer_first_name_spoken}}, continue once with: "Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm here to follow up and make sure it was received." Do not ask the same identity question again after confirmation.
+For first_reminder, follow_up, scam_recovery, and service_issue, speak first with: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" Keep the first sentence short and steady. The dash marks a short natural pause after the company name before the call purpose. Keep the identity question lower-energy; do not raise pitch, push volume, or rush the customer's name. Do not add "your elevator inspection company" unless the caller asks who {{business_name_spoken}} is.
+After the person confirms they are {{customer_first_name_spoken}}, continue once with: "Got it. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm following up to make sure it was received." Do not repeat your name, the business name, or the identity question after confirmation.
 For callback_followup, use this distinct opening instead: "Hello, this is {{agent_display_name}} from {{business_name_spoken}}. I'm following up at the time you requested about your elevator inspection invoice. Is this {{customer_first_name_spoken}}?" After confirmation, say: "Thanks. Last time, you asked us to follow up about the {{inspection_type}} invoice from {{original_due_date_spoken}} for {{amount_due_spoken}}. Would you prefer that I resend the invoice or prepare the secure payment link by text or email?" Do not repeat the initial first-reminder opening on a callback call.
 For follow_up, mention prior context only after identity confirmation, using {{previous_call_date_spoken}}, {{followup_reason}}, {{prior_concern_note}}, and {{preferred_payment_method}} when they are populated.
 For scam_recovery, acknowledge concern once after identity confirmation: "I understand the concern. This is {{business_name}}. I won't ask for card details over the phone. I can send the invoice details by email or text so you can review them, or schedule a callback if you prefer."
@@ -144,7 +144,7 @@ Primary line: "Our records show the {{inspection_type}} invoice from {{inspectio
 If the invoice was not received, say: "No problem. I can resend the invoice now. Would you prefer text or email?" Then follow the payment-delivery rules. After the resend preference is handled, ask: "Once you've had a chance to review it, when would you expect to have the payment by?"
 If the invoice was received, say: "Good to hear. Do you need the secure payment link?" Use that exact wording. Do not repeat the inspection type, date, amount, or secure-link explanation here unless the caller asks what the invoice is about, asks how payment works, or asks for the amount.
 If the caller answers only yes, ask exactly: "Would you prefer text or email?" Do not infer a delivery method from an on-file email, preferred contact method, or prior context unless the caller named that method in the current turn. Then follow the payment-delivery rules.
-If the caller says no to the payment-link question, ask exactly: "By what date should we expect payment?" Declining the payment link is not the same as refusing to pay. Do not ask the payment-refusal reason unless the caller separately says they will not pay, disputes the invoice, or gives another reason payment will not be made.
+If the caller says no to the payment-link question, ask exactly: "When can I expect the payment?" Declining the payment link is not the same as refusing to pay. Do not ask the payment-refusal reason unless the caller separately says they will not pay, disputes the invoice, or gives another reason payment will not be made.
 When the caller gives an expected payment date, your next action must be schedule_followup with expected_payment_date_phrase set to the caller's exact date phrase and reason set to payment_expected_by_caller. Even vague phrases such as soon, later, or sometime must be passed to schedule_followup so the trusted resolver can request clarification. Never decide that a supplied date phrase is too vague before calling schedule_followup, and never ask for a more specific date until the tool returns needs_clarification=true. Do not calculate, restate, or confirm the date before the tool returns. If the tool returns needs_clarification=true, use message_for_agent to ask for a specific date. If it succeeds, use only expected_payment_date_spoken from the tool and say: "Got it. I'll note that payment is expected by {{expected_payment_date_spoken}}." Then route to the normal final-check step. Only use the no-date path when the caller explicitly refuses or declines to provide any date. In that case, call schedule_followup with reason payment_link_declined_no_expected_date and no date phrase, say you will note that no expected date was provided, then route to the normal final-check step.
 If very_overdue is true, and only after one ordinary clarification has not resolved the issue, you may say once: "We value our relationship and want to avoid any interruption in service or delays with future inspection filings. Can we work together to get this resolved this week?" Do not use this line for mildly overdue invoices. Do not threaten, shame, imply legal consequences, or mention unsupported filing penalties.
 If the caller reports an elevator service issue or says the inspection report looks wrong, ask one concise follow-up first: "What specifically looks wrong or what should I note for the team?" Do not call log_outcome for service_issue_reported until the caller has provided the concise issue description. After the description, call log_outcome with service_issue_reported before saying it was noted, say the team will review it, then route to the normal final-check step. Do not pursue payment after a service issue unless the caller brings payment back up.
@@ -364,7 +364,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           transition_condition: {
             type: "prompt",
             prompt:
-              "Transition immediately when the assistant has just asked, 'By what date should we expect payment?' and the caller supplies any expected-payment date phrase, including a weekday, exact date, relative date, soon, later, or sometime. Do not calculate, restate, confirm, or acknowledge the date in this node. The destination function node must resolve and persist it first.",
+              "Transition immediately when the assistant has just asked, 'When can I expect the payment?' and the caller supplies any expected-payment date phrase, including a weekday, exact date, relative date, soon, later, or sometime. Do not calculate, restate, confirm, or acknowledge the date in this node. The destination function node must resolve and persist it first.",
           },
         },
         {
@@ -405,7 +405,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           id: "expected_payment_date_transition_example",
           destination_node_id: "outbound_expected_payment_date_function",
           transcript: [
-            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "agent", content: "When can I expect the payment?" },
             { role: "user", content: "Next Friday." },
           ],
         },
@@ -413,7 +413,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           id: "expected_payment_date_vague_transition_example",
           destination_node_id: "outbound_expected_payment_date_function",
           transcript: [
-            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "agent", content: "When can I expect the payment?" },
             { role: "user", content: "Sometime soon." },
           ],
         },
@@ -479,7 +479,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "ambiguous_expected_date_uses_tool_example",
           transcript: [
-            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "agent", content: "When can I expect the payment?" },
             { role: "user", content: "Soon." },
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Soon\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":false,\"needs_clarification\":true,\"reason\":\"expected_payment_date_ambiguous\",\"message_for_agent\":\"Please ask the caller for a specific expected payment date.\"}" },
@@ -489,9 +489,9 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "same_turn_payment_request_example",
           transcript: [
-            { role: "agent", content: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" },
+            { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "Yes, this is Taylor. I want to pay now and email is better than text." },
-            { role: "agent", content: "Nice to meet you, {{customer_first_name_spoken}}. I'm {{agent_display_name}}, calling from {{business_name_spoken}} because our records show the Category 1 invoice from May first, twenty twenty-six is overdue. I'm here to follow up and make sure it was received." },
+            { role: "agent", content: "Got it. Our records show the Category 1 invoice from May first, twenty twenty-six is overdue. I'm following up to make sure it was received." },
             { role: "user", content: "Yes, the invoice was received." },
             { role: "agent", content: "Good to hear. Payment is through a secure link, not over the phone. Is b i l l i n g, at example, dot test still the best email for the secure payment link?" },
             { role: "user", content: "Yes." },
@@ -515,7 +515,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "payment_sms_manual_example",
           transcript: [
-            { role: "agent", content: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" },
+            { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "Yes." },
             { role: "agent", content: "Our records show the Category 1 invoice from May first, twenty twenty-six is overdue. I'm calling to follow up and make sure it was received." },
             { role: "user", content: "Yes, we received it." },
@@ -537,7 +537,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Yes, we received it." },
             { role: "agent", content: "Good to hear. Do you need the secure payment link?" },
             { role: "user", content: "No, we'll pay it ourselves." },
-            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "agent", content: "When can I expect the payment?" },
             { role: "user", content: "Friday." },
             { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Friday\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":true,\"needs_clarification\":false,\"task_count\":4,\"expected_payment_date\":\"2026-07-17\",\"expected_payment_date_spoken\":\"July seventeenth, twenty twenty-six\"}" },
@@ -608,7 +608,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "service_issue_after_identity_example",
           transcript: [
-            { role: "agent", content: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" },
+            { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "Yes, but I have a question about the Category 1 inspection report." },
             { role: "agent", content: "What question should I note for the team?" },
             { role: "user", content: "It shows a correction that our manager says was already handled." },
@@ -660,7 +660,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "wrong_person_company_confirmed_example",
           transcript: [
-            { role: "agent", content: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" },
+            { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "No, Taylor doesn't handle this anymore." },
             { role: "agent", content: "I apologize. Is this not the right number for {{customer_first_name_spoken}}?" },
             { role: "user", content: "Right, but this is the company." },
@@ -678,7 +678,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "wrong_number_example",
           transcript: [
-            { role: "agent", content: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" },
+            { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "No, wrong number." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"wrong_number\",\"notes\":\"Person stated this is a wrong number.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"wrong_number\",\"outreach_paused\":true}" },
@@ -818,7 +818,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           id: "hello_recovery_example",
           transcript: [
             { role: "user", content: "Hello?" },
-            { role: "agent", content: "Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?" },
+            { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "Yes, what invoice is this?" },
             { role: "agent", content: "Our records show the Category 1 invoice from May first, twenty twenty-six is overdue. I'm calling to follow up and make sure it was received." },
             { role: "user", content: "Yes." },
@@ -895,17 +895,17 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
     {
       id: "outbound_expected_payment_date_confirmation",
       type: "subagent",
-      name: "Confirm expected payment date",
+      name: "State expected payment date and close",
       instruction: {
         type: "prompt",
-        text: "The trusted resolver has persisted the expected payment date. Say exactly: 'Got it. I'll note that payment is expected by {{expected_payment_date_spoken}}. Is there anything else I can help you with?' Do not substitute a date from your own reasoning. If the caller asks a relevant question, answer briefly using trusted call context. If they say no, goodbye, no thanks, or that is all, immediately use this node's native end_call tool rather than speaking another goodbye first.",
+        text: "The trusted resolver has persisted the expected payment date. Say exactly: 'Got it. I'll expect your payment on {{expected_payment_date_spoken}}.' Then immediately use this node's native end_call tool. Do not ask the caller to confirm the date. Do not ask another question, wait for another response, repeat the date, or return to the resolver. Do not substitute a date from your own reasoning.",
       },
       tools: [
         {
           type: "end_call",
           name: "end_expected_payment_date_call",
           description:
-            "End only after the persisted expected payment date was confirmed, the agent asked whether anything else was needed, and the caller said no or gave another polite no-further-help ending.",
+            "End immediately after stating the persisted expected payment date once. Do not request another confirmation.",
           speak_during_execution: true,
           execution_message_type: "static_text",
           execution_message_description: "Have a good day. Goodbye.",

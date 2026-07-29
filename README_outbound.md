@@ -130,7 +130,7 @@ The active product is for elevator inspection companies collecting overdue inspe
 Primary opening:
 
 ```text
-Hello, I’m calling from {{business_name}}. - Is this {{customer_first_name}}?
+Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?
 ```
 
 After identity confirmation:
@@ -139,7 +139,7 @@ After identity confirmation:
 Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm calling to follow up and make sure it was received.
 ```
 
-Supported inspection types are `Category 1`, `Category 5`, `Acceptance Test`, and `Periodic Inspection`. The demo defaults to a first follow-up about 14 days after inspection, with a configurable very-overdue threshold currently defaulting to 45 days. If the invoice was not received, Paul offers to resend by email or text; email can send through the verified backend provider, while text remains manual until SMS is enabled. If the invoice was received, Paul asks whether the caller needs the secure payment link without repeating invoice details. A generic yes prompts for text or email. If the link is declined, he asks by what date payment should be expected; vague non-dates are clarified without a write, and a valid date is resolved and stored by the backend without changing payment status. An explicit refusal to pay remains a separate one-reason classification branch.
+Supported inspection types are `Category 1`, `Category 5`, `Acceptance Test`, and `Periodic Inspection`. The demo defaults to a first follow-up about 14 days after inspection, with a configurable very-overdue threshold currently defaulting to 45 days. If the invoice was not received, Paul offers to resend by email or text; email can send through the verified backend provider, while text remains manual until SMS is enabled. If the invoice was received, Paul asks whether the caller needs the secure payment link without repeating invoice details. A generic yes prompts for text or email. If the link is declined, he asks, “When can I expect the payment?” Vague non-dates are clarified without a write. A valid date is resolved and stored by the backend, then Paul states the persisted date once and immediately uses the native closing action without asking for confirmation again. An explicit refusal to pay remains a separate one-reason classification branch.
 
 For very overdue invoices only, Paul may use this relationship-preserving line once after ordinary clarification fails:
 

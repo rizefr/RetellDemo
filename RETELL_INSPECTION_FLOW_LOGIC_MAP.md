@@ -76,7 +76,7 @@ flowchart TD
   B -->|Yes| E["Ask: Do you need the secure payment link?"]
   E -->|Yes| F["Ask email or text preference"]
   F --> G["Use existing gated payment-link delivery flow"]
-  E -->|No| H["Ask: By what date should we expect payment?"]
+  E -->|No| H["Ask: When can I expect the payment?"]
   H -->|Specific date| I["Enter expected-payment-date function node"]
   I --> Q["schedule_followup with caller's exact date phrase"]
   Q --> J{"Date resolves?"}
@@ -91,7 +91,7 @@ flowchart TD
 
 ### Opening
 
-Default opening: `Hello, I'm calling from {{business_name_spoken}}. - Is this {{customer_first_name_spoken}}?`
+Default opening: `Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?`
 
 After identity confirmation, Paul states his name, business, inspection type, inspection date, and overdue context. He does not volunteer virtual-assistant disclosure in the normal path.
 
@@ -105,10 +105,10 @@ Paul says exactly: `Good to hear. Do you need the secure payment link?` He does 
 
 - **Yes with no method named:** Paul asks exactly `Would you prefer text or email?` He does not infer email from the on-file address or a prior preference.
 - **Yes with a method named:** Paul continues directly into the existing gated confirmation and delivery branch for that method.
-- **No:** Paul asks exactly: `By what date should we expect payment?` A declined link is not a payment refusal.
+- **No:** Paul asks exactly: `When can I expect the payment?` A declined link is not a payment refusal.
 - **Vague non-date supplied:** Paul asks for a specific date and makes no write. If the vague phrase reaches `schedule_followup`, the backend also returns a no-write clarification.
 - **Concrete date supplied:** `schedule_followup` receives the caller's exact phrase. The backend resolves it from the trusted call timestamp and customer/business timezone. Past dates return a clarification request with no write. Valid dates store `outbound_invoices.expected_payment_date`, log `expected_payment_date_recorded`, and create follow-up tasks without changing invoice status. Paul confirms only the tool-returned spoken date.
-- **Structural V75 route:** A concrete date transition enters the dedicated `outbound_expected_payment_date_function` node. That node invokes `schedule_followup` with `wait_for_result:true` and does not speak during execution. Only the success node may confirm `expected_payment_date_spoken`; clarification loops back through the function node after the caller supplies a new date. A five-run repeated Playground smoke invoked and confirmed the mocked resolver result in all five runs.
+- **Structural date route:** A concrete date transition enters the dedicated `outbound_expected_payment_date_function` node. That node invokes `schedule_followup` with `wait_for_result:true` and does not speak during execution. The success node states `expected_payment_date_spoken` once, then immediately invokes its native end-call action. It does not ask the caller to reconfirm the persisted date. Clarification loops back through the function node only when the trusted resolver requests a more specific date.
 - **Caller explicitly declines to give a date:** Paul records a manual follow-up with no expected date and leaves payment status unchanged.
 - **Explicit refusal to pay:** only then does Paul ask one reason and classify it without pressure.
 
