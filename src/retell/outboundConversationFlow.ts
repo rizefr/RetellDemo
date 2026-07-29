@@ -359,6 +359,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       },
       edges: [
         {
+          id: "outbound_expected_payment_date_edge",
+          destination_node_id: "outbound_expected_payment_date_function",
+          transition_condition: {
+            type: "prompt",
+            prompt:
+              "Transition immediately when the assistant has just asked, 'By what date should we expect payment?' and the caller supplies any expected-payment date phrase, including a weekday, exact date, relative date, soon, later, or sometime. Do not calculate, restate, confirm, or acknowledge the date in this node. The destination function node must resolve and persist it first.",
+          },
+        },
+        {
           id: "outbound_normal_terminal_edge",
           destination_node_id: "outbound_normal_terminal_final_check",
           transition_condition: {
@@ -389,6 +398,24 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             type: "prompt",
             prompt: "Transition here only after the caller says this is the wrong number or confirms they are not connected to the named person or account/company. Use this after wrong_number logging is complete. Do not use for explicit stop-calling or do-not-contact requests.",
           },
+        },
+      ],
+      finetune_transition_examples: [
+        {
+          id: "expected_payment_date_transition_example",
+          destination_node_id: "outbound_expected_payment_date_function",
+          transcript: [
+            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "user", content: "Next Friday." },
+          ],
+        },
+        {
+          id: "expected_payment_date_vague_transition_example",
+          destination_node_id: "outbound_expected_payment_date_function",
+          transcript: [
+            { role: "agent", content: "By what date should we expect payment?" },
+            { role: "user", content: "Sometime soon." },
+          ],
         },
       ],
       tool_ids: Object.values(OUTBOUND_TOOL_IDS),
@@ -805,6 +832,88 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       ],
     },
     {
+      id: "outbound_expected_payment_date_function",
+      type: "function",
+      name: "Resolve and persist expected payment date",
+      tool_id: OUTBOUND_TOOL_IDS.scheduleFollowup,
+      tool_type: "local",
+      wait_for_result: true,
+      speak_during_execution: false,
+      instruction: {
+        type: "prompt",
+        text: "Call schedule_followup with expected_payment_date_phrase set to the caller's exact most recent date phrase and reason set to payment_expected_by_caller. Do not calculate or normalize the date yourself.",
+      },
+      edges: [
+        {
+          id: "outbound_expected_payment_date_needs_clarification_edge",
+          destination_node_id: "outbound_expected_payment_date_clarification",
+          transition_condition: {
+            type: "prompt",
+            prompt:
+              "Transition here only when the schedule_followup result says needs_clarification is true or does not provide an expected_payment_date_spoken value.",
+          },
+        },
+      ],
+      else_edge: {
+        id: "outbound_expected_payment_date_confirmed_edge",
+        destination_node_id: "outbound_expected_payment_date_confirmation",
+        transition_condition: { type: "prompt", prompt: "Else" },
+      },
+      display_position: { x: 320, y: 430 },
+    },
+    {
+      id: "outbound_expected_payment_date_clarification",
+      type: "subagent",
+      name: "Clarify expected payment date",
+      instruction: {
+        type: "prompt",
+        text: "The trusted date resolver needs clarification. Ask for one specific expected payment date using expected_payment_date_message when it is populated. Do not calculate or suggest a date. When the caller supplies another date phrase, transition back to the resolver function without acknowledging or restating it first.",
+      },
+      edges: [
+        {
+          id: "outbound_expected_payment_date_retry_edge",
+          destination_node_id: "outbound_expected_payment_date_function",
+          transition_condition: {
+            type: "prompt",
+            prompt:
+              "Transition when the caller supplies a new or more specific expected-payment date phrase in response to the clarification question.",
+          },
+        },
+      ],
+      finetune_transition_examples: [
+        {
+          id: "expected_payment_date_clarification_retry_example",
+          destination_node_id: "outbound_expected_payment_date_function",
+          transcript: [
+            { role: "agent", content: "What specific date should I note for the expected payment?" },
+            { role: "user", content: "August fifth." },
+          ],
+        },
+      ],
+      display_position: { x: 620, y: 500 },
+    },
+    {
+      id: "outbound_expected_payment_date_confirmation",
+      type: "subagent",
+      name: "Confirm expected payment date",
+      instruction: {
+        type: "prompt",
+        text: "The trusted resolver has persisted the expected payment date. Say exactly: 'Got it. I'll note that payment is expected by {{expected_payment_date_spoken}}. Is there anything else I can help you with?' Do not substitute a date from your own reasoning. If the caller asks a relevant question, answer briefly using trusted call context. If they say no, goodbye, no thanks, or that is all, immediately use this node's native end_call tool rather than speaking another goodbye first.",
+      },
+      tools: [
+        {
+          type: "end_call",
+          name: "end_expected_payment_date_call",
+          description:
+            "End only after the persisted expected payment date was confirmed, the agent asked whether anything else was needed, and the caller said no or gave another polite no-further-help ending.",
+          speak_during_execution: true,
+          execution_message_type: "static_text",
+          execution_message_description: "Have a good day. Goodbye.",
+        },
+      ],
+      display_position: { x: 620, y: 380 },
+    },
+    {
       id: "outbound_normal_terminal_final_check",
       type: "subagent",
       name: "Normal terminal final check",
@@ -911,6 +1020,8 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       inspection_date_display: "",
       inspection_type: "Category 1",
       expected_payment_date_spoken: "",
+      expected_payment_date_needs_clarification: "false",
+      expected_payment_date_message: "",
       days_after_inspection_first_call: "14",
       very_overdue_threshold_days: "45",
       very_overdue: "false",

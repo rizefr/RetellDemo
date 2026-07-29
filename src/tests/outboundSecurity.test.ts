@@ -289,6 +289,54 @@ describe("outbound flow guardrails", () => {
     expect(JSON.stringify(flow)).toContain('\\"expected_payment_date_phrase\\":\\"Friday\\"');
   });
 
+  it("routes caller-supplied expected payment dates through a deterministic function node", () => {
+    const flow = buildOutboundConversationFlow("https://elixis.agency");
+    const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
+    const resolverNode = flow.nodes.find((node) => node.id === "outbound_expected_payment_date_function");
+    const confirmationNode = flow.nodes.find((node) => node.id === "outbound_expected_payment_date_confirmation");
+    const clarificationNode = flow.nodes.find((node) => node.id === "outbound_expected_payment_date_clarification");
+
+    expect(mainNode?.type).toBe("subagent");
+    expect(resolverNode?.type).toBe("function");
+    expect(confirmationNode?.type).toBe("subagent");
+    expect(clarificationNode?.type).toBe("subagent");
+    if (mainNode?.type !== "subagent") throw new Error("Expected main outbound subagent");
+    if (resolverNode?.type !== "function") throw new Error("Expected payment-date function node");
+    if (confirmationNode?.type !== "subagent") throw new Error("Expected payment-date confirmation subagent");
+    if (clarificationNode?.type !== "subagent") throw new Error("Expected payment-date clarification subagent");
+
+    expect(mainNode.edges).toContainEqual(
+      expect.objectContaining({
+        id: "outbound_expected_payment_date_edge",
+        destination_node_id: "outbound_expected_payment_date_function",
+      }),
+    );
+    expect(mainNode.finetune_transition_examples).toContainEqual(
+      expect.objectContaining({
+        id: "expected_payment_date_transition_example",
+        destination_node_id: "outbound_expected_payment_date_function",
+      }),
+    );
+    expect(resolverNode).toMatchObject({
+      type: "function",
+      tool_id: "outbound_schedule_followup",
+      tool_type: "local",
+      wait_for_result: true,
+      speak_during_execution: false,
+    });
+    expect(resolverNode.edges).toContainEqual(
+      expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_clarification" }),
+    );
+    expect(resolverNode.else_edge).toMatchObject({
+      destination_node_id: "outbound_expected_payment_date_confirmation",
+    });
+    expect(clarificationNode.edges).toContainEqual(
+      expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_function" }),
+    );
+    expect(JSON.stringify(confirmationNode)).toContain("expected_payment_date_spoken");
+    expect(JSON.stringify(confirmationNode)).toContain("Is there anything else I can help you with?");
+  });
+
   it("keeps Presentation Mode copy professional and surfaces specific demo gate messages", () => {
     const html = fs.readFileSync(path.resolve(process.cwd(), "web/outbound.html"), "utf8");
     const js = fs.readFileSync(path.resolve(process.cwd(), "public/outbound/outbound.js"), "utf8");
