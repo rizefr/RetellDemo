@@ -85,6 +85,7 @@ Inspection date display: {{inspection_date_display}}
 Due date: {{original_due_date_spoken}}
 Due date display: {{original_due_date_display}}
 Expected payment date: {{expected_payment_date_spoken}}
+Resolved expected payment date for this call: {{resolved_expected_payment_date_spoken}}
 Days after inspection before first call: {{days_after_inspection_first_call}}
 Very overdue threshold days: {{very_overdue_threshold_days}}
 Very overdue: {{very_overdue}}
@@ -149,7 +150,7 @@ If the invoice was not received, say: "No problem. I can resend the invoice now.
 If the invoice was received, say: "Good to hear. Do you need the secure payment link?" Use that exact wording. Do not repeat the inspection type, date, amount, or secure-link explanation here unless the caller asks what the invoice is about, asks how payment works, or asks for the amount.
 If the caller answers only yes, ask exactly: "Would you prefer text or email?" Do not infer a delivery method from an on-file email, preferred contact method, or prior context unless the caller named that method in the current turn. Then follow the payment-delivery rules.
 If the caller says no to the payment-link question, ask exactly: "When can I expect the payment?" Declining the payment link is not the same as refusing to pay. Do not ask the payment-refusal reason unless the caller separately says they will not pay, disputes the invoice, or gives another reason payment will not be made.
-When the caller gives an expected payment date, your next action must be schedule_followup with expected_payment_date_phrase set to the caller's exact date phrase and reason set to payment_expected_by_caller. Even vague phrases such as soon, later, or sometime must be passed to schedule_followup so the trusted resolver can request clarification. Never decide that a supplied date phrase is too vague before calling schedule_followup, and never ask for a more specific date until the tool returns needs_clarification=true. Do not calculate, restate, or confirm the date before the tool returns. If the tool returns needs_clarification=true, use message_for_agent to ask for a specific date. If it succeeds, do not speak from the main node or route to the normal final-check. The dedicated native End node must say exactly: "Got it. I'll expect your payment on {{expected_payment_date_spoken}}. Have a good day. Goodbye." and end the call. Never ask the caller to confirm that persisted date. Only use the no-date path when the caller explicitly refuses or declines to provide any date. In that case, call schedule_followup with reason payment_link_declined_no_expected_date and no date phrase, say you will note that no expected date was provided, then route to the normal final-check step.
+When the caller gives an expected payment date, transition to the isolated expected-payment-date resolver. Its only action is schedule_followup with expected_payment_date_phrase set to the caller's exact date phrase and reason set to payment_expected_by_caller. Even vague phrases such as soon, later, or sometime must be passed to schedule_followup so the trusted resolver can request clarification. Never decide that a supplied date phrase is too vague before calling schedule_followup through the resolver, and never ask for a more specific date until the tool returns needs_clarification=true. Do not calculate, restate, or confirm the date before the tool returns. If the tool returns needs_clarification=true, use message_for_agent to ask for a specific date. If it succeeds, do not speak from the main node or route to the normal final-check. The dedicated native End node must say exactly: "Got it. I'll expect your payment on {{resolved_expected_payment_date_spoken}}. Have a good day. Goodbye." and end the call. Never ask the caller to confirm that persisted date. Only use the no-date path when the caller explicitly refuses or declines to provide any date. In that case, call schedule_followup with reason payment_link_declined_no_expected_date and no date phrase, say you will note that no expected date was provided, then route to the normal final-check step.
 If very_overdue is true, and only after one ordinary clarification has not resolved the issue, you may say once: "We value our relationship and want to avoid any interruption in service or delays with future inspection filings. Can we work together to get this resolved this week?" Do not use this line for mildly overdue invoices. Do not threaten, shame, imply legal consequences, or mention unsupported filing penalties.
 If the caller reports an elevator service issue or says the inspection report looks wrong, ask one concise follow-up first: "What specifically looks wrong or what should I note for the team?" Do not call log_outcome for service_issue_reported until the caller has provided the concise issue description. After the description, call log_outcome with service_issue_reported before saying it was noted, say the team will review it, then route to the normal final-check step. Do not pursue payment after a service issue unless the caller brings payment back up.
 Never close a service-issue call before the tool invocation and final-check routing.
@@ -334,6 +335,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         followup_task_count: "$.task_count",
         followup_needs_clarification: "$.needs_clarification",
         expected_payment_date_spoken: "$.expected_payment_date_spoken",
+        resolved_expected_payment_date_spoken: "$.expected_payment_date_spoken",
       },
     ),
     functionTool(
@@ -870,32 +872,55 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
     },
     {
       id: "outbound_expected_payment_date_function",
-      type: "function",
+      type: "subagent",
       name: "Resolve and persist expected payment date",
-      tool_id: OUTBOUND_TOOL_IDS.scheduleFollowup,
-      tool_type: "local",
-      wait_for_result: true,
-      speak_during_execution: false,
       instruction: {
         type: "prompt",
-        text: "Call schedule_followup with expected_payment_date_phrase set to the caller's exact most recent date phrase and reason set to payment_expected_by_caller. Do not calculate or normalize the date yourself.",
+        text: "Your first and only action on entry is to call schedule_followup with expected_payment_date_phrase set to the caller's exact most recent date phrase and reason set to payment_expected_by_caller. Do not speak, calculate, normalize, acknowledge, or confirm the date before calling the tool. After the result, transition immediately: a populated resolved_expected_payment_date_spoken goes to the native confirmation End node; needs_clarification goes to the clarification node.",
       },
+      tool_ids: [OUTBOUND_TOOL_IDS.scheduleFollowup],
       edges: [
+        {
+          id: "outbound_expected_payment_date_confirmed_edge",
+          destination_node_id: "outbound_expected_payment_date_confirmation",
+          transition_condition: {
+            type: "equation",
+            equations: [
+              {
+                left: "{{resolved_expected_payment_date_spoken}}",
+                operator: "exists",
+              },
+            ],
+            operator: "&&",
+          },
+        },
         {
           id: "outbound_expected_payment_date_needs_clarification_edge",
           destination_node_id: "outbound_expected_payment_date_clarification",
           transition_condition: {
             type: "prompt",
-            prompt:
-              "Transition here only when the schedule_followup result says needs_clarification is true or does not provide an expected_payment_date_spoken value.",
+            prompt: "Transition only after schedule_followup returns needs_clarification=true or does not return an expected_payment_date_spoken value.",
           },
         },
       ],
-      else_edge: {
-        id: "outbound_expected_payment_date_confirmed_edge",
-        destination_node_id: "outbound_expected_payment_date_confirmation",
-        transition_condition: { type: "prompt", prompt: "Else" },
-      },
+      finetune_transition_examples: [
+        {
+          id: "expected_payment_date_resolved_transition_example",
+          destination_node_id: "outbound_expected_payment_date_confirmation",
+          transcript: [
+            { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Friday\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":true,\"needs_clarification\":false,\"expected_payment_date_spoken\":\"August twenty-first, twenty twenty-six\"}" },
+          ],
+        },
+        {
+          id: "expected_payment_date_needs_clarification_transition_example",
+          destination_node_id: "outbound_expected_payment_date_clarification",
+          transcript: [
+            { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_1", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"soon\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"scheduled\":false,\"needs_clarification\":true,\"message_for_agent\":\"What specific date should I note?\"}" },
+          ],
+        },
+      ],
       display_position: { x: 320, y: 430 },
     },
     {
@@ -935,7 +960,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       name: "State expected payment date and close",
       instruction: {
         type: "static_text",
-        text: "Got it. I'll expect your payment on {{expected_payment_date_spoken}}. Have a good day. Goodbye.",
+        text: "Got it. I'll expect your payment on {{resolved_expected_payment_date_spoken}}. Have a good day. Goodbye.",
       },
       speak_during_execution: true,
       display_position: { x: 620, y: 380 },
@@ -1047,6 +1072,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       inspection_date_display: "",
       inspection_type: "Category 1",
       expected_payment_date_spoken: "",
+      resolved_expected_payment_date_spoken: "",
       expected_payment_date_needs_clarification: "false",
       expected_payment_date_message: "",
       days_after_inspection_first_call: "14",
