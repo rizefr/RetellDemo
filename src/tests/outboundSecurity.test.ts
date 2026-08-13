@@ -368,8 +368,9 @@ describe("outbound flow guardrails", () => {
         resolved_expected_payment_date_spoken: "$.expected_payment_date_spoken",
       },
     });
-    expect(resolverNode.edges).toEqual(expect.arrayContaining([
-      expect.objectContaining({
+    expect(resolverNode).toMatchObject({
+      skip_response_edge: {
+        id: "outbound_expected_payment_date_confirmed_skip_response_edge",
         destination_node_id: "outbound_expected_payment_date_confirmation",
         transition_condition: {
           type: "equation",
@@ -379,8 +380,11 @@ describe("outbound flow guardrails", () => {
             right: "",
           }],
           operator: "&&",
+          prompt: "Skip response",
         },
-      }),
+      },
+    });
+    expect(resolverNode.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_clarification" }),
     ]));
     expect(clarificationNode.edges).toContainEqual(

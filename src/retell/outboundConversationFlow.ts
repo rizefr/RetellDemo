@@ -879,22 +879,23 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         text: "Your first and only action on entry is to call schedule_followup with expected_payment_date_phrase set to the caller's exact most recent date phrase and reason set to payment_expected_by_caller. Do not speak, calculate, normalize, acknowledge, or confirm the date before calling the tool. After the result, transition immediately: a populated resolved_expected_payment_date_spoken goes to the native confirmation End node; needs_clarification goes to the clarification node.",
       },
       tool_ids: [OUTBOUND_TOOL_IDS.scheduleFollowup],
-      edges: [
-        {
-          id: "outbound_expected_payment_date_confirmed_edge",
-          destination_node_id: "outbound_expected_payment_date_confirmation",
-          transition_condition: {
-            type: "equation",
-            equations: [
-              {
-                left: "{{resolved_expected_payment_date_spoken}}",
-                operator: "!=",
-                right: "",
-              },
-            ],
-            operator: "&&",
-          },
+      skip_response_edge: {
+        id: "outbound_expected_payment_date_confirmed_skip_response_edge",
+        destination_node_id: "outbound_expected_payment_date_confirmation",
+        transition_condition: {
+          type: "equation",
+          equations: [
+            {
+              left: "{{resolved_expected_payment_date_spoken}}",
+              operator: "!=",
+              right: "",
+            },
+          ],
+          operator: "&&",
+          prompt: "Skip response",
         },
+      },
+      edges: [
         {
           id: "outbound_expected_payment_date_needs_clarification_edge",
           destination_node_id: "outbound_expected_payment_date_clarification",
