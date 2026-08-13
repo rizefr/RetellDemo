@@ -118,31 +118,58 @@ describe("inbound collections Conversation Flow", () => {
   it("structurally isolates identity lookup before the outbound collections flow", () => {
     const flow = buildInboundCollectionsConversationFlow("https://example.com");
     const identity = flow.nodes?.find((node) => node.id === "inbound_identity_agent");
+    const firstLookup = flow.nodes?.find((node) => node.id === "inbound_identity_lookup_function");
+    const corroboration = flow.nodes?.find((node) => node.id === "inbound_identity_corroboration_agent");
+    const secondLookup = flow.nodes?.find((node) => node.id === "inbound_identity_retry_lookup_function");
     const collections = flow.nodes?.find((node) => node.id === "outbound_collections_agent");
 
     expect(identity).toMatchObject({
       type: "subagent",
-      tool_ids: ["outbound_lookup_inbound_account"],
-      skip_response_edge: {
-        id: "inbound_identity_verified_skip_response_edge",
-        destination_node_id: "outbound_collections_agent",
-        transition_condition: {
-          type: "equation",
-          equations: [
-            {
-              left: "{{inbound_lookup_status}}",
-              operator: "==",
-              right: "verified",
-            },
-          ],
-          operator: "&&",
-          prompt: "Skip response",
-        },
-      },
+      edges: expect.arrayContaining([
+        expect.objectContaining({ destination_node_id: "inbound_identity_lookup_function" }),
+      ]),
     });
-    expect((identity as { tool_ids?: string[] } | undefined)?.tool_ids).not.toContain(
-      "outbound_schedule_followup",
-    );
+    expect((identity as { tool_ids?: string[] } | undefined)?.tool_ids ?? []).toHaveLength(0);
+    expect(firstLookup).toMatchObject({
+      type: "function",
+      tool_id: "outbound_lookup_inbound_account",
+      tool_type: "local",
+      wait_for_result: true,
+      edges: expect.arrayContaining([
+        expect.objectContaining({
+          id: "inbound_identity_verified_edge",
+          destination_node_id: "outbound_collections_agent",
+        }),
+        expect.objectContaining({
+          id: "inbound_verified_bundled_expected_date_edge",
+          destination_node_id: "outbound_expected_payment_date_function",
+        }),
+      ]),
+      else_edge: expect.objectContaining({
+        destination_node_id: "inbound_identity_corroboration_agent",
+      }),
+    });
+    expect(corroboration).toMatchObject({
+      type: "subagent",
+      edges: expect.arrayContaining([
+        expect.objectContaining({ destination_node_id: "inbound_identity_retry_lookup_function" }),
+      ]),
+    });
+    expect(secondLookup).toMatchObject({
+      type: "function",
+      tool_id: "outbound_lookup_inbound_account",
+      tool_type: "local",
+      wait_for_result: true,
+      edges: expect.arrayContaining([
+        expect.objectContaining({
+          id: "inbound_identity_retry_verified_edge",
+          destination_node_id: "outbound_collections_agent",
+        }),
+      ]),
+      else_edge: expect.objectContaining({
+        destination_node_id: "inbound_identity_unverified_explanation",
+      }),
+    });
     expect(collections).toMatchObject({
       type: "subagent",
       tool_ids: expect.arrayContaining([
@@ -157,18 +184,7 @@ describe("inbound collections Conversation Flow", () => {
     expect(JSON.stringify(collections)).toContain(
       "Identity has already been verified by the inbound identity node",
     );
-    expect(JSON.stringify(collections)).toContain(
-      "inbound_verified_caller_already_supplied_expected_date_edge",
-    );
-    expect(collections).toMatchObject({
-      skip_response_edge: expect.objectContaining({
-        id: "inbound_verified_caller_already_supplied_expected_date_edge",
-        destination_node_id: "outbound_expected_payment_date_function",
-      }),
-    });
-    expect(JSON.stringify(collections)).toContain(
-      "already stated that the invoice was received, declined the payment link, and supplied an expected payment date",
-    );
+    expect(JSON.stringify(flow)).not.toContain("skip_response_edge");
   });
 
   it("keeps the existing payment, callback, email, SMS-disabled, and terminal tools", () => {

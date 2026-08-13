@@ -79,60 +79,23 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
   main.name = "Verified inbound collections conversation";
   main.instruction = {
     type: "prompt",
-    text: "Identity has already been verified by the inbound identity node. Inspect everything the caller said before lookup. If they already stated that the invoice was received, declined the payment link, and supplied an expected payment date, do not repeat those questions or summarize the date yourself; transition immediately to the isolated expected-payment-date resolver. Otherwise, continue naturally with only the unresolved step. When receipt is still unknown, say: Got it, {{customer_first_name_spoken}}. I found the account. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. Were you able to receive it? Do not use the outbound opening, ask for identity again, or restart the conversation. Then preserve the existing invoice, payment, expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
+    text: "Identity has already been verified by the inbound identity nodes. Inspect everything the caller said before lookup and continue naturally with only the unresolved step. When invoice receipt is still unknown, say: Got it, {{customer_first_name_spoken}}. I found the account. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. Were you able to receive it? Do not use the outbound opening, ask for identity again, or restart the conversation. Then preserve the existing invoice, payment, expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
   };
-  main.skip_response_edge = {
-    id: "inbound_verified_caller_already_supplied_expected_date_edge",
-    destination_node_id: "outbound_expected_payment_date_function",
-    transition_condition: {
-      type: "prompt",
-      prompt: "Immediately after entering from the inbound identity node, skip the response and transition here only when the verified caller already stated that the invoice was received, declined or did not need the payment link, and supplied an expected payment date in the same pre-lookup turn. Do not use this when any of those three facts is missing.",
-    },
-  };
-  main.finetune_transition_examples = [
-    {
-      id: "inbound_bundled_expected_date_transition_example",
-      destination_node_id: "outbound_expected_payment_date_function",
-      transcript: [
-        { role: "user", content: "My name is Pat Morgan. I received the invoice. I don't need a payment link. I'll pay next Friday." },
-        { role: "tool_call_invocation", name: "lookup_inbound_account", tool_call_id: "tool_1", arguments: "{\"first_name\":\"Pat\",\"last_name\":\"Morgan\"}" },
-        { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"status\":\"verified\",\"verified\":true,\"customer_first_name_spoken\":\"Pat\"}" },
-      ],
-    },
-    ...(main.finetune_transition_examples ?? []),
-  ];
   const identityNode: ConversationFlowCreateParams.SubagentNode = {
     id: "inbound_identity_agent",
     type: "subagent",
-    name: "Inbound caller identity verification",
+    name: "Collect inbound caller identity",
     instruction: {
       type: "prompt",
-      text: "Ask for the caller's first and last name, then call lookup_inbound_account immediately. This node owns identity verification only. Never discuss an invoice, payment, date, amount, email, or phone from account records here. A name alone is not verified. If lookup asks for one safe corroborator, collect exactly one and call the lookup again. Once inbound_lookup_verified is true, do not speak another introduction; transition to the verified collections node. After a second failed lookup, explain that no verified open invoice can be located and transition to manual review. For an explicit stop-calling request, transition to the hard terminal node.",
-    },
-    tool_ids: [LOOKUP_TOOL_ID],
-    skip_response_edge: {
-      id: "inbound_identity_verified_skip_response_edge",
-      destination_node_id: "outbound_collections_agent",
-      transition_condition: {
-        type: "equation",
-        equations: [
-          {
-            left: "{{inbound_lookup_status}}",
-            operator: "==",
-            right: "verified",
-          },
-        ],
-        operator: "&&",
-        prompt: "Skip response",
-      },
+      text: "Ask for the caller's first and last name. This node only collects identity input. Never discuss an invoice, payment, date, amount, email, or phone from account records here. As soon as the caller supplies a name, transition to the lookup function without acknowledging or repeating it. For an explicit stop-calling request, transition to the hard terminal node.",
     },
     edges: [
       {
-        id: "inbound_identity_manual_review_edge",
-        destination_node_id: "outbound_normal_terminal_final_check",
+        id: "inbound_identity_name_supplied_edge",
+        destination_node_id: "inbound_identity_lookup_function",
         transition_condition: {
           type: "prompt",
-          prompt: "Transition only after two lookup attempts failed to verify the caller and the agent explained that no verified open invoice could be located. Do not use this before the second lookup result.",
+          prompt: "Transition immediately when the caller supplies a first name, with or without a last name or other identity details. Do not speak before transitioning.",
         },
       },
       {
@@ -146,39 +109,133 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
     ],
     finetune_transition_examples: [
       {
-        id: "inbound_identity_verified_transition_example",
-        destination_node_id: "outbound_collections_agent",
+        id: "inbound_identity_lookup_transition_example",
+        destination_node_id: "inbound_identity_lookup_function",
         transcript: [
           { role: "agent", content: "Hi, you've reached the invoice follow-up line for {{business_name_spoken}}. May I get your first and last name?" },
           { role: "user", content: "Pat Morgan." },
-          { role: "tool_call_invocation", name: "lookup_inbound_account", tool_call_id: "tool_1", arguments: "{\"first_name\":\"Pat\",\"last_name\":\"Morgan\"}" },
-          { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"status\":\"verified\",\"verified\":true,\"customer_first_name_spoken\":\"Pat\"}" },
         ],
       },
     ],
-    finetune_conversation_examples: [
-    {
-      id: "inbound_verified_phone_and_name_example",
-      transcript: [
-        { role: "agent", content: "Hi, you've reached the invoice follow-up line for {{business_name_spoken}}. May I get your first and last name?" },
-        { role: "user", content: "Pat Morgan." },
-        { role: "tool_call_invocation", name: "lookup_inbound_account", tool_call_id: "tool_1", arguments: "{\"first_name\":\"Pat\",\"last_name\":\"Morgan\"}" },
-        { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"status\":\"verified\",\"verified\":true,\"customer_first_name_spoken\":\"Pat\",\"inspection_type\":\"Category 1\",\"inspection_date_spoken\":\"July first, twenty twenty-six\"}" },
-        { role: "agent", content: "Got it, Pat. I found the account. Our records show the Category 1 invoice from July first, twenty twenty-six is overdue. Were you able to receive it?" },
-      ],
-    },
-    {
-      id: "inbound_name_only_needs_verification_example",
-      transcript: [
-        { role: "agent", content: "Hi, you've reached the invoice follow-up line for {{business_name_spoken}}. May I get your first and last name?" },
-        { role: "user", content: "Pat Morgan." },
-        { role: "tool_call_invocation", name: "lookup_inbound_account", tool_call_id: "tool_1", arguments: "{\"first_name\":\"Pat\",\"last_name\":\"Morgan\"}" },
-        { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"status\":\"needs_verification\",\"verified\":false}" },
-        { role: "agent", content: "What company or account name is this regarding?" },
-      ],
-    },
-    ],
     display_position: { x: -400, y: 0 },
+  };
+
+  const verifiedBundledDateEdge = (id: string) => ({
+    id,
+    destination_node_id: "outbound_expected_payment_date_function",
+    transition_condition: {
+      type: "prompt" as const,
+      prompt: "Transition here only when lookup returned verified and the caller already stated before lookup that the invoice was received, they declined or did not need the payment link, and they supplied an expected payment date. All three facts must be present. Do not acknowledge or restate the date before transitioning.",
+    },
+  });
+
+  const verifiedEdge = (id: string) => ({
+    id,
+    destination_node_id: "outbound_collections_agent",
+    transition_condition: {
+      type: "equation" as const,
+      equations: [{ left: "{{inbound_lookup_status}}", operator: "==" as const, right: "verified" }],
+      operator: "&&" as const,
+    },
+  });
+
+  const firstLookupNode: ConversationFlowCreateParams.FunctionNode = {
+    id: "inbound_identity_lookup_function",
+    type: "function",
+    name: "Verify inbound caller account",
+    tool_id: LOOKUP_TOOL_ID,
+    tool_type: "local",
+    wait_for_result: true,
+    speak_during_execution: false,
+    instruction: {
+      type: "prompt",
+      text: "Call lookup_inbound_account using the caller's stated first and last name plus any company, invoice number, or email they volunteered. Do not disclose account details before a verified result.",
+    },
+    edges: [
+      verifiedBundledDateEdge("inbound_verified_bundled_expected_date_edge"),
+      verifiedEdge("inbound_identity_verified_edge"),
+    ],
+    else_edge: {
+      id: "inbound_identity_needs_corroboration_edge",
+      destination_node_id: "inbound_identity_corroboration_agent",
+      transition_condition: { type: "prompt", prompt: "Else" },
+    },
+    display_position: { x: -180, y: 0 },
+  };
+
+  const corroborationNode: ConversationFlowCreateParams.SubagentNode = {
+    id: "inbound_identity_corroboration_agent",
+    type: "subagent",
+    name: "Collect one inbound identity corroborator",
+    instruction: {
+      type: "prompt",
+      text: "The first lookup did not verify the caller. If inbound_lookup_status is not_found, ask once for the spelling of the first and last name. Otherwise ask for exactly one safe corroborator: company/account name, invoice number, or email on the account. Never ask for a Social Security number, date of birth, ZIP code, card or bank information, password, or authentication code. As soon as the caller supplies the requested detail, transition to the retry lookup without acknowledging it.",
+    },
+    edges: [
+      {
+        id: "inbound_identity_corroborator_supplied_edge",
+        destination_node_id: "inbound_identity_retry_lookup_function",
+        transition_condition: {
+          type: "prompt",
+          prompt: "Transition immediately when the caller supplies the requested spelling or one safe corroborator. Do not speak before transitioning.",
+        },
+      },
+      {
+        id: "inbound_corroboration_hard_terminal_edge",
+        destination_node_id: "outbound_hard_terminal_end",
+        transition_condition: {
+          type: "prompt",
+          prompt: "Transition immediately for an explicit stop-calling, attorney-represented, or hostile hard-terminal request. A polite goodbye is not a hard-terminal request.",
+        },
+      },
+    ],
+    display_position: { x: 40, y: 80 },
+  };
+
+  const secondLookupNode: ConversationFlowCreateParams.FunctionNode = {
+    id: "inbound_identity_retry_lookup_function",
+    type: "function",
+    name: "Retry inbound caller verification",
+    tool_id: LOOKUP_TOOL_ID,
+    tool_type: "local",
+    wait_for_result: true,
+    speak_during_execution: false,
+    instruction: {
+      type: "prompt",
+      text: "Call lookup_inbound_account again using the caller's stated name and the latest spelling or safe corroborator. Do not disclose account details before a verified result.",
+    },
+    edges: [
+      verifiedBundledDateEdge("inbound_retry_verified_bundled_expected_date_edge"),
+      verifiedEdge("inbound_identity_retry_verified_edge"),
+    ],
+    else_edge: {
+      id: "inbound_identity_retry_unverified_edge",
+      destination_node_id: "inbound_identity_unverified_explanation",
+      transition_condition: { type: "prompt", prompt: "Else" },
+    },
+    display_position: { x: 260, y: 80 },
+  };
+
+  const unverifiedNode: ConversationFlowCreateParams.SubagentNode = {
+    id: "inbound_identity_unverified_explanation",
+    type: "subagent",
+    name: "Unverified inbound caller close",
+    instruction: {
+      type: "prompt",
+      text: "Explain once that you could not locate a verified open invoice on this call. Call log_outcome with outcome manual_review and concise notes before saying it was noted. Then ask exactly: Is there anything else I can help you with? If the caller has no further need, use the native end-call tool. Never disclose any account details.",
+    },
+    tool_ids: ["outbound_log_outcome"],
+    tools: [
+      {
+        type: "end_call",
+        name: "end_unverified_inbound_call",
+        description: "End an unverified inbound call after the final check.",
+        speak_during_execution: true,
+        execution_message_type: "static_text",
+        execution_message_description: "Have a good day. Goodbye.",
+      },
+    ],
+    display_position: { x: 480, y: 100 },
   };
 
   return {
@@ -186,7 +243,7 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
     start_node_id: "inbound_identity_agent",
     global_prompt: `${outboundPrompt.slice(0, openingStart)}${INBOUND_OPENING_AND_IDENTITY}\n${outboundPrompt.slice(discussionStart)}`,
     tools: [lookupTool(baseUrl), ...(outbound.tools ?? [])],
-    nodes: [identityNode, ...nodes],
+    nodes: [identityNode, firstLookupNode, corroborationNode, secondLookupNode, unverifiedNode, ...nodes],
     default_dynamic_variables: {
       ...(outbound.default_dynamic_variables ?? {}),
       business_name: "Pinnacle Elevator Solutions",
