@@ -130,9 +130,9 @@ describe("inbound collections Conversation Flow", () => {
             type: "equation",
             equations: [
               {
-                left: "{{inbound_lookup_verified}}",
+                left: "{{inbound_lookup_status}}",
                 operator: "==",
-                right: "true",
+                right: "verified",
               },
             ],
             operator: "&&",
@@ -156,6 +156,12 @@ describe("inbound collections Conversation Flow", () => {
     );
     expect(JSON.stringify(collections)).toContain(
       "Identity has already been verified by the inbound identity node",
+    );
+    expect(JSON.stringify(collections)).toContain(
+      "inbound_verified_caller_already_supplied_expected_date_edge",
+    );
+    expect(JSON.stringify(collections)).toContain(
+      "already stated that the invoice was received, declined the payment link, and supplied an expected payment date",
     );
   });
 

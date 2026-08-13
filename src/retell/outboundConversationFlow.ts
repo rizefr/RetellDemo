@@ -888,7 +888,8 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             equations: [
               {
                 left: "{{resolved_expected_payment_date_spoken}}",
-                operator: "exists",
+                operator: "!=",
+                right: "",
               },
             ],
             operator: "&&",
