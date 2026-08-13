@@ -5,9 +5,9 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Current published Conversation Flow: V83.
+- Current published outbound Conversation Flow: V91.
 - Inbound callback agent: `agent_5ca64503754e06c338e12c743f`.
-- Inbound callback Conversation Flow: `conversation_flow_67cfb3f644e1`, V0.
+- Inbound callback Conversation Flow: `conversation_flow_67cfb3f644e1`, V5.
 - Separate Single Prompt comparison: agent `agent_f5a392178f5afa39280b1489a0`, LLM `llm_b3f0e230981f653f0fa1195d0459`, V2, unbound. Use `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for the safe A/B workflow.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
@@ -16,6 +16,7 @@
 - Terminal behavior: normal terminal paths use the structural final-check/end-call sequence. Explicit do-not-contact, attorney, and hostile requests use the hard-terminal route. Wrong-number outcomes use a separate wrong-number terminal route with the neutral close “Sorry about that. We'll review the contact information. Goodbye.” Polite goodbyes must not be classified as do-not-contact.
 - Production backend email path: verified with one controlled Retell-tool-path `email_sent` event to `elixisagency@gmail.com`, and Gmail receipt was confirmed.
 - Presentation Mode: temporary demo-number authorization and backend preflight have been verified without placing a call.
+- Retell native smoke: outbound V91 final transaction paths passed 2/2, outbound opening stability passed 3/3, and inbound V5 verification/privacy/terminal paths passed 4/4. These are provider simulations, not live phone-call evidence.
 - SMS remains disabled/manual. QuickBooks remains scaffold-only.
 - Custom-telephony allowlist notices apply to the separate `custom` SIP receptionist number `+18887809963`, not the managed `retell-twilio` outbound demo number `+19842075346`. Do not change the receptionist allowlist from an outbound-maintenance pass.
 
@@ -56,11 +57,12 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 - Keep `agent_f5a392178f5afa39280b1489a0` unbound. It is Playground-only and is not selectable through `/backend`, `/outbound`, or production call routes.
 - Production calls are fixed to `agent_4aa8074d7eabe311109ed6da89` / `conversation_flow_bebdceabc801` at `latest_published`. Signed webhook and tool traffic from any other Retell agent ID is rejected.
-- Published V83 is live. It includes outcome-specific native same-node fallbacks for wrong-number and hard-terminal endings and a structural expected-payment-date function route. A concrete caller date enters `schedule_followup` before Paul says anything; ambiguous dates route to clarification without writing. After a valid date persists, a native End node states it once, says goodbye, and ends without asking for confirmation again.
+- Published outbound V91 is live. It includes outcome-specific native same-node fallbacks for wrong-number and hard-terminal endings and a structural expected-payment-date Function route. A concrete caller date enters `schedule_followup` before Paul says anything; ambiguous dates route to clarification without writing. After a valid date persists, a native End node reads the trusted tool result, states it once, says goodbye, and ends without asking for confirmation again.
+- Published inbound V5 is live. Its identity collector transitions to a native Function lookup, permits one safe corroboration retry, and routes only a trusted `verified` tool result into the shared invoice conversation. Refusal or a second unverified result closes without invoice disclosure.
 - Keep the received-invoice branch explicit: ask whether the caller needs the payment link; after a bare yes, ask text or email instead of inferring a method. If not, ask by what date payment should be expected. Clarify vague non-dates without writing them, then pass a concrete date through `schedule_followup`; persist only the backend-resolved date without changing invoice status. Treat an explicit refusal to pay as a separate branch that asks one reason.
 - Retell SDK `5.31.1` is the current compatibility pin. Before upgrading to `5.32+`, verify Retell's supported replacement for the removed `sign`/`verify` helpers and rerun the raw-body webhook signature suite.
 - Keep its LLM `llm_b3f0e230981f653f0fa1195d0459` explicit in server environment settings. Never discover-and-update it by name.
-- Use the same demo variables and caller scenario when comparing it with the V83 Conversation Flow agent.
+- Use the same demo variables and caller scenario when comparing it with the current V91 Conversation Flow agent.
 - Run `npm run outbound:test-single-prompt` before any live A/B call. Its tool results are mocked and do not prove production delivery.
 - Do not add the pest-control knowledge base. Trusted outbound invoice/customer data comes from call variables and signed metadata.
 - Read `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for exact tools, current V2 settings, update guards, and the no-call preflight workflow.
@@ -79,7 +81,7 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 ## V63 Gilfoy/Paul Opening Polish (Historical)
 
-- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V83 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
+- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V91 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
 - The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V63 introduced speed `0.82`, a longer first-message delay, a short Retell pause marker between the business name and name-confirmation question, and separate wrong-number versus explicit-opt-out handling.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
@@ -95,7 +97,7 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 - After a payment link is successfully delivered, Paul confirms delivery once and asks exactly “When can I expect the payment?” The answer follows the trusted expected-payment-date resolver and native End path. Failed or manual/pending delivery must not be described as sent.
 - Wrong-person or possible wrong-number calls get one request for the named person’s correct number or email. Paul confirms and logs supplied details once; if no contact is available, he does not repeat the question.
 - Relevant detours, including payment-method questions, get one concise answer followed by a single return to the unresolved payment step. Paul must not restart the opening or repeat a question the caller already answered.
-- The August 12 model comparison used the same final prompt and nine identical mocked Playground scenarios. GPT-4.1 reached 9/9 at `1457 ms` average and the published V83 rerun also reached 9/9. GPT-5.6 Luna reached 7/9 at `1245 ms`; it was faster and cheaper but skipped required phone confirmation and failed one explicit stop-call end. GPT-4.1 mini reached 8/9 at `1796 ms` but missed the native expected-date goodbye. Keep GPT-4.1 until a repeat comparison removes those safety differences. Luna V84 and 4.1 mini V85 remain unpublished comparison drafts.
+- The August 12 model comparison used the same final prompt and nine identical mocked Playground scenarios. GPT-4.1 reached 9/9 at `1457 ms` average and the historical published V83 rerun also reached 9/9. GPT-5.6 Luna reached 7/9 at `1245 ms`; it was faster and cheaper but skipped required phone confirmation and failed one explicit stop-call end. GPT-4.1 mini reached 8/9 at `1796 ms` but missed the native expected-date goodbye. Keep GPT-4.1 in V91 until a repeat comparison removes those safety differences. Luna V84 and 4.1 mini V85 remain unpublished comparison drafts.
 - If the caller asks “are we done?” before the invoice/follow-up outcome is addressed, Paul makes one reasonable attempt to finish the invoice receipt question before closing. If an outcome has already been reached, he can close directly.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
@@ -105,6 +107,8 @@ See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. I
 QuickBooks is scaffolded only. Do not create live QuickBooks payment links until a business authorizes its QuickBooks Online company and the token-storage policy is reviewed. Stripe remains the default provider for the elevator inspection demo.
 
 Use `QUICKBOOKS_CLIENT_CONNECTION_CHECKLIST.md` and the client workbook `Pinnacle_QuickBooks_Connection_Intake.xlsx` for discovery, field mapping, security approvals, and go-live acceptance. The desired 14-day behavior is eligibility 14 calendar days after the confirmed inspection date while the invoice is still unpaid. Current production still requires manual single-call preflight/start; no unattended dialing is enabled.
+
+The deliverable workbook is stored at the workspace-level path `../outputs/outbound-inbound-callback-quickbooks-20260813/Pinnacle_QuickBooks_Connection_Intake.xlsx`. It is a client intake/mapping artifact, not a credentials store; keep secrets in Vercel after approval.
 
 Required env vars:
 

@@ -29,27 +29,29 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection agent: `agent_4aa8074d7eabe311109ed6da89`
   - active inspection Conversation Flow: `conversation_flow_bebdceabc801`
   - active inspection name: `Elevator Inspection Collections — Paul`
-  - active published version: V83
+  - active published version: V91
   - active voice: `11labs-Gilfoy`, spoken name `Paul`, speed `0.82`, first-message delay `1550 ms`
   - inbound collections callback agent: `agent_5ca64503754e06c338e12c743f`
   - inbound collections callback flow: `conversation_flow_67cfb3f644e1`
-  - inbound callback name: `Elevator Inspection Callback Collections — Paul`; version V0, voice inherited from the published outbound agent, eight wrapped tools
+  - inbound callback name: `Elevator Inspection Callback Collections — Paul`; version V5, `11labs-Gilfoy`, GPT-4.1, eight wrapped tools
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. This service copy is separate and was not modified by the active Paul inspection pass.
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
   - preserved resources: active inspection flow, future service flow, inbound receptionist flow, single-prompt candidate agent, and patient-template flow with an agent reference
 - Active Retell inspection agent and Conversation Flow are published and verified for the product path:
   - agent: `agent_4aa8074d7eabe311109ed6da89`
   - Conversation Flow: `conversation_flow_bebdceabc801`
-  - active published version: V83
+  - active published version: V91
   - wrapped signed `{name,args,call}` tools are preserved and `args_at_root` is disabled
-  - current voice is `11labs-Gilfoy`; the presentation speed is `0.82` with a `1550 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, `coffee-shop` ambient sound at `0.7`, and voicemail hangup are preserved
+  - current voice is `11labs-Gilfoy`; the presentation speed is `0.82` with a `1550 ms` first-message delay; GPT-4.1, agent-first opening, interruption handling, and `coffee-shop` ambient sound at `0.7` are preserved
+  - outbound voicemail detection uses one provider-level static message with `{{business_name_spoken}}` and callback number `984-207-5346`; it does not expose invoice details or rely on the model to improvise
   - Paul speaks first with a short business-first opening, avoids repeating the opener after identity confirmation, and states the inspection type, natural date, and speech-safe amount from trusted backend variables
   - the active inspection demo uses on-request disclosure: Paul does not volunteer “virtual assistant” in normal flow, but answers honestly if asked whether he is AI or if scam concern makes disclosure useful
   - the V53 live-call refinement shortened the opener, added company/account confirmation when the named person is wrong, removed forced disclosure from normal invoice-continuation paths, and requires service-issue detail before logging `service_issue_reported`
   - the V55 refinement removed the remaining unsafe payment-link failure path: if `create_payment_link` fails, Paul logs `payment_link_issue`, does not call email/SMS delivery tools, and does not claim delivery. It also tightened named-contact requests so `named_contact_requested` is logged before Paul promises follow-up.
   - server-generated `business_name_spoken`, `account_company_name_spoken`, `customer_first_name_spoken`, `customer_last_name_spoken`, `amount_due_spoken`, `total_amount_due_spoken`, `invoice_id_spoken`, `open_invoice_count_spoken`, `original_due_date_spoken`, `inspection_date_spoken`, `customer_phone_spoken`, `customer_phone_spoken_chunked`, `customer_email_spoken`, `customer_email_spoken_slow`, and `customer_email_spoken_phonetic` prevent all-caps names, currency symbols, stored cents, raw dates, phone country-code prefixes, raw emails, and invoice IDs from being misread; callback tasks select a separate requested-time follow-up opening
   - the V57 audio-stability fix accepts Retell `log_outcome` optional string fields when the model sends `null`, preventing 400s like `ERR_BAD_REQUEST` on unused responsible-party/named-contact fields. The SMS-disabled path no longer creates a Stripe payment link before confirming SMS delivery capability, and it never switches to email without confirming the email first.
-  - voicemail handling is configured to `hangup`
+  - final V91 native smoke passed link-declined/expected-date and on-file-email/expected-date scenarios 2/2; a separate three-run opening stability batch passed 3/3 without a premature goodbye
+  - inbound V5 native smoke passed verified email/date, explicit stop-calling, bundled invoice-received/no-link/date, and unverified privacy-close scenarios 4/4
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
 - A separate published Single Prompt comparison agent still exists: `agent_f5a392178f5afa39280b1489a0`, Retell LLM `llm_b3f0e230981f653f0fa1195d0459`, V2. It remains unbound and is not selectable from `/backend`, `/outbound`, or any production call route. Use its mocked Playground suite only; production tools and webhooks accept signed calls only from the configured Conversation Flow agent. See `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md`.
 - The Retell TypeScript SDK is pinned to `5.31.1`, the newest release that still exports Retell's documented `sign`/`verify` webhook helpers. Releases `5.32.0` through `5.45.0` were reviewed, but their generated package removes those helpers while the current Retell webhook guide still documents them; upgrading past `5.31.1` is blocked until Retell publishes a supported replacement. The production outbound call path explicitly overrides to the configured outbound Conversation Flow agent at `latest_published`; the inbound phone webhook explicitly selects the configured callback agent and cannot select an unpublished draft or name-matched resource.
@@ -60,17 +62,17 @@ The business using it is responsible for establishing its right to contact each 
 - If a caller is not the named person or says the number may be wrong, Paul asks once whether they have the correct number or email for the named first and last name. Supplied contact details are confirmed once and logged for responsible-party follow-up. If no contact is available, Paul does not repeat the request; an unrelated number uses the dedicated neutral wrong-number end.
 - Retell publishing preserves the current dashboard voice and runtime tuning when present: voice model, speed, temperature, interruption, responsiveness, backchannel, start delay, ambience, and ambience volume. `OUTBOUND_RETELL_VOICE_ID` remains the only explicit voice-ID override; publishing a prompt change must not silently replace successful dashboard audio tuning.
 - Retell deprecated list API usage has been removed from repository code. Scripts that need inventory now use `src/retell/retellList.ts`: `POST /v2/list-agents` with `filter_criteria.channel = { type: "string", op: "eq", value: "voice" }` and paginated `items`, and `GET /v2/list-phone-numbers` with paginated `items`. Source tests fail if legacy `GET /list-agents`, legacy `GET /list-phone-numbers`, `client.agent.list()`, `client.phoneNumber.list()`, or `pagination_key_version` reappear in `src`.
-- Current structural terminal routing, introduced in V55 and retained in the V83 readback, uses normal final-check and terminal end nodes. Playground smoke checks covered opening/hello, small talk, wrong-person/company confirmation, wrong company, invoice detail questions, scam concern, AI honesty, payment refusal, email delivery, payment-link failure, SMS-disabled text preference, service issue detail capture, callback scheduling, named contact requests, responsible-party update, stop-calling, final goodbye, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Explicit opt-outs, attorney, and hostile requests use the hard-terminal node or its same-node native fallback; wrong-number outcomes use a separate wrong-number terminal node plus a same-node native fallback. Polite “bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings and must not be treated as do-not-contact.
+- Current structural terminal routing, introduced in V55 and retained in the V91 readback, uses normal final-check and terminal end nodes. Playground smoke checks covered opening/hello, small talk, wrong-person/company confirmation, wrong company, invoice detail questions, scam concern, AI honesty, payment refusal, email delivery, payment-link failure, SMS-disabled text preference, service issue detail capture, callback scheduling, named contact requests, responsible-party update, stop-calling, final goodbye, and custom business opening. The terminal nodes route the final goodbye through the native end-call action instead of the model speaking a duplicate goodbye first. Normal endings route through “Is there anything else I can help you with?” and then the native end-call action says “Have a good day. Goodbye.” Explicit opt-outs, attorney, and hostile requests use the hard-terminal node or its same-node native fallback; wrong-number outcomes use a separate wrong-number terminal node plus a same-node native fallback. Polite “bye,” “goodbye,” “no thanks,” and “that’s all” are normal endings and must not be treated as do-not-contact.
 - A broad V55 Playground suite covered 42 identity, invoice, payment, trust/compliance, tool, and terminal scenarios. Strict automated checks passed 39/42. The remaining three were manually reviewed and accepted as expected clarifying behavior: spelling `a-p@example.com` aloud, asking when payment might be possible after cash-flow refusal, and asking for concise service-issue detail before logging. No blocking scenario failures remained after V55.
 - The first real call transcript was stored. Its provider summary, confirmed payment-link outcome, 77-second duration, failed V6 `log_outcome` tool, and next action were repaired into structured analysis without claiming the link was created. Retell tools now retain signed call metadata instead of sending root-only arguments.
-- Retell number `+19842075346` was inspected. It is currently assigned in Retell to the outbound agent as an inbound agent with `latest_published`. No phone-number binding API was called by this setup pass.
+- Retell number `+19842075346` uses directional assignments at `latest_published`: inbound calls route to `agent_5ca64503754e06c338e12c743f`, and outbound API calls use `agent_4aa8074d7eabe311109ed6da89`. Its signed inbound webhook is `https://elixis.agency/api/outbound/webhooks/retell/inbound-call`. The receptionist number `+18887809963` remains assigned only to `agent_16b324c0e55f21c0a5f914c169`.
 - Retell classifies `+19842075346` as a managed `retell-twilio` number. The separate receptionist number `+18887809963` is the `custom` SIP/telephony number, so Retell custom-telephony allowlist notices concern that receptionist connection rather than this outbound demo path. No receptionist or custom-telephony setting was changed during the July 29 verification.
 - Test mode is enabled, `OUTBOUND_MAX_BATCH_SIZE=1`, and `OUTBOUND_TEST_PHONE_ALLOWLIST=+13475850249`.
 - SMS remains disabled/manual because outbound Retell SMS is not verified for this subscription/number. Resend delivery is verified by a controlled diagnostic email received at `elixisagency@gmail.com` from `Elixis Elevator Systems <billing@elixis.agency>`. The deployed backend/Retell-email-tool path has also been verified with one controlled email to `elixisagency@gmail.com`; Gmail received it, Supabase logged `email_requested` and `email_sent`, and `/outbound` shows the event/status.
-- The live `/outbound` Presentation Mode workflow was reverified after the Supabase project resumed on July 29: a temporary E.164 demo number was authorized, the TTL was displayed, the backend preflight passed using `Conversation Flow`, and the real single-call Start button became enabled without being clicked. The test authorization was then revoked. `/backend` embeds the same `/outbound` controls and uses the same unified protected APIs.
+- The live `/outbound` Presentation Mode workflow was reverified on August 13 after the inbound callback release: a controlled E.164 demo number was authorized, the TTL was displayed, the backend preflight passed using `Conversation Flow`, and the real single-call Start button became enabled without being clicked. `/backend` embeds the same `/outbound` controls and uses the same unified protected APIs.
 - The after-hours self-test override is enabled in Vercel but remains unavailable unless test mode, one-item max batch, allowlisting, admin authentication, the warning checkbox, and the exact confirmation phrase all pass. Batch endpoints never accept the override.
 - The browser CSV upload validates all three demo rows, and a deployed batch dry run reports zero calls placed. The single-call button remains gated by recipient-local weekday 10:00-16:00 eligibility and explicit approval.
-- No call, SMS, real batch, real charge, phone binding change, or receptionist code/data mutation was performed by the setup pass.
+- No call, SMS, real batch, real charge, or receptionist code/data mutation was performed. The only phone routing change was the deliberate directional assignment on the collections number; the receptionist assignment was read back unchanged.
 
 ## Presentation mode
 
@@ -113,7 +115,9 @@ Inbound opening:
 
 The inbound webhook is `POST /api/outbound/webhooks/retell/inbound-call`. It verifies Retell's raw-body signature, looks up the business by the called callback number, and returns the explicit inbound agent ID plus business dynamic variables. It never matches an agent by name.
 
-After the caller supplies a name, `lookup_inbound_account` searches open local invoice records. A name alone never reveals invoice information. Verification requires the name plus one trusted corroborator: the signed calling phone number, account/company name, external invoice number, original email, or preferred email. Ambiguous and unverified callers receive no amount, date, inspection type, invoice number, customer email, or customer phone. A verified lookup creates an inbound call-attempt row, logs the verification event, and unlocks the existing signed payment, email, callback, outcome, and terminal tools for that exact invoice.
+After the caller supplies a name, a native Function node invokes `lookup_inbound_account` and waits for its signed backend result. A name alone never reveals invoice information. Verification requires the name plus one trusted corroborator: the signed calling phone number, account/company name, external invoice number, original email, or preferred email. If the first lookup does not verify, the flow asks for one safe corroborator and runs one retry. Ambiguous and unverified callers receive no amount, date, inspection type, invoice number, customer email, or customer phone. A verified lookup creates an inbound call-attempt row, logs the verification event, and unlocks the existing signed payment, email, callback, outcome, and terminal tools for that exact invoice.
+
+Retell Playground tool mocks do not currently populate Function-node `response_variables`. Native simulations therefore inject non-sensitive account speech variables while transition prompts still inspect the mocked trusted tool result. The real custom tool retains response-variable mappings, and backend tests cover their production payload.
 
 The local Supabase tables are the current source for inbound lookup. A future QuickBooks sync will populate or update those records through a read-only preview and approval process. QuickBooks is not connected and scheduled dialing is not enabled.
 
@@ -131,9 +135,9 @@ Current production selection:
 - Model temperature: `0.2`
 - Responsiveness and interruption handling remain on the prior working high-responsiveness configuration.
 
-The V59/V60 speed/style change came from the live V56 call where the caller asked Paul to slow down. Retell word timing showed the opening was materially faster than the first full response after Paul acknowledged the request. V63 introduced the lower-energy `0.82` speed and `1550 ms` first-message delay; those values remain in the current V83 provider readback.
+The V59/V60 speed/style change came from the live V56 call where the caller asked Paul to slow down. Retell word timing showed the opening was materially faster than the first full response after Paul acknowledged the request. V63 introduced the lower-energy `0.82` speed and `1550 ms` first-message delay; those values remain in the current V91 provider readback.
 
-GPT-4.1, GPT-5.6 Luna, and GPT-4.1 mini were compared again on August 12 using the same final prompt and nine mocked Playground scenarios for opening, successful email delivery, expected-date storage, wrong-person lookup, wrong-number ending, payment-method recovery, phone confirmation, and explicit opt-out. GPT-4.1 passed 9/9 at an average `1457 ms`; the published V83 rerun also passed 9/9. Luna passed 7/9 at `1245 ms`, skipping required phone confirmation and failing to complete the stop-call end once. GPT-4.1 mini passed 8/9 at `1796 ms` but missed the native expected-date goodbye. GPT-4.1 therefore remains selected for V83 based on tool/order and terminal reliability, not price alone. Luna V84 and 4.1 mini V85 are unpublished comparison drafts and cannot receive production calls.
+GPT-4.1, GPT-5.6 Luna, and GPT-4.1 mini were compared again on August 12 using the same final prompt and nine mocked Playground scenarios for opening, successful email delivery, expected-date storage, wrong-person lookup, wrong-number ending, payment-method recovery, phone confirmation, and explicit opt-out. GPT-4.1 passed 9/9 at an average `1457 ms`; the original published V83 comparison rerun also passed 9/9. Luna passed 7/9 at `1245 ms`, skipping required phone confirmation and failing to complete the stop-call end once. GPT-4.1 mini passed 8/9 at `1796 ms` but missed the native expected-date goodbye. GPT-4.1 therefore remains selected in V91 based on tool/order and terminal reliability, not price alone. Luna V84 and 4.1 mini V85 are unpublished comparison drafts and cannot receive production calls.
 
 Retell prices voice LLMs per minute, not as token-metered API calls in the Playground output. The August 12 dashboard listed GPT-4.1 at `$0.045/min`, GPT-5.6 Luna at `$0.0064/min`, and GPT-4.1 mini at `$0.016/min`. Token-level usage was not exposed in these simulations, so the decision used Retell's displayed per-minute price plus observed latency, tool order, terminal behavior, and scenario quality.
 
@@ -174,7 +178,7 @@ Do not use that line for mildly overdue invoices, and do not imply legal consequ
 1. Review `supabase/migrations/20260609_outbound_collections.sql`.
 2. Confirm the target Supabase project is the shared receptionist project and take a database backup.
 3. Apply the migration manually through the approved migration process. This repository does not apply it automatically.
-4. Confirm all seven `outbound_*` tables have RLS enabled and no browser-role policies.
+4. Confirm all eight `outbound_*` tables have RLS enabled and no browser-role policies.
 5. Confirm the service role can execute `outbound_mark_invoice_paid`.
 
 Tables:
@@ -186,6 +190,7 @@ Tables:
 - `outbound_payment_links`
 - `outbound_events`
 - `outbound_followup_tasks`
+- `outbound_demo_call_authorizations`
 
 The paid-invoice RPC records the Stripe event, marks the invoice/payment session paid, and cancels pending follow-ups in one transaction. Provider event IDs, Retell call IDs, Stripe IDs, active calls, and active payment sessions have uniqueness guards.
 
@@ -206,6 +211,8 @@ OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE=false
 RETELL_API_KEY=...
 OUTBOUND_RETELL_AGENT_ID=
 OUTBOUND_RETELL_CONVERSATION_FLOW_ID=
+INBOUND_COLLECTIONS_RETELL_AGENT_ID=
+INBOUND_COLLECTIONS_RETELL_CONVERSATION_FLOW_ID=
 OUTBOUND_RETELL_PHONE_NUMBER_ID=
 OUTBOUND_RETELL_WEBHOOK_SECRET=...
 RETELL_FROM_NUMBER=+19842075346
@@ -360,7 +367,7 @@ Use a real Checkout Session created by this app for full metadata/reconciliation
 
 ## Retell setup
 
-The outbound number is `+19842075346`. The implementation never binds or updates phone numbers; current assignment must be managed deliberately in Retell.
+The collections number is `+19842075346`. Normal outbound setup never changes bindings. Directional assignment is isolated in `npm run outbound:bind-collections-phone`, requires `CONFIRM_BIND_COLLECTIONS_PHONE_DIRECTIONS=true`, reads both affected numbers before and after, and must target the explicit outbound and inbound IDs. Never run that command for the receptionist number.
 
 Dry-run artifact generation is the default:
 
@@ -411,7 +418,7 @@ Configure the agent webhook:
 POST {{APP_BASE_URL}}/api/outbound/webhooks/retell
 ```
 
-Configure voicemail detection with action `hangup`. The setup payload also requests 30-day retention and `everything_except_pii`; verify those settings in the dashboard before testing.
+Configure outbound voicemail detection with the short static provider message defined in `src/scripts/setupOutboundRetell.ts`. It names the selected business, says the call concerns an unpaid invoice, gives callback number `984-207-5346`, and contains no amount or invoice identifier. The setup payload also requests 30-day retention and `everything_except_pii`; verify those settings in the dashboard before testing.
 
 Dynamic variables:
 
