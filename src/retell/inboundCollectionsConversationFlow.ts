@@ -81,17 +81,14 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
     type: "prompt",
     text: "Identity has already been verified by the inbound identity node. Inspect everything the caller said before lookup. If they already stated that the invoice was received, declined the payment link, and supplied an expected payment date, do not repeat those questions or summarize the date yourself; transition immediately to the isolated expected-payment-date resolver. Otherwise, continue naturally with only the unresolved step. When receipt is still unknown, say: Got it, {{customer_first_name_spoken}}. I found the account. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. Were you able to receive it? Do not use the outbound opening, ask for identity again, or restart the conversation. Then preserve the existing invoice, payment, expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
   };
-  main.edges = [
-    {
-      id: "inbound_verified_caller_already_supplied_expected_date_edge",
-      destination_node_id: "outbound_expected_payment_date_function",
-      transition_condition: {
-        type: "prompt",
-        prompt: "Immediately after entering from the inbound identity node, transition here when the verified caller already stated that the invoice was received, declined or did not need the payment link, and supplied an expected payment date in the same pre-lookup turn. Do not acknowledge, restate, or summarize that date before this transition.",
-      },
+  main.skip_response_edge = {
+    id: "inbound_verified_caller_already_supplied_expected_date_edge",
+    destination_node_id: "outbound_expected_payment_date_function",
+    transition_condition: {
+      type: "prompt",
+      prompt: "Immediately after entering from the inbound identity node, skip the response and transition here only when the verified caller already stated that the invoice was received, declined or did not need the payment link, and supplied an expected payment date in the same pre-lookup turn. Do not use this when any of those three facts is missing.",
     },
-    ...(main.edges ?? []),
-  ];
+  };
   main.finetune_transition_examples = [
     {
       id: "inbound_bundled_expected_date_transition_example",
@@ -113,22 +110,23 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
       text: "Ask for the caller's first and last name, then call lookup_inbound_account immediately. This node owns identity verification only. Never discuss an invoice, payment, date, amount, email, or phone from account records here. A name alone is not verified. If lookup asks for one safe corroborator, collect exactly one and call the lookup again. Once inbound_lookup_verified is true, do not speak another introduction; transition to the verified collections node. After a second failed lookup, explain that no verified open invoice can be located and transition to manual review. For an explicit stop-calling request, transition to the hard terminal node.",
     },
     tool_ids: [LOOKUP_TOOL_ID],
-    edges: [
-      {
-        id: "inbound_identity_verified_edge",
-        destination_node_id: "outbound_collections_agent",
-        transition_condition: {
-          type: "equation",
-          equations: [
-            {
-              left: "{{inbound_lookup_status}}",
-              operator: "==",
-              right: "verified",
-            },
-          ],
-          operator: "&&",
-        },
+    skip_response_edge: {
+      id: "inbound_identity_verified_skip_response_edge",
+      destination_node_id: "outbound_collections_agent",
+      transition_condition: {
+        type: "equation",
+        equations: [
+          {
+            left: "{{inbound_lookup_status}}",
+            operator: "==",
+            right: "verified",
+          },
+        ],
+        operator: "&&",
+        prompt: "Skip response",
       },
+    },
+    edges: [
       {
         id: "inbound_identity_manual_review_edge",
         destination_node_id: "outbound_normal_terminal_final_check",

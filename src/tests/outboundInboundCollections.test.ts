@@ -123,22 +123,22 @@ describe("inbound collections Conversation Flow", () => {
     expect(identity).toMatchObject({
       type: "subagent",
       tool_ids: ["outbound_lookup_inbound_account"],
-      edges: expect.arrayContaining([
-        expect.objectContaining({
-          destination_node_id: "outbound_collections_agent",
-          transition_condition: {
-            type: "equation",
-            equations: [
-              {
-                left: "{{inbound_lookup_status}}",
-                operator: "==",
-                right: "verified",
-              },
-            ],
-            operator: "&&",
-          },
-        }),
-      ]),
+      skip_response_edge: {
+        id: "inbound_identity_verified_skip_response_edge",
+        destination_node_id: "outbound_collections_agent",
+        transition_condition: {
+          type: "equation",
+          equations: [
+            {
+              left: "{{inbound_lookup_status}}",
+              operator: "==",
+              right: "verified",
+            },
+          ],
+          operator: "&&",
+          prompt: "Skip response",
+        },
+      },
     });
     expect((identity as { tool_ids?: string[] } | undefined)?.tool_ids).not.toContain(
       "outbound_schedule_followup",
@@ -160,6 +160,12 @@ describe("inbound collections Conversation Flow", () => {
     expect(JSON.stringify(collections)).toContain(
       "inbound_verified_caller_already_supplied_expected_date_edge",
     );
+    expect(collections).toMatchObject({
+      skip_response_edge: expect.objectContaining({
+        id: "inbound_verified_caller_already_supplied_expected_date_edge",
+        destination_node_id: "outbound_expected_payment_date_function",
+      }),
+    });
     expect(JSON.stringify(collections)).toContain(
       "already stated that the invoice was received, declined the payment link, and supplied an expected payment date",
     );
