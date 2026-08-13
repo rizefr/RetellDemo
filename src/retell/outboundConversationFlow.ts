@@ -429,6 +429,16 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "user", content: "Sometime soon." },
           ],
         },
+        {
+          id: "expected_payment_date_after_email_transition_example",
+          destination_node_id: "outbound_expected_payment_date_function",
+          transcript: [
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_1", arguments: "{\"invoice_id\":\"inv_1\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"sent\":true}" },
+            { role: "agent", content: "I sent the secure payment link to p a t, at example, dot com. When can I expect the payment?" },
+            { role: "user", content: "Next Friday." },
+          ],
+        },
       ],
       tool_ids: Object.values(OUTBOUND_TOOL_IDS),
       tools: [
@@ -884,24 +894,17 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       },
       edges: [
         {
-          id: "outbound_expected_payment_date_confirmed_edge",
-          destination_node_id: "outbound_expected_payment_date_confirmation",
+          id: "outbound_expected_payment_date_needs_clarification_edge",
+          destination_node_id: "outbound_expected_payment_date_clarification",
           transition_condition: {
-            type: "equation",
-            equations: [
-              {
-                left: "{{resolved_expected_payment_date_spoken}}",
-                operator: "!=",
-                right: "",
-              },
-            ],
-            operator: "&&",
+            type: "prompt",
+            prompt: "Transition here only when the most recent schedule_followup tool result says needs_clarification is true or does not include a non-empty expected_payment_date_spoken value.",
           },
         },
       ],
       else_edge: {
-        id: "outbound_expected_payment_date_needs_clarification_edge",
-        destination_node_id: "outbound_expected_payment_date_clarification",
+        id: "outbound_expected_payment_date_confirmed_edge",
+        destination_node_id: "outbound_expected_payment_date_confirmation",
         transition_condition: { type: "prompt", prompt: "Else" },
       },
       finetune_transition_examples: [
@@ -960,8 +963,8 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       type: "end",
       name: "State expected payment date and close",
       instruction: {
-        type: "static_text",
-        text: "Got it. I'll expect your payment on {{resolved_expected_payment_date_spoken}}. Have a good day. Goodbye.",
+        type: "prompt",
+        text: "Read the exact expected_payment_date_spoken value from the most recent schedule_followup tool result. Say exactly one concise close in this form: Got it. I'll expect your payment on [that spoken date]. Have a good day. Goodbye. Never ask for confirmation, never use the caller's raw date phrase when the tool returned a normalized spoken date, and never omit the date.",
       },
       speak_during_execution: true,
       display_position: { x: 620, y: 380 },

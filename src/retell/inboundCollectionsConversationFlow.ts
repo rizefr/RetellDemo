@@ -133,9 +133,8 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
     id,
     destination_node_id: "outbound_collections_agent",
     transition_condition: {
-      type: "equation" as const,
-      equations: [{ left: "{{inbound_lookup_status}}", operator: "==" as const, right: "verified" }],
-      operator: "&&" as const,
+      type: "prompt" as const,
+      prompt: "Transition here when the most recent lookup_inbound_account tool result says status is verified. Do not require a later caller turn and do not use cached dynamic-variable defaults.",
     },
   });
 
@@ -186,6 +185,14 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
         transition_condition: {
           type: "prompt",
           prompt: "Transition immediately for an explicit stop-calling, attorney-represented, or hostile hard-terminal request. A polite goodbye is not a hard-terminal request.",
+        },
+      },
+      {
+        id: "inbound_identity_corroboration_refused_edge",
+        destination_node_id: "inbound_identity_unverified_explanation",
+        transition_condition: {
+          type: "prompt",
+          prompt: "Transition when the caller says they cannot or will not provide a spelling, company name, invoice number, or email, or when they politely want to end without providing one. Do not keep asking for the same corroborator.",
         },
       },
     ],
