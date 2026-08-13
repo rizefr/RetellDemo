@@ -7,7 +7,7 @@ This map documents the active outbound elevator-inspection collections flow so f
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V79. Read back Retell before any future publish.
+- Current published version: V83. Read back Retell before any future publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
@@ -33,7 +33,7 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 | `customer_first_name`, `customer_last_name` | `outbound_customers` | Identity confirmation uses first name only. |
 | `customer_first_name_spoken`, `customer_last_name_spoken` | customer names through `formatOutboundNameSpoken` | Prevents all-caps names such as `YELENA` from being shouted or pitched oddly. |
 | `customer_phone_spoken` | effective destination phone | Formatted by `formatOutboundPhoneSpoken`; raw E.164 is not spoken directly. |
-| `customer_phone_spoken_chunked` | effective destination phone | Used on repeat/correction, for example “area code three four seven, then five eight five, then zero two four nine.” |
+| `customer_phone_spoken_chunked` | effective destination phone | Used on repeat/correction, for example “three four seven, then five eight five, then zero two four nine.” It never says “area code” or “plus one.” |
 | `customer_email_display` | preferred email, then customer email | Normal display value. |
 | `customer_email_spoken`, `customer_email_spoken_slow` | preferred email, then customer email | Speech-safe first email confirmation. |
 | `customer_email_spoken_phonetic` | preferred email, then customer email | Used on the second email repeat/confusion/correction path, for example “e as in Echo, l as in Lima...”. |
@@ -76,6 +76,7 @@ flowchart TD
   B -->|Yes| E["Ask: Do you need the secure payment link?"]
   E -->|Yes| F["Ask email or text preference"]
   F --> G["Use existing gated payment-link delivery flow"]
+  G -->|Delivery succeeds| H
   E -->|No| H["Ask: When can I expect the payment?"]
   H -->|Specific date| I["Enter expected-payment-date function node"]
   I --> Q["schedule_followup with caller's exact date phrase"]
@@ -97,7 +98,7 @@ After identity confirmation, Paul states his name, business, inspection type, in
 
 ### Wrong Person
 
-If the caller is not the named person, Paul first asks whether this is not the right number for the named person, then asks whether the caller is with `{{account_company_name_spoken}}`. If account/company context is not available, he asks whether someone else handles elevator inspection invoices. If yes, he asks for the better payment/AP contact, collects details if offered, confirms once, logs `responsible_party_update_requested`, creates manual-review context through outcome policy, and routes to final-check. If not the company/account, he logs `wrong_number` and hard-ends.
+If the caller is not the named person or says this may be a wrong number, Paul asks once: `I apologize. Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?` If contact information is offered, he confirms it once, logs `responsible_party_update_requested`, and routes to final-check. If no contact is available but the caller confirms the account/company, he asks once for a better payment/AP contact. If the caller does not know the person, is not connected to the account/company, or declines the one contact question, Paul logs `wrong_number` and uses the dedicated neutral wrong-number end. He does not loop on contact questions.
 
 ### Invoice Received
 
@@ -122,7 +123,11 @@ For "what invoice", "what inspection", "why am I getting this call", Paul answer
 
 ### Payment Preference
 
-After explicit agreement, Paul asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, he sends through the backend only after on-file email confirmation. For SMS-disabled text, he logs the confirmed request and calls the SMS fallback tool without creating a Stripe payment link first; the expected result is manual/pending. If the caller switches from text to email, Paul confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, he logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+After explicit agreement, Paul asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, he sends through the backend only after on-file email confirmation. After a tool returns `sent:true`, Paul confirms delivery once and asks exactly `When can I expect the payment?`; a concrete answer enters the same trusted expected-payment-date function route described above. For SMS-disabled text, he logs the confirmed request and calls the SMS fallback tool without creating a Stripe payment link first; the expected result is manual/pending, so he does not claim delivery or ask a post-delivery date. If the caller switches from text to email, Paul confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, he logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+
+### Topic Recovery
+
+Paul answers relevant side questions briefly and truthfully, then returns once to the unresolved step: invoice receipt, whether a link is needed, text/email preference, or `When can I expect the payment?` after successful delivery or a decision to pay without a link. Payment-method questions are answered by explaining that the secure hosted page shows the supported methods and no card details are taken over the phone. He does not restart the opening, disclosure, or invoice details, and he never repeats a recovery question after it has been answered.
 
 `log_outcome` accepts optional unused string fields as `null` from Retell and normalizes them to blanks. This prevents a model-generated payload like `responsible_party_name:null` from causing a 400 when the outcome is unrelated to responsible-party updates.
 

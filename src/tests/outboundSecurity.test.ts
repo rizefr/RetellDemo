@@ -121,9 +121,11 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Good to hear. Do you need the secure payment link?");
     expect(serialized).toContain("We value our relationship and want to avoid any interruption in service or delays with future inspection filings");
     expect(serialized).toContain("Do not mention virtual assistant or AI status automatically in the normal flow.");
-    expect(serialized).toContain("I apologize. Is this not the right number for {{customer_first_name_spoken}}?");
-    expect(serialized).toContain("No problem. Are you with {{account_company_name_spoken}}?");
-    expect(serialized).toContain("No problem. I may have the wrong contact for this account. Is there someone else who handles elevator inspection invoices?");
+    expect(serialized).toContain(
+      "I apologize. Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?",
+    );
+    expect(serialized).toContain("If they do not have the named person's contact but say they are with {{account_company_name_spoken}}");
+    expect(serialized).toContain("No problem. Is there someone else who handles elevator inspection invoices?");
     expect(serialized).toContain("company/account confirmed");
     expect(serialized).toContain("inspection_type");
     expect(serialized).toContain("days_after_inspection_first_call");
@@ -157,13 +159,30 @@ describe("outbound flow guardrails", () => {
     expect(serialized).toContain("Is there anything else I can help you with?");
     expect(serialized).toContain("Have a good day. Goodbye");
     expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
-    expect(serialized).toContain("When sent is true, confirm delivery once and route to the normal final-check step");
+    expect(serialized).toContain("When sent is true, confirm delivery once and ask exactly: When can I expect the payment?");
     expect(serialized).toContain("Do not leave a confirmed email preference as a future team delivery when send_payment_email is available");
     expect(serialized).toContain("If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms.");
     expect(serialized).toContain('"id":"payment_link_failure_terminal_example"');
     expect(serialized).toContain("\\\"sent\\\":true");
     expect(serialized).toContain("\\\"status\\\":\\\"email_sent\\\"");
     expect(serialized).toContain("I sent the secure payment link to {{customer_email_spoken_slow}}");
+    expect(serialized).toContain(
+      "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?",
+    );
+    expect(serialized).toContain(
+      "Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?",
+    );
+    expect(serialized).toContain(
+      "After answering a relevant detour briefly, return once to the unresolved payment step",
+    );
+    expect(serialized).toContain("Do not repeat the same recovery question after the caller has answered it");
+    expect(serialized).toContain(
+      "If the payment link has already been sent and you already asked when payment is expected, never step backward",
+    );
+    expect(serialized).toContain('"id":"payment_link_sent_expected_date_example"');
+    expect(serialized).toContain('"id":"wrong_person_contact_request_example"');
+    expect(serialized).toContain('"id":"payment_method_detour_returns_to_outcome_example"');
+    expect(serialized).toContain('"id":"post_send_payment_method_detour_returns_to_date_example"');
     expect(serialized).toContain("If the person says \\\"hello\\\"");
     expect(serialized).toContain("State the inspection type, inspection date, and selected balance only when the caller asks");
     expect(serialized).toContain("amount_due_spoken");
@@ -259,6 +278,19 @@ describe("outbound flow guardrails", () => {
     expect(setupScript).toContain("current_dashboard");
   });
 
+  it("accepts the three Retell models used by the comparison suite", () => {
+    const originalModel = process.env.OUTBOUND_RETELL_MODEL;
+    try {
+      for (const model of ["gpt-4.1", "gpt-5.6-luna", "gpt-4.1-mini"]) {
+        process.env.OUTBOUND_RETELL_MODEL = model;
+        expect(buildOutboundConversationFlow("https://elixis.agency").model_choice).toMatchObject({ model });
+      }
+    } finally {
+      if (originalModel === undefined) delete process.env.OUTBOUND_RETELL_MODEL;
+      else process.env.OUTBOUND_RETELL_MODEL = originalModel;
+    }
+  });
+
   it("adds subtle tool-wait bridge behavior without exposing internals", () => {
     const flow = buildOutboundConversationFlow("https://elixis.agency");
     const serialized = JSON.stringify(flow);
@@ -293,6 +325,7 @@ describe("outbound flow guardrails", () => {
     expect(JSON.stringify(flow)).toContain("Call this tool for every caller-supplied expected payment date phrase, including vague phrases");
     expect(prompt).toContain("Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks what the invoice is about, asks how payment works, or asks for the amount.");
     expect(JSON.stringify(flow)).toContain('"id":"payment_link_declined_expected_date_example"');
+    expect(JSON.stringify(flow)).toContain('"id":"payment_link_sent_expected_date_example"');
     expect(JSON.stringify(flow)).toContain('"id":"payment_link_yes_asks_delivery_preference_example"');
     expect(JSON.stringify(flow)).toContain('"id":"ambiguous_expected_date_uses_tool_example"');
     expect(JSON.stringify(flow)).toContain('\\"expected_payment_date_phrase\\":\\"Friday\\"');

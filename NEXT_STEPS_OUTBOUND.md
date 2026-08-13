@@ -5,7 +5,7 @@
 - Production domain: `https://elixis.agency`.
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
-- Current published Conversation Flow: V79.
+- Current published Conversation Flow: V83.
 - Separate Single Prompt comparison: agent `agent_f5a392178f5afa39280b1489a0`, LLM `llm_b3f0e230981f653f0fa1195d0459`, V2, unbound. Use `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for the safe A/B workflow.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
@@ -52,11 +52,11 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 - Keep `agent_f5a392178f5afa39280b1489a0` unbound. It is Playground-only and is not selectable through `/backend`, `/outbound`, or production call routes.
 - Production calls are fixed to `agent_4aa8074d7eabe311109ed6da89` / `conversation_flow_bebdceabc801` at `latest_published`. Signed webhook and tool traffic from any other Retell agent ID is rejected.
-- Published V79 is live. It includes outcome-specific native same-node fallbacks for wrong-number and hard-terminal endings and a structural expected-payment-date function route. A concrete caller date enters `schedule_followup` before Paul says anything; ambiguous dates route to clarification without writing. After a valid date persists, a native End node states it once, says goodbye, and ends without asking for confirmation again.
+- Published V83 is live. It includes outcome-specific native same-node fallbacks for wrong-number and hard-terminal endings and a structural expected-payment-date function route. A concrete caller date enters `schedule_followup` before Paul says anything; ambiguous dates route to clarification without writing. After a valid date persists, a native End node states it once, says goodbye, and ends without asking for confirmation again.
 - Keep the received-invoice branch explicit: ask whether the caller needs the payment link; after a bare yes, ask text or email instead of inferring a method. If not, ask by what date payment should be expected. Clarify vague non-dates without writing them, then pass a concrete date through `schedule_followup`; persist only the backend-resolved date without changing invoice status. Treat an explicit refusal to pay as a separate branch that asks one reason.
 - Retell SDK `5.31.1` is the current compatibility pin. Before upgrading to `5.32+`, verify Retell's supported replacement for the removed `sign`/`verify` helpers and rerun the raw-body webhook signature suite.
 - Keep its LLM `llm_b3f0e230981f653f0fa1195d0459` explicit in server environment settings. Never discover-and-update it by name.
-- Use the same demo variables and caller scenario when comparing it with the V79 Conversation Flow agent.
+- Use the same demo variables and caller scenario when comparing it with the V83 Conversation Flow agent.
 - Run `npm run outbound:test-single-prompt` before any live A/B call. Its tool results are mocked and do not prove production delivery.
 - Do not add the pest-control knowledge base. Trusted outbound invoice/customer data comes from call variables and signed metadata.
 - Read `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for exact tools, current V2 settings, update guards, and the no-call preflight workflow.
@@ -75,12 +75,12 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 ## V63 Gilfoy/Paul Opening Polish (Historical)
 
-- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V79 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
+- V63 used `11labs-Gilfoy` at speed `0.82` with a `1550 ms` first-message delay and `call-center` ambient volume `1.0`. Current V83 readback keeps the speed/delay but uses `coffee-shop` ambience at `0.7`.
 - The speed choice is based on the live V56 call where the caller asked Paul to slow down: the opening measured materially faster than the first full response after the request. V63 introduced speed `0.82`, a longer first-message delay, a short Retell pause marker between the business name and name-confirmation question, and separate wrong-number versus explicit-opt-out handling.
 - First email confirmation uses `customer_email_spoken_slow`, now formatted with spaced tokens such as “e l i x i s agency, at gmail, dot com.”
 - If the caller asks to repeat the email, says it is wrong, or sounds confused, the second readback uses `customer_email_spoken_phonetic` immediately, for example “e as in Echo, l as in Lima...”.
 - First phone confirmation uses `customer_phone_spoken`; repeat/correction uses `customer_phone_spoken_chunked`.
-- If the caller asks to repeat or correct the phone number, Paul uses `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
+- If the caller asks to repeat or correct the phone number, Paul uses `customer_phone_spoken_chunked`, for example “three four seven, then five eight five, then zero two four nine.” It never says “area code” or “plus one.”
 - If the caller gives a corrected email or phone number, Paul confirms it once, logs `contact_update_requested`, and only claims delivery if the backend tool explicitly returns `sent:true`.
 - Names spoken by Retell now use `business_name_spoken`, `account_company_name_spoken`, `customer_first_name_spoken`, and `customer_last_name_spoken` to avoid all-caps delivery such as `YELENA`.
 - Spoken dates use ordinal phrasing, for example `May twentieth, twenty twenty-six`.
@@ -88,6 +88,10 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 - `create_payment_link` has `speak_during_execution=true` with a static “One moment.” message, so the bridge is complete and not dependent on the model beginning a sentence before tool execution.
 - While SMS is disabled, Paul does not create a Stripe payment link before the manual SMS fallback. If the caller switches from text to email, he confirms the email before the email tool path.
 - Personal or irrelevant questions are answered briefly and honestly, then Paul steers back to invoice receipt/payment status. For example, he says he is a digital assistant and does not have an age or physical office location.
+- After a payment link is successfully delivered, Paul confirms delivery once and asks exactly “When can I expect the payment?” The answer follows the trusted expected-payment-date resolver and native End path. Failed or manual/pending delivery must not be described as sent.
+- Wrong-person or possible wrong-number calls get one request for the named person’s correct number or email. Paul confirms and logs supplied details once; if no contact is available, he does not repeat the question.
+- Relevant detours, including payment-method questions, get one concise answer followed by a single return to the unresolved payment step. Paul must not restart the opening or repeat a question the caller already answered.
+- The August 12 model comparison used nine identical mocked Playground scenarios. GPT-4.1 reached 9/9 after the post-send recovery example. GPT-5.6 Luna was faster and cheaper but skipped required phone confirmation and failed one explicit stop-call end; GPT-4.1 mini reordered SMS work and weakened the expected-date close. Keep GPT-4.1 until a repeat comparison removes those safety differences.
 - If the caller asks “are we done?” before the invoice/follow-up outcome is addressed, Paul makes one reasonable attempt to finish the invoice receipt question before closing. If an outcome has already been reached, he can close directly.
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.

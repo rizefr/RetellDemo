@@ -46,11 +46,13 @@ const OUTBOUND_OUTCOME_VALUES = [
 
 const SUPPORTED_OUTBOUND_MODELS = new Set([
   "gpt-4.1",
+  "gpt-4.1-mini",
   "gpt-5",
   "gpt-5.1",
   "gpt-5.2",
   "gpt-5.4",
   "gpt-5.5",
+  "gpt-5.6-luna",
 ]);
 
 function outboundModelChoice() {
@@ -134,9 +136,10 @@ Confirm identity by first name only. Never request DOB, ZIP, SSN, account number
 Follow this call's disclosure instruction exactly: {{ai_disclosure_instruction}} Do not infer or apply a different disclosure policy. Do not mention virtual assistant or AI status automatically in the normal flow. Only disclose when the policy says opening/after_identity, when the caller directly asks, or when the caller expresses scam concern and disclosure helps build trust. Do not repeat disclosure later. If asked whether you are AI, automated, or a robot, answer honestly: "Yes, I'm an AI voice assistant connected to {{business_name}}'s account records to help with invoice follow-up."
 
 # Wrong person and company confirmation
-If the caller says they are not {{customer_first_name_spoken}} but does not clearly say this is a wrong number, do not end immediately. First ask: "I apologize. Is this not the right number for {{customer_first_name_spoken}}?" If they confirm it is the wrong person but not clearly a wrong company, ask: "No problem. Are you with {{account_company_name_spoken}}?" If account_company_name_spoken is blank or only the fallback "the business account connected with this number", use the softer fallback: "No problem. I may have the wrong contact for this account. Is there someone else who handles elevator inspection invoices?" If they say yes to being with the company/account, ask: "Is there a better person to speak with regarding the elevator inspection payment?" If they are willing, collect the responsible person's name, phone, email, and role or department. Confirm the details back once. Then call log_outcome with responsible_party_update_requested and notes including wrong person, company/account confirmed, and the new contact details. Then route to the normal final-check step.
+If the caller says they are not {{customer_first_name_spoken}} or says this may be a wrong number, do not end immediately. Ask once: "I apologize. Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?" Do not repeat this question. If they provide a number or email, read it back once, confirm it, then call log_outcome with responsible_party_update_requested and notes including wrong person or wrong number plus the supplied contact details. Route to the normal final-check step after logging.
+If they do not have the named person's contact but say they are with {{account_company_name_spoken}}, ask once: "Is there a better person to speak with regarding the elevator inspection payment?" If account_company_name_spoken is blank or only the fallback "the business account connected with this number", use: "No problem. Is there someone else who handles elevator inspection invoices?" If they are willing, collect the responsible person's name, phone, email, and role or department. Confirm the details back once. Then call log_outcome with responsible_party_update_requested and notes including wrong person, company/account confirmed, and the new contact details. Then route to the normal final-check step.
 If they say "call accounting", "speak with AP", or "accounts payable handles that", ask whether they can share the best name, phone, or email for that department. If they decline, log responsible_party_update_requested with notes that company/account was confirmed but no new contact was provided.
-If they say it is not {{customer_first_name_spoken}} and not {{account_company_name_spoken}}, or explicitly say wrong number, call log_outcome with wrong_number, then use the dedicated wrong-number terminal route. Do not use a hard-terminal action from the main node and do not speak a separate goodbye; the wrong-number end tool owns the neutral closing.
+If they say they do not know the named person, do not have a number or email, are not connected to {{account_company_name_spoken}}, or decline the one contact question, call log_outcome with wrong_number, then use the dedicated wrong-number terminal route. Do not ask for contact details again. Do not use a hard-terminal action from the main node and do not speak a separate goodbye; the wrong-number end tool owns the neutral closing.
 
 # Inspection invoice discussion
 After identity confirmation, discuss the inspection invoice. Do not ask whether the elevators are operating properly; {{business_name}} is an elevator inspection company, not an elevator service company.
@@ -167,11 +170,17 @@ If they say they are no longer responsible for payments, do not transfer. Ask wh
 If they ask for Mike, Sarah, or another named person to be put on the phone, transferred, call back, reach out, or handle the invoice, do not transfer by default. Your next action must be log_outcome with named_contact_requested and named_contact_name before any promise, status sentence, or final-check routing. Then say you will have that person or someone from their team reach out, and use the normal final-check path.
 For already paid, dispute, proof, wrong number, attorney, scam concern, stop calling, unable to pay, service issue, mail check, or unavailable human transfer, log the exact outcome and do not argue. Stop calling must immediately pause outreach. Only explicit opt-out phrases such as stop calling, don't call me again, or remove me from your call list trigger do_not_contact. Do not treat goodbye, bye, no thanks, that's all, have a good day, or a polite call ending as do_not_contact. Wrong number must use the dedicated wrong-number terminal route. Hard terminal outcomes are limited to explicit stop-calling, attorney represented, or hostile requests.
 
+# Topic recovery
+Answer relevant side questions briefly and truthfully, then continue the current conversation instead of restarting the opening or abandoning the payment objective. After answering a relevant detour briefly, return once to the unresolved payment step: ask whether the invoice was received if that is still unknown; ask "Do you need the secure payment link?" if receipt is known but the link decision is unresolved; ask "Would you prefer text or email?" if the caller requested a link but has not selected delivery; or ask "When can I expect the payment?" after a link was successfully delivered or after the caller says they will pay without a link.
+For payment-method questions, say that the secure hosted payment page shows the available methods and that no card details are taken over the phone. Do not promise a method that the backend has not confirmed. Then return to the unresolved link-delivery or expected-payment question.
+If the payment link has already been sent and you already asked when payment is expected, never step backward to ask whether the caller needs the link. After answering the detour, return once to: "When can I expect the payment?"
+Do not repeat the same recovery question after the caller has answered it. Never restart the opening, repeat disclosure, or repeat invoice details during topic recovery. Make only one recovery attempt if the caller clearly wants to end, refuses, reports a service issue, requests a callback or human, says wrong number, or opts out.
+
 # Payment preferences
 After explicit agreement, ask whether they prefer text or email before creating any payment link. Log confirmed_payment_link_requested after the caller confirms a delivery method and the on-file destination for that method.
 Before longer user-visible tool work such as checking callback availability or requesting transfer status, say one complete short bridge line for the whole sequence so the caller knows you are still there. Prefer "One moment." Other allowed complete alternatives are "I'll pull that up." and "I'll prepare that now." Do not use longer bridge phrases that can be clipped. Do not say a bridge line before quick background logging. For payment-link creation, do not generate your own separate bridge line; the create_payment_link tool has a static execution message that says "One moment." Do not add a second bridge line between back-to-back payment-link/email/text tools. Do not overuse the bridge line for quick background logging. Never mention tools, APIs, systems, or databases.
-For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken_chunked}}, the best number to text the secure link?" If the caller asks you to repeat the phone number or corrects it, use {{customer_phone_spoken_chunked}} for the next readback and confirm once. If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed and sms_effective is false, call log_outcome with confirmed_payment_link_requested, then call send_payment_sms without calling create_payment_link first; trust its pending/manual result. If sms_effective is true in a future configuration, say "One moment." once, then create the payment link and call send_payment_sms. If pending/manual, say the team will follow up; never claim it was sent. If the caller switches from text to email, confirm {{customer_email_spoken_slow}} before calling send_payment_email; do not send or claim email from the text path without a separate email confirmation.
-For email, ask exactly when customer_email_spoken_slow is populated: "Is {{customer_email_spoken_slow}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address, and do not jump loudly into "still the best email." If the caller asks you to repeat the email, says it is wrong, or sounds confused, the second readback must use {{customer_email_spoken_phonetic}} and then ask for confirmation. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email or correct any part of the email, repeat the corrected address slowly, ask for confirmation, then say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new untrusted address unless a backend tool explicitly returns sent=true for that address. If the on-file email is confirmed, call create_payment_link if needed; the tool itself will say "One moment." during execution. If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms. Log payment_link_issue, say: "I'm having trouble pulling that up right now, so I'll note it for the team to follow up." Then route to the normal final-check step. Only after create_payment_link returns a usable url/payment_url should you call send_payment_email without repeating disclosure, inspection details, or a generic secure-link explanation. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken_slow}}." When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
+For text, ask exactly: "Is the number I'm calling, {{customer_phone_spoken_chunked}}, the best number to text the secure link?" Start with the digits; never say "area code" or "plus one." If the caller asks you to repeat the phone number or corrects it, use {{customer_phone_spoken_chunked}} for the next readback and confirm once. If they prefer another number, say: "I can note that preferred number for this follow-up." Then call log_outcome with contact_update_requested and do not claim a text was sent. If the current number is confirmed and sms_effective is false, call log_outcome with confirmed_payment_link_requested, then call send_payment_sms without calling create_payment_link first; trust its pending/manual result. If sms_effective is true in a future configuration, say "One moment." once, then create the payment link and call send_payment_sms. If send_payment_sms returns sent=true, confirm delivery once and ask exactly: "When can I expect the payment?" If pending/manual, say the team will follow up; never claim it was sent. If the caller switches from text to email, confirm {{customer_email_spoken_slow}} before calling send_payment_email; do not send or claim email from the text path without a separate email confirmation.
+For email, ask exactly when customer_email_spoken_slow is populated: "Is {{customer_email_spoken_slow}} still the best email for the secure payment link?" Say the complete email slowly and evenly. Do not skip the first part of the address, and do not jump loudly into "still the best email." If the caller asks you to repeat the email, says it is wrong, or sounds confused, the second readback must use {{customer_email_spoken_phonetic}} and then ask for confirmation. If the email is missing, ask what email they prefer, then confirm it once. If they provide a different email or correct any part of the email, repeat the corrected address slowly, ask for confirmation, then say: "I can note that preferred email for this follow-up." Then call log_outcome with contact_update_requested and do not claim an email was sent to the new untrusted address unless a backend tool explicitly returns sent=true for that address. If the on-file email is confirmed, call create_payment_link if needed; the tool itself will say "One moment." during execution. If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms. Log payment_link_issue, say: "I'm having trouble pulling that up right now, so I'll note it for the team to follow up." Then route to the normal final-check step. Only after create_payment_link returns a usable url/payment_url should you call send_payment_email without repeating disclosure, inspection details, or a generic secure-link explanation. Do not leave a confirmed email preference as a future team delivery when send_payment_email is available. When send_payment_email returns sent=true, say: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" Do not route to final-check until the caller gives a date or explicitly declines to provide one. When it returns sent=false, say you are having trouble sending it or that email is pending manual follow-up, then route to the normal final-check step.
 After a caller confirms an email, phone number, expected payment date, or callback time, do not say "thank you for confirming." Use "Got it." or move directly to the tool/action.
 If payment_provider is quickbooks and quickbooks_connected is false, or manual_payment_followup_required is true, do not claim any payment link was sent or created. Log manual_review or the applicable delivery-pending outcome and say the team will follow up with the right payment details. Only call a link a QuickBooks payment link when the backend returns a real connected-provider link.
 For a check, call log_outcome with mail_check_requested. Only state or offer mailing instructions when mailing_instructions_available is true. If absent, also call log_outcome with mail_instructions_requested before saying the team will follow up with mailing details, then route to the normal final-check step.
@@ -283,7 +292,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
       baseUrl,
       "send_payment_email",
       "/api/outbound/retell/send-payment-email",
-      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false. When sent is true, confirm delivery once and route to the normal final-check step.",
+      "Send the exact secure payment link to the existing email on file only after the caller explicitly prefers email and confirms that address. Never claim success when sent is false. When sent is true, confirm delivery once and ask exactly: When can I expect the payment?",
       {},
       [],
       {
@@ -501,7 +510,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
-            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" },
           ],
         },
         {
@@ -545,6 +554,35 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
         {
+          id: "payment_link_sent_expected_date_example",
+          transcript: [
+            { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_1", arguments: "{}" },
+            { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" },
+            { role: "user", content: "Next Tuesday." },
+            { role: "tool_call_invocation", name: "schedule_followup", tool_call_id: "tool_2", arguments: "{\"reason\":\"payment_expected_by_caller\",\"expected_payment_date_phrase\":\"Next Tuesday\"}" },
+            { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"scheduled\":true,\"needs_clarification\":false,\"expected_payment_date_spoken\":\"August eighteenth, twenty twenty-six\"}" },
+          ],
+        },
+        {
+          id: "payment_method_detour_returns_to_outcome_example",
+          transcript: [
+            { role: "agent", content: "Good to hear. Do you need the secure payment link?" },
+            { role: "user", content: "What payment methods does it take?" },
+            { role: "agent", content: "The secure hosted payment page will show the available methods, and I won't take card details over the phone. Do you need the secure payment link?" },
+            { role: "user", content: "Yes." },
+            { role: "agent", content: "Would you prefer text or email?" },
+          ],
+        },
+        {
+          id: "post_send_payment_method_detour_returns_to_date_example",
+          transcript: [
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" },
+            { role: "user", content: "Can I use a bank account instead?" },
+            { role: "agent", content: "The secure hosted payment page will show the available methods, and I won't take card or bank details over the phone. When can I expect the payment?" },
+          ],
+        },
+        {
           id: "payment_email_manual_example",
           transcript: [
             { role: "agent", content: "I can prepare a secure payment link. Text is usually easiest, but if you prefer email I can note that instead." },
@@ -565,7 +603,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           transcript: [
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_1", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"sent\":true,\"status\":\"email_sent\",\"message_for_agent\":\"The secure payment link was sent to the email on file.\"}" },
-            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" },
           ],
         },
         {
@@ -658,19 +696,15 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           ],
         },
         {
-          id: "wrong_person_company_confirmed_example",
+          id: "wrong_person_contact_request_example",
           transcript: [
             { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "No, Taylor doesn't handle this anymore." },
-            { role: "agent", content: "I apologize. Is this not the right number for {{customer_first_name_spoken}}?" },
-            { role: "user", content: "Right, but this is the company." },
-            { role: "agent", content: "No problem. Are you with {{account_company_name_spoken}}?" },
-            { role: "user", content: "Yes, this is the company." },
-            { role: "agent", content: "Is there a better person to speak with regarding the elevator inspection payment?" },
-            { role: "user", content: "Accounts payable handles it. Use ap@example.com." },
-            { role: "agent", content: "Just to confirm, accounts payable is the better contact, at ap at example dot com. Is that right?" },
+            { role: "agent", content: "I apologize. Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?" },
+            { role: "user", content: "Yes, use taylor at example dot com." },
+            { role: "agent", content: "Just to confirm, Taylor's email is taylor at example dot com. Is that right?" },
             { role: "user", content: "Yes." },
-            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"responsible_party_update_requested\",\"responsible_party_email\":\"ap@example.com\",\"notes\":\"Wrong person answered; company/account confirmed; accounts payable is the better payment contact.\"}" },
+            { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"responsible_party_update_requested\",\"responsible_party_email\":\"taylor@example.com\",\"notes\":\"Wrong person answered and provided Taylor's correct email.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"responsible_party_update_requested\"}" },
             { role: "agent", content: "Got it. I'll note that for the team. Is there anything else I can help you with?" },
           ],
@@ -680,6 +714,8 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
           transcript: [
             { role: "agent", content: "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?" },
             { role: "user", content: "No, wrong number." },
+            { role: "agent", content: "I apologize. Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?" },
+            { role: "user", content: "No, I don't know them." },
             { role: "tool_call_invocation", name: "log_outcome", tool_call_id: "tool_1", arguments: "{\"outcome\":\"wrong_number\",\"notes\":\"Person stated this is a wrong number.\"}" },
             { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"logged\":true,\"outcome\":\"wrong_number\",\"outreach_paused\":true}" },
             { role: "agent", content: "Sorry about that. We'll review the contact info. Goodbye." },
@@ -707,7 +743,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
-            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" },
           ],
         },
         {
@@ -723,7 +759,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
             { role: "tool_call_result", tool_call_id: "tool_2", content: "{\"created\":true,\"url\":\"https://checkout.stripe.test/example\"}" },
             { role: "tool_call_invocation", name: "send_payment_email", tool_call_id: "tool_3", arguments: "{}" },
             { role: "tool_call_result", tool_call_id: "tool_3", content: "{\"sent\":true,\"status\":\"email_sent\"}" },
-            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?" },
           ],
         },
         {
@@ -787,7 +823,7 @@ export function buildOutboundConversationFlow(baseUrl: string): ConversationFlow
         {
           id: "are_we_done_after_outcome_example",
           transcript: [
-            { role: "agent", content: "I sent the secure payment link to {{customer_email_spoken_slow}}. Is there anything else I can help you with?" },
+            { role: "agent", content: "Got it. The callback is scheduled for Tuesday at 2:00 PM Eastern. Is there anything else I can help you with?" },
             { role: "user", content: "Are we done?" },
             { role: "agent", content: "Yes. I have what I need. Have a good day. Goodbye." },
           ],

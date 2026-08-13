@@ -9,7 +9,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Agent: `Elevator Inspection Collections — Paul`
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V79
+- Current published version: V83
 - Voice: `11labs-Gilfoy`
 - Spoken name: `Paul`
 - Model: GPT-4.1
@@ -21,13 +21,13 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Use backend speech-safe variables for anything read aloud. Do not let Retell infer raw dates, phone numbers, email addresses, invoice IDs, or cents.
 - Use `customer_email_spoken_slow` on the first email confirmation. Example: `elixisagency@gmail.com` becomes `e l i x i s agency, at gmail, dot com`.
 - If the caller asks Paul to repeat the email, says it is wrong, or sounds confused, use `customer_email_spoken_phonetic` on the second readback instead of waiting for more failures. Example: “e as in Echo, l as in Lima, i as in India...”.
-- Use `customer_phone_spoken` on the first phone confirmation. If the caller asks Paul to repeat or correct the phone number, use `customer_phone_spoken_chunked`, for example “area code three four seven, then five eight five, then zero two four nine.”
+- Use `customer_phone_spoken` on the first phone confirmation. If the caller asks Paul to repeat or correct the phone number, use `customer_phone_spoken_chunked`, for example “three four seven, then five eight five, then zero two four nine.” Never prefix it with “area code” or “plus one.”
 - If the caller corrects an email or phone number, repeat the corrected value slowly, confirm once, log `contact_update_requested`, and do not claim delivery to the corrected value unless the backend tool explicitly returns `sent:true`.
 - Use `inspection_date_spoken` in the trust-building invoice line. If a separate inspection date is unavailable, the backend may fall back to the invoice date.
 - Do not repeat virtual-assistant disclosure after the caller has already confirmed email/text/payment delivery.
 - Do not volunteer virtual-assistant disclosure in the normal inspection invoice flow. Use it only when the caller asks if Paul is AI/automated, when a stricter configured policy explicitly requires it, or when scam concern makes one clear disclosure useful.
 - Use the short Retell pause marker after the company: “Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?” After confirmation, continue with inspection type, inspection date, and receipt status without repeating Paul’s name or the business name.
-- If the caller says they are not the named person, first ask whether this is not the right number for the named person, then ask whether they are with `{{account_company_name}}` before logging wrong number. If the account/company is correct, ask for the better payment contact, collect details if offered, confirm once, and log `responsible_party_update_requested`. If it is the wrong number, route to the dedicated wrong-number terminal close instead of the do-not-contact terminal close.
+- If the caller says they are not the named person or this may be a wrong number, ask once whether they have the right number or email for the named first and last name. Confirm supplied contact details once and log `responsible_party_update_requested`. If they have no contact but are with the account/company, ask once for the better payment/AP contact. If they do not know the person, are not connected to the account, or decline the one contact request, log `wrong_number` and use the dedicated neutral wrong-number close. Do not loop on contact questions.
 - If the caller asks personal questions like age or physical location, answer briefly as a digital assistant and steer back to whether the invoice was received.
 - If the caller asks “are we done?” before an outcome has been reached, make one reasonable attempt to confirm invoice receipt/resend preference before closing. If an outcome has already been reached, close directly.
 - With `11labs-Gilfoy`, avoid the exact phrase “thank you” in active script and do not say “thank you for confirming.” Prefer “Got it,” “I appreciate it,” “That helps,” or “I’ll make a note of that” where natural. A short “You're welcome” is still acceptable if the caller thanks Paul.
@@ -46,6 +46,8 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Hard terminal paths are limited to explicit do-not-contact, attorney represented, or hostile/abusive requests. Wrong-number outcomes use the separate wrong-number terminal path with the neutral close “Sorry about that. We'll review the contact information. Goodbye.”
 - If payment is refused, ask one non-pushy clarification: “May I ask the reason, so I can note it correctly for the team?” Then classify and stop.
 - If the caller confirms the invoice was received, ask “Do you need the secure payment link?” A bare yes must be followed by “Would you prefer text or email?” rather than inferring email from the address on file. If they say no, ask “When can I expect the payment?” A declined link is not a refusal to pay. Clarify vague non-dates such as “soon” without storing them. Route every concrete date through the dedicated expected-payment-date function node and wait for `schedule_followup`. The native End node then says “Got it. I'll expect your payment on {{expected_payment_date_spoken}}. Have a good day. Goodbye.” and ends. Never ask the caller to confirm that stored date again.
+- After `send_payment_email` or a future enabled SMS tool returns `sent:true`, confirm delivery once and ask exactly “When can I expect the payment?” Do not final-check immediately after delivery. Route the answer through the same trusted expected-payment-date function node, and do not ask the question when delivery failed or remained manual/pending.
+- When a caller detours into payment methods or another relevant side question, answer briefly and return once to the unresolved step. Do not restart the opening, disclosure, or invoice recap, and do not repeat a recovery question after it has been answered.
 - If the caller says they are no longer responsible for payments, collect the new responsible party name, phone, and email only if they are willing. Do not transfer by default.
 - If the caller asks for a named person, log `named_contact_requested` and say that person or someone from their team will follow up.
 - For named-contact requests, log before promising the follow-up. This avoids call summaries that show a follow-up promise without the backing event.
@@ -53,6 +55,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - For Retell inventory scripts, do not use deprecated SDK `client.agent.list()` or legacy `GET /list-agents`, and do not use `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`. Use the local versioned helpers in `src/retell/retellList.ts`, and keep the deprecation guard test passing.
 - Keep `/backend`, `/outbound`, and all production call routes fixed to the explicit Conversation Flow agent and flow IDs. Do not restore browser-selectable agent variants. Pin calls to `latest_published`, and reject signed tool/webhook traffic whose `call.agent_id` is not the configured outbound agent.
 - Before publishing a prompt update, read back and preserve the active dashboard voice runtime settings. The setup script now retains model, speed, temperature, interruption, responsiveness, backchannel, start delay, and ambience values instead of replacing manual provider tuning with local defaults.
+- The August 12 GPT-4.1/GPT-5.6 Luna/GPT-4.1 mini comparison kept GPT-4.1. Luna was faster and cheaper but skipped required phone confirmation and failed one stop-call end; 4.1 mini reordered SMS work and did not consistently use the native expected-date close. GPT-4.1 passed all nine focused scenarios after the explicit post-send topic-recovery example.
 
 ## Knowledge Base Foundation
 
