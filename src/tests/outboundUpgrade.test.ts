@@ -81,7 +81,7 @@ describe("outbound speech-safe invoice formatting", () => {
 
   it("formats phone numbers for repeat confirmation in clear chunks", () => {
     expect(formatOutboundPhoneSpokenChunked("+13475850249")).toBe(
-      "area code three four seven, then five eight five, then zero two four nine",
+      "three four seven, then five eight five, then zero two four nine",
     );
     expect(formatOutboundPhoneSpokenChunked("+442071838750")).toBe(
       "four four two zero seven one eight three eight seven five zero",

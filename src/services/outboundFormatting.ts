@@ -98,7 +98,7 @@ export function formatOutboundPhoneSpokenChunked(value: string | null | undefine
   const usMatch = input.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
   const speakDigits = (digits: string) => digits.split("").map((digit) => SMALL_NUMBERS[Number(digit)]).join(" ");
   if (usMatch) {
-    return `area code ${speakDigits(usMatch[1])}, then ${speakDigits(usMatch[2])}, then ${speakDigits(usMatch[3])}`;
+    return `${speakDigits(usMatch[1])}, then ${speakDigits(usMatch[2])}, then ${speakDigits(usMatch[3])}`;
   }
   const digits = input.replace(/\D/g, "");
   return digits ? speakDigits(digits) : "phone number unavailable";

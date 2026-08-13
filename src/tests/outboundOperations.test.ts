@@ -327,7 +327,7 @@ describe("outbound browser operation safety", () => {
           customer_first_name_spoken: "Test",
           customer_last_name_spoken: "Owner",
           customer_phone_spoken: "five five five, one two three, four five six seven",
-          customer_phone_spoken_chunked: "area code five five five, then one two three, then four five six seven",
+          customer_phone_spoken_chunked: "five five five, then one two three, then four five six seven",
           account_company_name: "Test Owner Holdings",
           account_company_name_spoken: "Test Owner Holdings",
           customer_email: "billing@example.test",
