@@ -79,8 +79,31 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
   main.name = "Verified inbound collections conversation";
   main.instruction = {
     type: "prompt",
-    text: "Identity has already been verified by the inbound identity node. On entry, continue naturally with: Got it, {{customer_first_name_spoken}}. I found the account. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. Were you able to receive it? Do not use the outbound opening, ask for identity again, or restart the conversation. Then preserve the existing invoice, payment, expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
+    text: "Identity has already been verified by the inbound identity node. Inspect everything the caller said before lookup. If they already stated that the invoice was received, declined the payment link, and supplied an expected payment date, do not repeat those questions or summarize the date yourself; transition immediately to the isolated expected-payment-date resolver. Otherwise, continue naturally with only the unresolved step. When receipt is still unknown, say: Got it, {{customer_first_name_spoken}}. I found the account. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. Were you able to receive it? Do not use the outbound opening, ask for identity again, or restart the conversation. Then preserve the existing invoice, payment, expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
   };
+  main.edges = [
+    {
+      id: "inbound_verified_caller_already_supplied_expected_date_edge",
+      destination_node_id: "outbound_expected_payment_date_function",
+      transition_condition: {
+        type: "prompt",
+        prompt: "Immediately after entering from the inbound identity node, transition here when the verified caller already stated that the invoice was received, declined or did not need the payment link, and supplied an expected payment date in the same pre-lookup turn. Do not acknowledge, restate, or summarize that date before this transition.",
+      },
+    },
+    ...(main.edges ?? []),
+  ];
+  main.finetune_transition_examples = [
+    {
+      id: "inbound_bundled_expected_date_transition_example",
+      destination_node_id: "outbound_expected_payment_date_function",
+      transcript: [
+        { role: "user", content: "My name is Pat Morgan. I received the invoice. I don't need a payment link. I'll pay next Friday." },
+        { role: "tool_call_invocation", name: "lookup_inbound_account", tool_call_id: "tool_1", arguments: "{\"first_name\":\"Pat\",\"last_name\":\"Morgan\"}" },
+        { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"status\":\"verified\",\"verified\":true,\"customer_first_name_spoken\":\"Pat\"}" },
+      ],
+    },
+    ...(main.finetune_transition_examples ?? []),
+  ];
   const identityNode: ConversationFlowCreateParams.SubagentNode = {
     id: "inbound_identity_agent",
     type: "subagent",
@@ -98,9 +121,9 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
           type: "equation",
           equations: [
             {
-              left: "{{inbound_lookup_verified}}",
+              left: "{{inbound_lookup_status}}",
               operator: "==",
-              right: "true",
+              right: "verified",
             },
           ],
           operator: "&&",

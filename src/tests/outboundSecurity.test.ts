@@ -369,7 +369,18 @@ describe("outbound flow guardrails", () => {
       },
     });
     expect(resolverNode.edges).toEqual(expect.arrayContaining([
-      expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_confirmation" }),
+      expect.objectContaining({
+        destination_node_id: "outbound_expected_payment_date_confirmation",
+        transition_condition: {
+          type: "equation",
+          equations: [{
+            left: "{{resolved_expected_payment_date_spoken}}",
+            operator: "!=",
+            right: "",
+          }],
+          operator: "&&",
+        },
+      }),
       expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_clarification" }),
     ]));
     expect(clarificationNode.edges).toContainEqual(
