@@ -55,7 +55,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - For Retell inventory scripts, do not use deprecated SDK `client.agent.list()` or legacy `GET /list-agents`, and do not use `client.phoneNumber.list()` or legacy `GET /list-phone-numbers`. Use the local versioned helpers in `src/retell/retellList.ts`, and keep the deprecation guard test passing.
 - Keep `/backend`, `/outbound`, and all production call routes fixed to the explicit Conversation Flow agent and flow IDs. Do not restore browser-selectable agent variants. Pin calls to `latest_published`, and reject signed tool/webhook traffic whose `call.agent_id` is not the configured outbound agent.
 - Before publishing a prompt update, read back and preserve the active dashboard voice runtime settings. The setup script now retains model, speed, temperature, interruption, responsiveness, backchannel, start delay, and ambience values instead of replacing manual provider tuning with local defaults.
-- The August 12 GPT-4.1/GPT-5.6 Luna/GPT-4.1 mini comparison kept GPT-4.1. Luna was faster and cheaper but skipped required phone confirmation and failed one stop-call end; 4.1 mini reordered SMS work and did not consistently use the native expected-date close. GPT-4.1 passed all nine focused scenarios after the explicit post-send topic-recovery example.
+- The August 12 GPT-4.1/GPT-5.6 Luna/GPT-4.1 mini comparison used the same final prompt and kept GPT-4.1. GPT-4.1 passed 9/9; Luna passed 7/9 and was faster and cheaper but skipped required phone confirmation and failed one stop-call end; 4.1 mini passed 8/9 but missed the native expected-date goodbye. Luna V84 and 4.1 mini V85 remain unpublished comparison drafts.
 
 ## Knowledge Base Foundation
 
