@@ -67,23 +67,75 @@ function lookupTool(baseUrl: string): ConversationFlowCreateParams.CustomTool {
 export function buildInboundCollectionsConversationFlow(baseUrl: string): ConversationFlowCreateParams {
   const outbound = buildOutboundConversationFlow(baseUrl);
   const outboundPrompt = String(outbound.global_prompt || "");
-  const roleEnd = outboundPrompt.indexOf("# Trusted call context");
+  const openingStart = outboundPrompt.indexOf("# Opening and disclosure");
   const discussionStart = outboundPrompt.indexOf("# Inspection invoice discussion");
-  if (roleEnd < 0 || discussionStart < 0) {
+  if (openingStart < 0 || discussionStart < 0) {
     throw new Error("Outbound collections prompt headings changed; inbound prompt composition must be reviewed.");
   }
 
   const nodes = structuredClone(outbound.nodes ?? []);
   const main = nodes.find((node) => node.id === "outbound_collections_agent");
   if (!main || main.type !== "subagent") throw new Error("Outbound collections start node is missing.");
-  main.id = "inbound_collections_agent";
-  main.name = "Inbound collections callback conversation";
+  main.name = "Verified inbound collections conversation";
   main.instruction = {
     type: "prompt",
-    text: "Ask for the caller's first and last name, then call lookup_inbound_account before discussing any invoice. A name alone is not verified. Use the tool-returned fields only when verified=true. After verification, continue through the existing invoice and payment flow without restarting the conversation. Preserve all structural expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
+    text: "Identity has already been verified by the inbound identity node. On entry, continue naturally with: Got it, {{customer_first_name_spoken}}. I found the account. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. Were you able to receive it? Do not use the outbound opening, ask for identity again, or restart the conversation. Then preserve the existing invoice, payment, expected-payment-date, final-check, wrong-number, and hard-terminal routes.",
   };
-  main.tool_ids = [LOOKUP_TOOL_ID, ...(main.tool_ids ?? [])];
-  main.finetune_conversation_examples = [
+  const identityNode: ConversationFlowCreateParams.SubagentNode = {
+    id: "inbound_identity_agent",
+    type: "subagent",
+    name: "Inbound caller identity verification",
+    instruction: {
+      type: "prompt",
+      text: "Ask for the caller's first and last name, then call lookup_inbound_account immediately. This node owns identity verification only. Never discuss an invoice, payment, date, amount, email, or phone from account records here. A name alone is not verified. If lookup asks for one safe corroborator, collect exactly one and call the lookup again. Once inbound_lookup_verified is true, do not speak another introduction; transition to the verified collections node. After a second failed lookup, explain that no verified open invoice can be located and transition to manual review. For an explicit stop-calling request, transition to the hard terminal node.",
+    },
+    tool_ids: [LOOKUP_TOOL_ID],
+    edges: [
+      {
+        id: "inbound_identity_verified_edge",
+        destination_node_id: "outbound_collections_agent",
+        transition_condition: {
+          type: "equation",
+          equations: [
+            {
+              left: "{{inbound_lookup_verified}}",
+              operator: "==",
+              right: "true",
+            },
+          ],
+          operator: "&&",
+        },
+      },
+      {
+        id: "inbound_identity_manual_review_edge",
+        destination_node_id: "outbound_normal_terminal_final_check",
+        transition_condition: {
+          type: "prompt",
+          prompt: "Transition only after two lookup attempts failed to verify the caller and the agent explained that no verified open invoice could be located. Do not use this before the second lookup result.",
+        },
+      },
+      {
+        id: "inbound_identity_hard_terminal_edge",
+        destination_node_id: "outbound_hard_terminal_end",
+        transition_condition: {
+          type: "prompt",
+          prompt: "Transition immediately for an explicit stop-calling, attorney-represented, or hostile hard-terminal request. A polite goodbye is not a hard-terminal request.",
+        },
+      },
+    ],
+    finetune_transition_examples: [
+      {
+        id: "inbound_identity_verified_transition_example",
+        destination_node_id: "outbound_collections_agent",
+        transcript: [
+          { role: "agent", content: "Hi, you've reached the invoice follow-up line for {{business_name_spoken}}. May I get your first and last name?" },
+          { role: "user", content: "Pat Morgan." },
+          { role: "tool_call_invocation", name: "lookup_inbound_account", tool_call_id: "tool_1", arguments: "{\"first_name\":\"Pat\",\"last_name\":\"Morgan\"}" },
+          { role: "tool_call_result", tool_call_id: "tool_1", content: "{\"status\":\"verified\",\"verified\":true,\"customer_first_name_spoken\":\"Pat\"}" },
+        ],
+      },
+    ],
+    finetune_conversation_examples: [
     {
       id: "inbound_verified_phone_and_name_example",
       transcript: [
@@ -104,14 +156,16 @@ export function buildInboundCollectionsConversationFlow(baseUrl: string): Conver
         { role: "agent", content: "What company or account name is this regarding?" },
       ],
     },
-  ];
+    ],
+    display_position: { x: -400, y: 0 },
+  };
 
   return {
     ...outbound,
-    start_node_id: "inbound_collections_agent",
-    global_prompt: `${outboundPrompt.slice(0, roleEnd)}${INBOUND_OPENING_AND_IDENTITY}\n${outboundPrompt.slice(discussionStart)}`,
+    start_node_id: "inbound_identity_agent",
+    global_prompt: `${outboundPrompt.slice(0, openingStart)}${INBOUND_OPENING_AND_IDENTITY}\n${outboundPrompt.slice(discussionStart)}`,
     tools: [lookupTool(baseUrl), ...(outbound.tools ?? [])],
-    nodes,
+    nodes: [identityNode, ...nodes],
     default_dynamic_variables: {
       ...(outbound.default_dynamic_variables ?? {}),
       business_name: "Pinnacle Elevator Solutions",

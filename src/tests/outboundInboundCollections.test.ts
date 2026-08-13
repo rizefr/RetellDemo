@@ -105,7 +105,7 @@ describe("inbound collections Conversation Flow", () => {
     const flow = buildInboundCollectionsConversationFlow("https://example.com");
     const serialized = JSON.stringify(flow);
     expect(flow.start_speaker).toBe("agent");
-    expect(flow.start_node_id).toBe("inbound_collections_agent");
+    expect(flow.start_node_id).toBe("inbound_identity_agent");
     expect(serialized).toContain("Hi, you've reached the invoice follow-up line for {{business_name_spoken}}. May I get your first and last name?");
     expect(serialized).toContain('"name":"lookup_inbound_account"');
     expect(serialized).toContain("Do not disclose an invoice amount, date, number, inspection type, customer email, or customer phone until lookup_inbound_account returns verified=true");
@@ -113,6 +113,50 @@ describe("inbound collections Conversation Flow", () => {
     expect(serialized).toContain("Is there anything else I can help you with?");
     expect(serialized).toContain('"type":"end_call"');
     expect(serialized).not.toContain('"args_at_root":true');
+  });
+
+  it("structurally isolates identity lookup before the outbound collections flow", () => {
+    const flow = buildInboundCollectionsConversationFlow("https://example.com");
+    const identity = flow.nodes?.find((node) => node.id === "inbound_identity_agent");
+    const collections = flow.nodes?.find((node) => node.id === "outbound_collections_agent");
+
+    expect(identity).toMatchObject({
+      type: "subagent",
+      tool_ids: ["outbound_lookup_inbound_account"],
+      edges: expect.arrayContaining([
+        expect.objectContaining({
+          destination_node_id: "outbound_collections_agent",
+          transition_condition: {
+            type: "equation",
+            equations: [
+              {
+                left: "{{inbound_lookup_verified}}",
+                operator: "==",
+                right: "true",
+              },
+            ],
+            operator: "&&",
+          },
+        }),
+      ]),
+    });
+    expect((identity as { tool_ids?: string[] } | undefined)?.tool_ids).not.toContain(
+      "outbound_schedule_followup",
+    );
+    expect(collections).toMatchObject({
+      type: "subagent",
+      tool_ids: expect.arrayContaining([
+        "outbound_schedule_followup",
+        "outbound_create_payment_link",
+        "outbound_send_payment_email",
+      ]),
+    });
+    expect((collections as { tool_ids?: string[] } | undefined)?.tool_ids).not.toContain(
+      "outbound_lookup_inbound_account",
+    );
+    expect(JSON.stringify(collections)).toContain(
+      "Identity has already been verified by the inbound identity node",
+    );
   });
 
   it("keeps the existing payment, callback, email, SMS-disabled, and terminal tools", () => {
