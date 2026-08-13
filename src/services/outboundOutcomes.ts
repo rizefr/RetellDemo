@@ -2,6 +2,7 @@ export const OUTBOUND_OUTCOMES = [
   "confirmed_payment_link_requested",
   "no_answer",
   "voicemail_detected_no_message",
+  "voicemail_message_left",
   "already_paid_claim",
   "wrong_number",
   "unable_to_pay",
@@ -65,7 +66,7 @@ export function applyOutcomePolicy(outcome: OutboundOutcome): OutcomePolicy {
   if (outcome === "confirmed_payment_link_requested") {
     return { pauseOutreach: false, invoiceStatus: "payment_link_sent", scheduleFollowups: true };
   }
-  if (["no_answer", "voicemail_detected_no_message", "callback_requested"].includes(outcome)) {
+  if (["no_answer", "voicemail_detected_no_message", "voicemail_message_left", "callback_requested"].includes(outcome)) {
     return { pauseOutreach: false, scheduleFollowups: true };
   }
   return { pauseOutreach: false, invoiceStatus: "manual_review", scheduleFollowups: false };

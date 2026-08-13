@@ -37,6 +37,8 @@ export type OutboundSetupConfiguration = {
   retellFromNumber: string;
   outboundRetellAgentConfigured: boolean;
   outboundRetellFlowConfigured: boolean;
+  inboundCollectionsAgentConfigured?: boolean;
+  inboundCollectionsFlowConfigured?: boolean;
   outboundRetellWebhookSecretConfigured: boolean;
   outboundSmsEnabled: boolean;
   emailProvider: "none" | "resend";
@@ -182,6 +184,9 @@ export function buildOutboundSetupSummary(input: {
       from_number_correct: retellFromNumberCorrect,
       outbound_agent_configured: input.configuration.outboundRetellAgentConfigured,
       outbound_flow_configured: input.configuration.outboundRetellFlowConfigured,
+      inbound_collections_agent_configured: Boolean(input.configuration.inboundCollectionsAgentConfigured),
+      inbound_collections_flow_configured: Boolean(input.configuration.inboundCollectionsFlowConfigured),
+      inbound_call_webhook_url: `${operationalBaseUrl}/api/outbound/webhooks/retell/inbound-call`,
       webhook_secret_configured: input.configuration.outboundRetellWebhookSecretConfigured,
       webhook_url: `${operationalBaseUrl}/api/outbound/webhooks/retell`,
       function_urls: [
@@ -192,6 +197,7 @@ export function buildOutboundSetupSummary(input: {
         "request-human-transfer",
         "schedule-followup",
         "schedule-callback",
+        "lookup-inbound-account",
       ].map((name) => `${operationalBaseUrl}/api/outbound/retell/${name}`),
       sms_mode: input.configuration.outboundSmsEnabled ? "enabled_requires_provider_verification" : "disabled_manual",
       latest_event: input.database.latestRetellEvent,
@@ -262,6 +268,8 @@ export async function getOutboundSetupStatus(detectedBaseUrl: string) {
       retellFromNumber: env.RETELL_FROM_NUMBER,
       outboundRetellAgentConfigured: Boolean(env.OUTBOUND_RETELL_AGENT_ID),
       outboundRetellFlowConfigured: Boolean(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID),
+      inboundCollectionsAgentConfigured: Boolean(businessResult.data?.inbound_retell_agent_id),
+      inboundCollectionsFlowConfigured: Boolean(businessResult.data?.inbound_retell_conversation_flow_id),
       outboundRetellWebhookSecretConfigured: Boolean(env.OUTBOUND_RETELL_WEBHOOK_SECRET),
       outboundSmsEnabled: runtime?.smsEffective ?? env.OUTBOUND_RETELL_SMS_ENABLED,
       emailProvider: env.EMAIL_PROVIDER,

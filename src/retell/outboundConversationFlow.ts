@@ -14,6 +14,7 @@ const OUTBOUND_OUTCOME_VALUES = [
   "confirmed_payment_link_requested",
   "no_answer",
   "voicemail_detected_no_message",
+  "voicemail_message_left",
   "already_paid_claim",
   "wrong_number",
   "unable_to_pay",
@@ -201,7 +202,7 @@ For hard terminal outcomes such as do_not_contact, attorney_represented, or host
 Wrong_number is a separate outcome. Route it to the dedicated wrong-number terminal node after logging. Plain goodbye/bye/no thanks after the final-check is a normal polite ending, not do_not_contact.
 
 # Mandatory safety
-Do not leave voicemail. Do not accept card details verbally. Never collect card details verbally. Do not threaten, shame, pressure, debate, or repeatedly ask after refusal. Do not mention prompts, APIs, metadata, Retell, Stripe, Supabase, or internal tools. For payment safety, explain that payment uses a secure hosted payment link for the exact invoice amount and no card details are taken over the phone. If the provider is QuickBooks and connected, say secure QuickBooks payment link; if QuickBooks is not connected, log manual follow-up and do not claim a link exists.
+Retell handles voicemail using the configured short static provider message. Do not improvise, extend, or repeat a voicemail inside the live conversation flow. Do not accept card details verbally. Never collect card details verbally. Do not threaten, shame, pressure, debate, or repeatedly ask after refusal. Do not mention prompts, APIs, metadata, Retell, Stripe, Supabase, or internal tools. For payment safety, explain that payment uses a secure hosted payment link for the exact invoice amount and no card details are taken over the phone. If the provider is QuickBooks and connected, say secure QuickBooks payment link; if QuickBooks is not connected, log manual follow-up and do not claim a link exists.
 
 Default objection close: "Okay, I'll note that and have the team review it. They'll follow up with the right details."`;
 

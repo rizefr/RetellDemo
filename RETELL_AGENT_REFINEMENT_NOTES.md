@@ -15,6 +15,7 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Model: GPT-4.1
 - Speed/start delay: `0.82`, `1550 ms`
 - Disclosure: active inspection demo uses `on_request`; do not volunteer virtual-assistant wording in normal flow.
+- Inbound callback agent: `agent_5ca64503754e06c338e12c743f`, flow `conversation_flow_67cfb3f644e1`, V0. It inherits the published outbound audio settings and adds signed account lookup before invoice disclosure.
 
 ## Rules To Keep
 
@@ -56,6 +57,9 @@ For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`.
 - Keep `/backend`, `/outbound`, and all production call routes fixed to the explicit Conversation Flow agent and flow IDs. Do not restore browser-selectable agent variants. Pin calls to `latest_published`, and reject signed tool/webhook traffic whose `call.agent_id` is not the configured outbound agent.
 - Before publishing a prompt update, read back and preserve the active dashboard voice runtime settings. The setup script now retains model, speed, temperature, interruption, responsiveness, backchannel, start delay, and ambience values instead of replacing manual provider tuning with local defaults.
 - The August 12 GPT-4.1/GPT-5.6 Luna/GPT-4.1 mini comparison used the same final prompt and kept GPT-4.1. GPT-4.1 passed 9/9; Luna passed 7/9 and was faster and cheaper but skipped required phone confirmation and failed one stop-call end; 4.1 mini passed 8/9 but missed the native expected-date goodbye. Luna V84 and 4.1 mini V85 remain unpublished comparison drafts.
+- For inbound callbacks, ask for first and last name, then invoke `lookup_inbound_account`. A name alone is not verified. Require the signed calling phone plus name, or the name plus a matching account/company, invoice number, original email, or preferred email before disclosing invoice details. After verification, continue through the existing invoice-received branch without restarting the introduction.
+- Keep inbound and outbound provider targeting separate. Outbound call creation uses the explicit inspection agent; the signed inbound phone webhook selects the explicit callback agent stored on the business. Both directions use the same server-side tools only after trusted metadata resolves to a call attempt.
+- Outbound voicemail is a provider-level static message so it can finish after voicemail detection without asking the language model to improvise or disclose invoice details. Keep it short and use the collections callback number.
 
 ## Knowledge Base Foundation
 

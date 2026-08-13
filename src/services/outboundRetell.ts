@@ -1,5 +1,6 @@
 import { verify } from "retell-sdk";
 import { env } from "../config/env";
+import { findOutboundCallAttempt, getOutboundBusinessSettings } from "./outboundRepository";
 
 async function verifyWithSecret(rawBody: string, signature: string, secret: string): Promise<boolean> {
   if (!secret) return false;
@@ -50,5 +51,56 @@ export function trustedRetellMetadata(
     invoiceId: values.invoice_id,
     callAttemptId: typeof values.call_attempt_id === "string" ? values.call_attempt_id : undefined,
     agentId,
+  };
+}
+
+export function trustedInboundRetellBusinessMetadata(call: unknown):
+  | { businessId: string; agentId: string; callId: string; direction: "inbound_collections" }
+  | null {
+  if (!call || typeof call !== "object") return null;
+  const callRecord = call as { agent_id?: unknown; call_id?: unknown; metadata?: unknown };
+  const agentId = typeof callRecord.agent_id === "string" ? callRecord.agent_id : "";
+  const callId = typeof callRecord.call_id === "string" ? callRecord.call_id : "";
+  const metadata = callRecord.metadata;
+  if (!agentId || !callId || !metadata || typeof metadata !== "object") return null;
+  const values = metadata as Record<string, unknown>;
+  if (typeof values.business_id !== "string" || values.direction !== "inbound_collections") return null;
+  return {
+    businessId: values.business_id,
+    agentId,
+    callId,
+    direction: "inbound_collections",
+  };
+}
+
+export async function verifiedInboundRetellBusinessMetadata(call: unknown) {
+  const inbound = trustedInboundRetellBusinessMetadata(call);
+  if (!inbound) return null;
+  const business = await getOutboundBusinessSettings(inbound.businessId);
+  if (String(business.inbound_retell_agent_id || "") !== inbound.agentId) return null;
+  return { ...inbound, business };
+}
+
+export async function resolveTrustedRetellMetadata(call: unknown) {
+  const outbound = trustedRetellMetadata(call);
+  if (outbound) return outbound;
+  const inbound = await verifiedInboundRetellBusinessMetadata(call);
+  if (!inbound) return null;
+  const attempt = await findOutboundCallAttempt(inbound.callId);
+  if (
+    !attempt ||
+    attempt.direction !== "inbound" ||
+    String(attempt.business_id) !== inbound.businessId ||
+    !attempt.customer_id ||
+    !attempt.invoice_id
+  ) {
+    return null;
+  }
+  return {
+    businessId: inbound.businessId,
+    customerId: String(attempt.customer_id),
+    invoiceId: String(attempt.invoice_id),
+    callAttemptId: String(attempt.id),
+    agentId: inbound.agentId,
   };
 }

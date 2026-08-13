@@ -6,6 +6,7 @@ import {
   retellToolEnvelopeSchema,
   scheduleFollowupArgsSchema,
   scheduleCallbackArgsSchema,
+  inboundAccountLookupArgsSchema,
 } from "../schemas/outboundSchemas";
 import { buildBaselineFollowups, nextEligibleOutboundTime } from "../services/outboundFollowups";
 import { applyOutcomePolicy } from "../services/outboundOutcomes";
@@ -18,13 +19,31 @@ import {
   createOutboundCallbackTask,
   updateOutboundCustomer,
   updateOutboundInvoice,
+  createOutboundCallAttempt,
+  findInboundCollectionsCandidates,
+  findOutboundCallAttempt,
+  getOutboundBusinessSettings,
+  nextOutboundAttemptNumber,
 } from "../services/outboundRepository";
-import { trustedRetellMetadata, verifyOutboundRetellSignature } from "../services/outboundRetell";
+import {
+  trustedInboundRetellBusinessMetadata,
+  resolveTrustedRetellMetadata,
+  verifyOutboundRetellSignature,
+} from "../services/outboundRetell";
 import { createOutboundCheckoutSession } from "../services/outboundStripe";
 import { sendOutboundPaymentEmailForInvoice } from "../services/outboundEmail";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
 import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
 import { resolveOutboundExpectedPaymentDate } from "../services/outboundExpectedPaymentDate";
+import { chooseInboundCollectionsMatch } from "../services/outboundInboundCollections";
+import {
+  formatOutboundDateSpoken,
+  formatOutboundEmailSpokenSlow,
+  formatOutboundInvoiceIdSpoken,
+  formatOutboundMoneySpoken,
+  formatOutboundNameSpoken,
+  formatOutboundPhoneSpokenChunked,
+} from "../services/outboundFormatting";
 
 export const outboundRetellToolsRouter = express.Router();
 
@@ -47,7 +66,7 @@ async function trustedEnvelope(req: express.Request) {
     throw Object.assign(new Error("Missing trusted Retell call metadata"), { status: 422 });
   }
   const envelope = retellToolEnvelopeSchema.parse({ ...parsedBody, args: argsFromToolBody(parsedBody) });
-  const metadata = trustedRetellMetadata(envelope.call);
+  const metadata = await resolveTrustedRetellMetadata(envelope.call);
   if (!metadata) throw Object.assign(new Error("Missing trusted Retell call metadata"), { status: 422 });
   const context = await getOutboundInvoiceContext(metadata.invoiceId);
   if (context.customer.id !== metadata.customerId || context.business.id !== metadata.businessId) {
@@ -67,6 +86,127 @@ function tool(handler: (req: express.Request) => Promise<Record<string, unknown>
     }
   };
 }
+
+outboundRetellToolsRouter.post(
+  "/lookup-inbound-account",
+  tool(async (req) => {
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : "";
+    const signature = typeof req.headers["x-retell-signature"] === "string" ? req.headers["x-retell-signature"] : "";
+    if (!(await verifyOutboundRetellSignature(raw, signature))) {
+      throw Object.assign(new Error("Invalid Retell signature"), { status: 401 });
+    }
+    const parsedBody = JSON.parse(raw) as Record<string, unknown>;
+    const envelope = retellToolEnvelopeSchema.parse({ ...parsedBody, args: argsFromToolBody(parsedBody) });
+    const inbound = trustedInboundRetellBusinessMetadata(envelope.call);
+    if (!inbound) throw Object.assign(new Error("Missing trusted inbound Retell metadata"), { status: 422 });
+    const business = await getOutboundBusinessSettings(inbound.businessId);
+    if (String(business.inbound_retell_agent_id || "") !== inbound.agentId) {
+      throw Object.assign(new Error("Inbound Retell agent does not match business configuration"), { status: 422 });
+    }
+    const args = inboundAccountLookupArgsSchema.parse(envelope.args);
+    const fromNumber = String(envelope.call.from_number || "");
+    const toNumber = String(envelope.call.to_number || "");
+    const candidates = await findInboundCollectionsCandidates({
+      businessId: inbound.businessId,
+      firstName: args.first_name,
+      lastName: args.last_name,
+      callingPhoneNumber: fromNumber,
+      accountCompanyName: args.account_company_name,
+      email: args.email,
+    });
+    const match = chooseInboundCollectionsMatch(candidates, {
+      firstName: args.first_name,
+      lastName: args.last_name,
+      callingPhoneNumber: fromNumber,
+      accountCompanyName: args.account_company_name,
+      email: args.email,
+      invoiceId: args.invoice_id,
+    });
+    if (match.status !== "verified") {
+      await insertOutboundEvent({
+        business_id: inbound.businessId,
+        event_type: "inbound_account_lookup_unverified",
+        source: "retell_function",
+        payload: {
+          status: match.status,
+          call_id: inbound.callId,
+          supplied_last_name: Boolean(args.last_name),
+          supplied_company: Boolean(args.account_company_name),
+          supplied_email: Boolean(args.email),
+          supplied_invoice_id: Boolean(args.invoice_id),
+        },
+      });
+      return {
+        status: match.status,
+        verified: false,
+        message_for_agent:
+          match.status === "not_found"
+            ? "Ask once for the spelling of the caller's first and last name. Do not disclose invoice details."
+            : "Ask for exactly one safe corroborator: company/account name, invoice number, or email on the account. Do not disclose invoice details.",
+      };
+    }
+
+    const context = await getOutboundInvoiceContext(match.candidate.invoiceId);
+    if (
+      String(context.business.id) !== inbound.businessId ||
+      String(context.customer.id) !== match.candidate.customerId
+    ) {
+      throw Object.assign(new Error("Verified inbound match does not map to the configured business"), { status: 422 });
+    }
+    let attempt = await findOutboundCallAttempt(inbound.callId);
+    if (!attempt) {
+      const attemptNumber = await nextOutboundAttemptNumber(match.candidate.invoiceId);
+      const started = Number(envelope.call.start_timestamp);
+      attempt = await createOutboundCallAttempt({
+        business_id: inbound.businessId,
+        customer_id: match.candidate.customerId,
+        invoice_id: match.candidate.invoiceId,
+        retell_call_id: inbound.callId,
+        attempt_number: attemptNumber,
+        direction: "inbound",
+        from_number: fromNumber,
+        to_number: toNumber,
+        status: "ongoing",
+        started_at: Number.isFinite(started) && started > 0 ? new Date(started).toISOString() : new Date().toISOString(),
+      });
+    }
+    await insertOutboundEvent({
+      business_id: inbound.businessId,
+      customer_id: match.candidate.customerId,
+      invoice_id: match.candidate.invoiceId,
+      event_type: "inbound_account_verified",
+      source: "retell_function",
+      external_event_id: `inbound_account_verified:${inbound.callId}`,
+      payload: { call_attempt_id: attempt.id, verification: "name_plus_trusted_corroborator" },
+    });
+    const inspectionDate = String(context.invoice.inspection_date || context.invoice.original_due_date || "");
+    const email = String(context.customer.preferred_email || context.customer.email || "");
+    return {
+      status: "verified",
+      verified: true,
+      call_attempt_id: attempt.id,
+      customer_first_name: String(context.customer.first_name || ""),
+      customer_first_name_spoken: formatOutboundNameSpoken(String(context.customer.first_name || "")),
+      customer_last_name: String(context.customer.last_name || ""),
+      customer_last_name_spoken: formatOutboundNameSpoken(String(context.customer.last_name || "")),
+      account_company_name: String(context.customer.account_company_name || ""),
+      account_company_name_spoken: formatOutboundNameSpoken(String(context.customer.account_company_name || "")),
+      inspection_type: String(context.invoice.inspection_type || context.business.default_inspection_type || "Category 1"),
+      inspection_date_spoken: formatOutboundDateSpoken(inspectionDate),
+      original_due_date_spoken: formatOutboundDateSpoken(String(context.invoice.original_due_date || "")),
+      amount_due_spoken: formatOutboundMoneySpoken(
+        Number(context.invoice.amount_due_cents || 0),
+        String(context.invoice.currency || "usd"),
+      ),
+      invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.invoice_id || "")),
+      customer_email_spoken_slow: formatOutboundEmailSpokenSlow(email),
+      customer_phone_spoken_chunked: formatOutboundPhoneSpokenChunked(String(context.customer.phone_number || "")),
+      payment_provider: String(context.business.payment_provider || "stripe"),
+      expected_payment_date_spoken: formatOutboundDateSpoken(String(context.invoice.expected_payment_date || ""), ""),
+      message_for_agent: "The caller is verified. Continue with the invoice-received question without restarting the introduction.",
+    };
+  }),
+);
 
 outboundRetellToolsRouter.post(
   "/log-outcome",

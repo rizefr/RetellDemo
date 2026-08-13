@@ -1,8 +1,8 @@
-# Outbound AI Collections Demo
+# Inspection Collections Call System
 
 ## Purpose and limits
 
-This is a Phase 1 foundation for first-party B2B unpaid invoice follow-up, initially for elevator inspection companies. It imports fake/demo customers and invoices, provides an internal status page, creates invoice-specific exact-amount Stripe Checkout Sessions, exposes gated Retell outbound-call and function endpoints, records provider events, pauses outreach, and creates follow-up tasks.
+This is a Phase 1 foundation for first-party B2B unpaid invoice follow-up, initially for elevator inspection companies. It imports fake/demo customers and invoices, provides an internal status page, creates invoice-specific exact-amount Stripe Checkout Sessions, exposes gated Retell outbound-call and inbound-callback endpoints, records provider events, pauses outreach, and creates follow-up tasks.
 
 It does not execute follow-up tasks automatically. It is not a consumer debt collector, third-party collector, medical debt workflow, financial debt workflow, payment-plan system, negotiation system, or production campaign engine. SMS and email delivery remain disabled/manual by default.
 
@@ -16,8 +16,9 @@ The business using it is responsible for establishing its right to contact each 
 - RLS is enabled with no `anon` or `authenticated` policies. Server routes use the Supabase service role.
 - `RETELL_AGENT_ID` and `RETELL_CONVERSATION_FLOW_ID` remain receptionist-only.
 - Outbound Retell resources use `OUTBOUND_RETELL_AGENT_ID` and `OUTBOUND_RETELL_CONVERSATION_FLOW_ID`.
+- The inbound collections callback resource is a separate Retell agent/flow selected from server-side business settings. It reuses collections tools only after signed identity lookup succeeds.
 
-## Current setup status (August 12, 2026)
+## Current setup status (August 13, 2026)
 
 - Vercel production is deployed and aliased at `https://elixis.agency`. `/health`, the protected `/outbound` login/admin page, and authenticated `/api/outbound/setup/status` are reachable.
 - Supabase project `RetellDemo` in organization `codexworkoutw8` is configured at `https://heevsjumftsaivohqzlb.supabase.co`.
@@ -30,6 +31,9 @@ The business using it is responsible for establishing its right to contact each 
   - active inspection name: `Elevator Inspection Collections — Paul`
   - active published version: V83
   - active voice: `11labs-Gilfoy`, spoken name `Paul`, speed `0.82`, first-message delay `1550 ms`
+  - inbound collections callback agent: `agent_5ca64503754e06c338e12c743f`
+  - inbound collections callback flow: `conversation_flow_67cfb3f644e1`
+  - inbound callback name: `Elevator Inspection Callback Collections — Paul`; version V0, voice inherited from the published outbound agent, eight wrapped tools
   - separate future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. This service copy is separate and was not modified by the active Paul inspection pass.
   - verified-unused flows deleted after local snapshots: `conversation_flow_3f9c9b30218e`, `conversation_flow_92a7010428d2`, and `conversation_flow_a8fb2d8e6023`
   - preserved resources: active inspection flow, future service flow, inbound receptionist flow, single-prompt candidate agent, and patient-template flow with an agent reference
@@ -48,7 +52,7 @@ The business using it is responsible for establishing its right to contact each 
   - voicemail handling is configured to `hangup`
 - Retell publishing must target only the explicit existing IDs above. The setup script refuses name matching and duplicate creation. Before and after any future publish, snapshot the outbound `+19842075346` binding and the receptionist `+18887809963` binding.
 - A separate published Single Prompt comparison agent still exists: `agent_f5a392178f5afa39280b1489a0`, Retell LLM `llm_b3f0e230981f653f0fa1195d0459`, V2. It remains unbound and is not selectable from `/backend`, `/outbound`, or any production call route. Use its mocked Playground suite only; production tools and webhooks accept signed calls only from the configured Conversation Flow agent. See `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md`.
-- The Retell TypeScript SDK is pinned to `5.31.1`, the newest release that still exports Retell's documented `sign`/`verify` webhook helpers. Releases `5.32.0` through `5.45.0` were reviewed, but their generated package removes those helpers while the current Retell webhook guide still documents them; upgrading past `5.31.1` is blocked until Retell publishes a supported replacement. The production call path explicitly overrides to the configured Conversation Flow agent at `latest_published`; it cannot select an unpublished draft or alternate agent.
+- The Retell TypeScript SDK is pinned to `5.31.1`, the newest release that still exports Retell's documented `sign`/`verify` webhook helpers. Releases `5.32.0` through `5.45.0` were reviewed, but their generated package removes those helpers while the current Retell webhook guide still documents them; upgrading past `5.31.1` is blocked until Retell publishes a supported replacement. The production outbound call path explicitly overrides to the configured outbound Conversation Flow agent at `latest_published`; the inbound phone webhook explicitly selects the configured callback agent and cannot select an unpublished draft or name-matched resource.
 - V70 keeps the dedicated wrong-number terminal node and adds a native same-node wrong-number fallback. This prevents Retell from selecting the generic hard-terminal goodbye when its model invokes an end action before completing the node transition.
 - V71 aligns the main-node hard-terminal fallback with the dedicated hard-terminal close, so an explicit opt-out receives an audible stop-calling confirmation even when Retell ends before completing the node transition.
 - For a received invoice, Paul asks whether the caller needs the secure payment link. A bare yes is followed by “Would you prefer text or email?” rather than inferring a delivery method from the address on file. If the caller declines the link, Paul asks, “When can I expect the payment?” A concrete date goes to the signed `schedule_followup` resolver, which persists the resolved `expected_payment_date`, logs the event, and schedules follow-up without changing invoice payment status. A native End node then states the persisted date once, says goodbye, and ends the call. A vague non-date such as “soon” is clarified conversationally and is not stored; the backend also returns a no-write clarification if such a phrase reaches it. Declining a link is not treated as refusing to pay.
@@ -98,6 +102,20 @@ Presentation Mode is fixed to the configured Conversation Flow. The browser disp
 Presentation Mode shows backend-derived feedback instead of generic blocked states. Common messages include invalid E.164 phone format, missing warning checkbox, incorrect confirmation phrase, expired temporary authorization, test mode off, batch size not `1`, after-hours confirmation required, ineligible invoice, paused customer, missing Retell setup, disabled SMS, email not ready, and QuickBooks not connected. The badges are informational only; the backend preflight response remains the source of truth.
 
 The demo details editor can update the fake customer and invoice variables used by Retell: name, phone, email, business name, service description, amount, due/service date, invoice ID, demo call mode, previous call date, follow-up reason, prior concern, preferred payment method, callback details, and mailing/check instructions. These changes are sent to protected backend routes and feed real Retell dynamic variables; they are not browser-only labels.
+
+## Inbound collections callbacks
+
+The managed collections number uses directional Retell assignments: outbound calls use the existing inspection collections agent, while calls into the same number use `Elevator Inspection Callback Collections — Paul`. The separate receptionist number and agent are not part of this route.
+
+Inbound opening:
+
+> Hi, you've reached the invoice follow-up line for {{business_name_spoken}}. May I get your first and last name?
+
+The inbound webhook is `POST /api/outbound/webhooks/retell/inbound-call`. It verifies Retell's raw-body signature, looks up the business by the called callback number, and returns the explicit inbound agent ID plus business dynamic variables. It never matches an agent by name.
+
+After the caller supplies a name, `lookup_inbound_account` searches open local invoice records. A name alone never reveals invoice information. Verification requires the name plus one trusted corroborator: the signed calling phone number, account/company name, external invoice number, original email, or preferred email. Ambiguous and unverified callers receive no amount, date, inspection type, invoice number, customer email, or customer phone. A verified lookup creates an inbound call-attempt row, logs the verification event, and unlocks the existing signed payment, email, callback, outcome, and terminal tools for that exact invoice.
+
+The local Supabase tables are the current source for inbound lookup. A future QuickBooks sync will populate or update those records through a read-only preview and approval process. QuickBooks is not connected and scheduled dialing is not enabled.
 
 ## Retell model and voice notes
 

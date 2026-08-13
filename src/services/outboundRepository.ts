@@ -5,6 +5,7 @@ import type { OutboundFollowupSeed } from "./outboundFollowups";
 import type { OutboundOutcome } from "./outboundOutcomes";
 import type { OutboundBusinessCsvRow } from "./outboundBusinessCsv";
 import { resolveOutboundCallback } from "./outboundCallbacks";
+import type { InboundCollectionsCandidate } from "./outboundInboundCollections";
 
 export class OutboundDatabaseError extends Error {
   constructor(message: string, public readonly status = 500) {
@@ -161,6 +162,125 @@ export async function getOutboundInvoiceContext(invoiceId: string) {
 
 export async function getOutboundBusinessSettings(id: string) {
   return unwrap(await db().from("outbound_businesses").select("*").eq("id", id).maybeSingle(), true) as Record<string, unknown>;
+}
+
+export async function getOutboundBusinessByCallbackNumber(phoneNumber: string) {
+  return unwrap(
+    await db()
+      .from("outbound_businesses")
+      .select("*")
+      .eq("callback_number", phoneNumber)
+      .maybeSingle(),
+    true,
+  ) as Record<string, unknown>;
+}
+
+function mergeRowsById(rows: Array<Record<string, unknown> | null | undefined>): Record<string, unknown>[] {
+  const unique = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    if (row?.id) unique.set(String(row.id), row);
+  }
+  return [...unique.values()];
+}
+
+export async function findInboundCollectionsCandidates(input: {
+  businessId: string;
+  firstName: string;
+  lastName?: string;
+  callingPhoneNumber: string;
+  accountCompanyName?: string;
+  email?: string;
+}): Promise<InboundCollectionsCandidate[]> {
+  const client = db();
+  const firstName = input.firstName.trim();
+  const lastName = String(input.lastName || "").trim();
+  const queries = [
+    client
+      .from("outbound_customers")
+      .select("*")
+      .eq("business_id", input.businessId)
+      .ilike("first_name", firstName)
+      .limit(25),
+  ];
+  if (lastName) {
+    queries[0] = queries[0].ilike("last_name", lastName);
+  }
+  if (/^\+[1-9]\d{7,14}$/.test(input.callingPhoneNumber)) {
+    queries.push(
+      client
+        .from("outbound_customers")
+        .select("*")
+        .eq("business_id", input.businessId)
+        .eq("phone_number", input.callingPhoneNumber)
+        .limit(25),
+    );
+  }
+  if (input.email) {
+    queries.push(
+      client
+        .from("outbound_customers")
+        .select("*")
+        .eq("business_id", input.businessId)
+        .ilike("email", input.email.trim())
+        .limit(25),
+      client
+        .from("outbound_customers")
+        .select("*")
+        .eq("business_id", input.businessId)
+        .ilike("preferred_email", input.email.trim())
+        .limit(25),
+    );
+  }
+  if (input.accountCompanyName) {
+    queries.push(
+      client
+        .from("outbound_customers")
+        .select("*")
+        .eq("business_id", input.businessId)
+        .ilike("account_company_name", input.accountCompanyName.trim())
+        .limit(25),
+    );
+  }
+
+  const customerResults = await Promise.all(queries);
+  for (const result of customerResults) {
+    if (result.error) throw new OutboundDatabaseError(result.error.message);
+  }
+  const customers = mergeRowsById(
+    customerResults.flatMap((result) => (result.data ?? []) as Array<Record<string, unknown>>),
+  );
+  if (!customers.length) return [];
+
+  const invoiceResult = await client
+    .from("outbound_invoices")
+    .select("*")
+    .eq("business_id", input.businessId)
+    .in("customer_id", customers.map((customer) => String(customer.id)))
+    .in("status", ["unpaid", "payment_link_sent"])
+    .order("original_due_date", { ascending: true });
+  if (invoiceResult.error) throw new OutboundDatabaseError(invoiceResult.error.message);
+
+  const invoicesByCustomer = new Map<string, Array<Record<string, unknown>>>();
+  for (const invoice of (invoiceResult.data ?? []) as Array<Record<string, unknown>>) {
+    const customerId = String(invoice.customer_id);
+    invoicesByCustomer.set(customerId, [...(invoicesByCustomer.get(customerId) ?? []), invoice]);
+  }
+  return customers.flatMap((customer) => {
+    const invoices = invoicesByCustomer.get(String(customer.id)) ?? [];
+    const selectedInvoice = invoices[0];
+    if (!selectedInvoice) return [];
+    return [{
+      customerId: String(customer.id),
+      invoiceId: String(selectedInvoice.id),
+      firstName: String(customer.first_name || ""),
+      lastName: String(customer.last_name || ""),
+      accountCompanyName: String(customer.account_company_name || ""),
+      phoneNumber: String(customer.phone_number || ""),
+      email: String(customer.email || ""),
+      preferredEmail: String(customer.preferred_email || ""),
+      externalInvoiceId: String(selectedInvoice.invoice_id || ""),
+    }];
+  });
 }
 
 export async function updateOutboundBusinessSettings(id: string, patch: Record<string, unknown>) {

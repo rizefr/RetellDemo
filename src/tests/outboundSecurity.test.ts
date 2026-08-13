@@ -85,7 +85,7 @@ describe("outbound flow guardrails", () => {
     expect(flow.nodes.length).toBeGreaterThanOrEqual(4);
     expect(serialized).toContain('"type":"subagent"');
     expect(serialized).toContain('"tool_ids"');
-    expect(serialized).toContain("Do not leave voicemail");
+    expect(serialized).toContain("Retell handles voicemail using the configured short static provider message");
     expect(serialized).toContain("Do not accept card details verbally");
     expect(serialized).toContain("Never collect card details verbally");
     expect(serialized).not.toContain('"args_at_root":true');

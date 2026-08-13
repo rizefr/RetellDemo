@@ -218,6 +218,8 @@ async function loadSetupStatus() {
       { label: "Outbound from number", ok: setup.retell.from_number_correct, detail: setup.retell.from_number },
       { label: "Outbound agent ID present", ok: setup.retell.outbound_agent_configured },
       { label: "Outbound Conversation Flow ID present", ok: setup.retell.outbound_flow_configured },
+      { label: "Inbound callback agent configured", ok: setup.retell.inbound_collections_agent_configured },
+      { label: "Inbound callback Conversation Flow configured", ok: setup.retell.inbound_collections_flow_configured },
       { label: "Retell webhook secret present", ok: setup.retell.webhook_secret_configured },
       { label: "SMS mode", ok: true, detail: setup.retell.sms_mode === "disabled_manual" ? "Disabled/manual" : "Enabled; verify provider" },
       { label: "Latest Retell event", ok: true, detail: setup.retell.latest_event ? `${humanize(setup.retell.latest_event.event_type)} · ${formatDate(setup.retell.latest_event.created_at)}` : "None recorded" },

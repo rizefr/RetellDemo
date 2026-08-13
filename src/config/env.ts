@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { z } from "zod";
 
 if (process.env.NODE_ENV !== "test") {
-  dotenv.config();
+  dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || undefined });
 }
 
 const booleanFromString = z
@@ -65,6 +65,11 @@ const envSchema = z.object({
   OUTBOUND_ALLOW_AFTER_HOURS_TEST_OVERRIDE: booleanFromString.default(false),
   RETELL_FROM_NUMBER: z.string().optional().default("+19842075346"),
   CONFIRM_CREATE_RETELL_OUTBOUND_AGENT: booleanFromString.default(false),
+  CONFIRM_CREATE_RETELL_INBOUND_COLLECTIONS_AGENT: booleanFromString.default(false),
+  CONFIRM_UPDATE_RETELL_INBOUND_COLLECTIONS_AGENT: booleanFromString.default(false),
+  INBOUND_COLLECTIONS_RETELL_AGENT_ID: z.string().optional().default(""),
+  INBOUND_COLLECTIONS_RETELL_CONVERSATION_FLOW_ID: z.string().optional().default(""),
+  CONFIRM_BIND_RETELL_COLLECTIONS_PHONE: z.string().optional().default(""),
   CONFIRM_CREATE_RETELL_OUTBOUND_SINGLE_PROMPT_AGENT: booleanFromString.default(false),
   CONFIRM_UPDATE_RETELL_OUTBOUND_SINGLE_PROMPT_AGENT: booleanFromString.default(false),
 
