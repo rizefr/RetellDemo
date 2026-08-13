@@ -331,7 +331,7 @@ describe("outbound flow guardrails", () => {
     expect(JSON.stringify(flow)).toContain('\\"expected_payment_date_phrase\\":\\"Friday\\"');
   });
 
-  it("routes caller-supplied expected payment dates through an isolated resolver subagent", () => {
+  it("routes caller-supplied expected payment dates through a native function node", () => {
     const flow = buildOutboundConversationFlow("https://elixis.agency");
     const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
     const resolverNode = flow.nodes.find((node) => node.id === "outbound_expected_payment_date_function");
@@ -339,11 +339,11 @@ describe("outbound flow guardrails", () => {
     const clarificationNode = flow.nodes.find((node) => node.id === "outbound_expected_payment_date_clarification");
 
     expect(mainNode?.type).toBe("subagent");
-    expect(resolverNode?.type).toBe("subagent");
+    expect(resolverNode?.type).toBe("function");
     expect(confirmationNode?.type).toBe("end");
     expect(clarificationNode?.type).toBe("subagent");
     if (mainNode?.type !== "subagent") throw new Error("Expected main outbound subagent");
-    if (resolverNode?.type !== "subagent") throw new Error("Expected isolated payment-date resolver subagent");
+    if (resolverNode?.type !== "function") throw new Error("Expected payment-date function node");
     if (confirmationNode?.type !== "end") throw new Error("Expected payment-date native end node");
     if (clarificationNode?.type !== "subagent") throw new Error("Expected payment-date clarification subagent");
 
@@ -360,17 +360,20 @@ describe("outbound flow guardrails", () => {
       }),
     );
     expect(resolverNode).toMatchObject({
-      type: "subagent",
-      tool_ids: ["outbound_schedule_followup"],
+      type: "function",
+      tool_id: "outbound_schedule_followup",
+      tool_type: "local",
+      wait_for_result: true,
+      speak_during_execution: false,
     });
     expect(flow.tools?.find((tool) => tool.name === "schedule_followup")).toMatchObject({
       response_variables: {
         resolved_expected_payment_date_spoken: "$.expected_payment_date_spoken",
       },
     });
-    expect(resolverNode).toMatchObject({
-      skip_response_edge: {
-        id: "outbound_expected_payment_date_confirmed_skip_response_edge",
+    expect(resolverNode.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "outbound_expected_payment_date_confirmed_edge",
         destination_node_id: "outbound_expected_payment_date_confirmation",
         transition_condition: {
           type: "equation",
@@ -380,11 +383,14 @@ describe("outbound flow guardrails", () => {
             right: "",
           }],
           operator: "&&",
-          prompt: "Skip response",
         },
-      },
+      }),
+    ]));
+    expect(resolverNode.else_edge).toMatchObject({
+      destination_node_id: "outbound_expected_payment_date_clarification",
+      transition_condition: { type: "prompt", prompt: "Else" },
     });
-    expect(resolverNode.edges).toEqual(expect.arrayContaining([
+    expect(resolverNode.edges).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_clarification" }),
     ]));
     expect(clarificationNode.edges).toContainEqual(
