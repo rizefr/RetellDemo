@@ -100,14 +100,20 @@ async function retrieveExplicitOutboundAgent() {
       "OUTBOUND_RETELL_AGENT_ID and OUTBOUND_RETELL_CONVERSATION_FLOW_ID are required; refusing to create or match Retell resources by name.",
     );
   }
-  const agent = await client.agent.retrieve(env.OUTBOUND_RETELL_AGENT_ID);
+  const agent = await client.agent.retrieve(env.OUTBOUND_RETELL_AGENT_ID, { version: "latest_published" });
   if (agent.response_engine?.type !== "conversation-flow") {
     throw new Error("Configured OUTBOUND_RETELL_AGENT_ID is not a Conversation Flow agent.");
   }
   if (agent.response_engine.conversation_flow_id !== env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID) {
     throw new Error("Configured outbound agent is not attached to OUTBOUND_RETELL_CONVERSATION_FLOW_ID.");
   }
-  const flow = await client.conversationFlow.retrieve(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID);
+  const flowVersion = agent.response_engine.version;
+  if (typeof flowVersion !== "number") {
+    throw new Error("The published outbound agent does not expose a numeric Conversation Flow version.");
+  }
+  const flow = await client.conversationFlow.retrieve(env.OUTBOUND_RETELL_CONVERSATION_FLOW_ID, {
+    version: flowVersion,
+  });
   return { agent, flow };
 }
 
@@ -211,7 +217,12 @@ async function updateExistingOutboundAgent(
     },
     webhook_url: `${env.APP_BASE_URL.replace(/\/$/, "")}/api/outbound/webhooks/retell`,
     webhook_events: ["call_started", "call_ended", "call_analyzed", "transcript_updated"],
-    voicemail_option: { action: { type: "hangup" } },
+    voicemail_option: {
+      action: {
+        type: "static_text",
+        text: "Hi, I'm calling from {{business_name_spoken}} regarding an unpaid invoice. Please give me a call back at nine eight four, two zero seven, five three four six. Thanks.",
+      },
+    },
     data_storage_setting: "everything_except_pii",
     data_storage_retention_days: 30,
     analysis_summary_prompt: "Summarize the first-party B2B invoice follow-up outcome without adding sensitive identifiers.",

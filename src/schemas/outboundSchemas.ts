@@ -74,6 +74,16 @@ export const retellToolEnvelopeSchema = z.object({
   args: z.record(z.string(), z.unknown()).default({}),
 });
 
+export const inboundAccountLookupArgsSchema = z
+  .object({
+    first_name: z.string().trim().min(1).max(100),
+    last_name: z.string().trim().max(100).optional().default(""),
+    account_company_name: z.string().trim().max(200).optional().default(""),
+    email: z.string().trim().email().or(z.literal("")).optional().default(""),
+    invoice_id: z.string().trim().max(100).optional().default(""),
+  })
+  .strict();
+
 const nullableToolString = (schema: z.ZodType<string>) =>
   z.preprocess((value) => (value === null ? undefined : value), schema.optional().default(""));
 

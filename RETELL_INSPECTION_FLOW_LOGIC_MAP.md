@@ -1,6 +1,6 @@
 # Retell Inspection Flow Logic Map
 
-This map documents the active outbound elevator-inspection collections flow so future debugging can start from the real system shape instead of rediscovering it.
+This map documents both directions of the elevator-inspection collections flow so future debugging can start from the real system shape instead of rediscovering it.
 
 ## Active Resources
 
@@ -15,9 +15,25 @@ This map documents the active outbound elevator-inspection collections flow so f
 - First-message delay: `1550 ms`
 - Ambient sound: `coffee-shop`, volume `0.7` from current provider readback
 - Outbound phone: `+19842075346`
+- Inbound callback agent ID: `agent_5ca64503754e06c338e12c743f`
+- Inbound callback Conversation Flow ID: `conversation_flow_67cfb3f644e1`
+- Inbound callback version: V0, inherited voice/runtime settings, eight wrapped tools
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
 
-Publishing must target the explicit IDs above. The outbound setup script refuses name-based matching and duplicate creation. Production call creation pins the explicit agent to `latest_published`; `/backend` and `/outbound` do not accept an agent architecture override.
+Publishing must target the explicit IDs above. The setup scripts refuse name-based matching and duplicate creation. Production outbound call creation pins the explicit outbound agent to `latest_published`; the signed inbound phone webhook selects the inbound callback agent stored on the business. `/backend` and `/outbound` do not accept an agent architecture override.
+
+```mermaid
+flowchart LR
+  UI["/outbound or /backend"] --> PRE["Protected preflight"]
+  PRE --> START["Manual single-call start"]
+  START --> OA["Outbound Paul agent"]
+  NUM["Collections number +1 984-207-5346"] -->|incoming call| IW["Signed inbound-call webhook"]
+  IW --> IA["Inbound callback Paul agent"]
+  IA --> LOOKUP["Signed account lookup"]
+  LOOKUP -->|verified| TOOLS["Shared invoice/payment/callback tools"]
+  LOOKUP -->|unverified| SAFE["No invoice disclosure"]
+  RECP["Receptionist +1 888-780-9963"] --> INBOUND["Separate receptionist agent - unchanged"]
+```
 
 ## Dynamic Variable Sources
 
@@ -54,10 +70,11 @@ Dynamic variables are built in `src/services/outboundCalls.ts` from trusted Supa
 
 ## Custom Tools
 
-All custom tools are wrapped Retell requests signed by Retell. Backend endpoints verify the raw-body signature, require `call.agent_id` to equal `agent_4aa8074d7eabe311109ed6da89`, and trust IDs from `call.metadata`, not caller-spoken data.
+All custom tools are wrapped Retell requests signed by Retell. Backend endpoints verify the raw-body signature. Outbound tools require `call.agent_id` to equal `agent_4aa8074d7eabe311109ed6da89` and trust IDs from `call.metadata`. Inbound tools first require the configured callback agent and signed business metadata; only a successful account lookup creates the trusted inbound call attempt that unlocks customer/invoice tools.
 
 | Tool | Endpoint | Required trusted metadata | Success behavior | Failure/manual behavior |
 | --- | --- | --- | --- | --- |
+| `lookup_inbound_account` | `/api/outbound/retell/lookup-inbound-account` | signed call, configured inbound agent, `business_id`, inbound call ID | Matches an open invoice using name plus calling phone/company/invoice/email, creates inbound call attempt, and returns spoken-safe invoice variables. | Returns `not_found`, `needs_verification`, or `ambiguous` without invoice context; caller gets one safe corroboration prompt. |
 | `log_outcome` | `/api/outbound/retell/log-outcome` | `business_id`, `customer_id`, `invoice_id`, `call_attempt_id` | Records outcome, notes, responsible-party data, named-contact data, customer pause when applicable. | Agent must not say an outcome was noted until the tool succeeds when the path requires logging. |
 | `create_payment_link` | `/api/outbound/retell/create-payment-link` | same | Creates or reuses exact-amount Stripe Checkout Session for the selected invoice. | If unavailable, agent logs `payment_link_issue`, does not call email/SMS delivery tools, falls back to manual follow-up, and does not claim a link exists. |
 | `send_payment_email` | `/api/outbound/retell/send-payment-email` | same | Sends to trusted on-file/preferred email only when provider, business setting, and test allowlist gates pass; returns `sent:true`. | Returns pending/manual or failed; agent must not claim sent. |
@@ -67,6 +84,13 @@ All custom tools are wrapped Retell requests signed by Retell. Backend endpoints
 | `schedule_callback` | `/api/outbound/retell/schedule-callback` | same | Resolves relative/exact callback requests, requires confirmation, then stores callback task. | If ambiguous, past, weekend, or outside-window, returns clarification text. |
 
 ## Conversation Branches
+
+### Direction Selection
+
+- `/outbound` and `/backend` create outbound calls only with the explicit outbound agent and `latest_published` version.
+- Incoming calls to the collections number enter the signed inbound phone webhook. The response selects the explicit callback agent and supplies only business-level context.
+- Incoming callers provide a name before lookup. A name alone is insufficient; no invoice context is available to the model until `verified=true`.
+- After verification, the inbound flow continues through the same invoice-received, invoice-not-received, payment, expected-date, callback, objection, and terminal logic shown below.
 
 ```mermaid
 flowchart TD
@@ -167,9 +191,9 @@ Only explicit opt-out phrases trigger `do_not_contact`. Polite "bye", "goodbye",
 
 When asked if he is AI/automated/robot, Paul answers honestly: he is an AI voice assistant connected to business account records for invoice follow-up.
 
-### Short Call / No Answer
+### Short Call / No Answer / Voicemail
 
-Voicemail is configured to hang up. Webhook analysis fallback generates a concise summary for short calls; `call_ended` must not overwrite a valid summary with null.
+Outbound voicemail is a short provider-level static message with the collections callback number; it does not state the amount or invoice number. A voicemail disconnect logs `voicemail_message_left`. Webhook analysis fallback generates a concise summary for short calls; `call_ended` must not overwrite a valid summary with null.
 
 ## Terminal Behavior
 
@@ -185,6 +209,7 @@ Explicit do-not-contact, attorney represented, and hostile/abusive outcomes rout
 - QuickBooks is scaffold-only. Paul must not claim a QuickBooks link unless the backend returns a real connected-provider link.
 - Retell exposes ambient call-center sound and bridge-line behavior, not a dedicated keyboard-only tool-wait sound tied to custom-tool execution.
 - No broad batch campaign is supported for demos. Presentation Mode uses temporary demo-number authorization and single-call preflight/start only.
+- The business 14-day field controls future eligibility timing but does not start calls automatically. A QuickBooks connection, approved field mapping, dry-run cohort, written campaign authorization, and separate scheduler rollout are still required.
 
 ## `/outbound` Connector Map
 
@@ -197,6 +222,8 @@ Explicit do-not-contact, attorney represented, and hostile/abusive outcomes rout
 - Normal preflight/dry run: `/api/outbound/calls/dry-run` also uses `describeOutboundCallPreflight`.
 - Start: `/api/outbound/calls/start` and `/api/outbound/demo-call/start` call the real `startOutboundCall` service. Do not invoke without explicit user approval for a real call.
 - Retell call creation: `startOutboundCall` sends `override_agent_id`, signed metadata, and `retell_llm_dynamic_variables` to Retell.
+- Inbound routing: `/api/outbound/webhooks/retell/inbound-call` verifies Retell's signature, finds the business by callback number, and returns the configured inbound agent plus business-only variables.
+- Inbound identity: `/api/outbound/retell/lookup-inbound-account` searches open local invoices and creates a direction=`inbound` call attempt only after verified identity corroboration.
 - Events: admin actions, tool results, Retell webhooks, Stripe webhooks, email outcomes, demo authorization, and call-start/preflight outcomes are persisted in `outbound_events`.
 - Unified backend: `/backend` authenticates with the same `OUTBOUND_ADMIN_TOKEN`, sets both backend and outbound HttpOnly cookies, embeds the protected `/outbound` dashboard for outbound operations, and obtains readiness through the same `getOutboundSetupStatus` service. It does not maintain a second call implementation: preflight and manual start still use the protected `/api/outbound/*` routes above.
 

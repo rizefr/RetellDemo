@@ -6,6 +6,8 @@
 - Outbound Retell agent: `agent_4aa8074d7eabe311109ed6da89`.
 - Outbound Conversation Flow: `conversation_flow_bebdceabc801`.
 - Current published Conversation Flow: V83.
+- Inbound callback agent: `agent_5ca64503754e06c338e12c743f`.
+- Inbound callback Conversation Flow: `conversation_flow_67cfb3f644e1`, V0.
 - Separate Single Prompt comparison: agent `agent_f5a392178f5afa39280b1489a0`, LLM `llm_b3f0e230981f653f0fa1195d0459`, V2, unbound. Use `RETELL_OUTBOUND_SINGLE_PROMPT_COMPARISON.md` for the safe A/B workflow.
 - Active product resource: `Elevator Inspection Collections — Paul`, voice `11labs-Gilfoy`, spoken name `Paul`.
 - Future service copy: `agent_5dfcd21a4f06fd2a6324b3487d` with flow `conversation_flow_4a4605778462`, version V3, voice `11labs-Sloane`, spoken name `Sophia`, unbound to any phone number. It remains separate and was not changed by the active Paul inspection pass.
@@ -35,6 +37,8 @@ Current Retell settings to preserve for the elevator demo:
 Voice maintenance rule: the setup script preserves the current dashboard voice unless `OUTBOUND_RETELL_VOICE_ID` is explicitly set for that run. The current inspection voice is `11labs-Gilfoy`; use `OUTBOUND_RETELL_VOICE_ID=11labs-Sloane` only for an intentional Sloane rollback. Do not set a stale voice value in persistent env unless you intend every future setup publish to use it.
 Retell does not expose keyboard-only audio tied exactly to custom-tool execution in the current SDK/docs. The demo uses low-volume office ambience plus short bridge lines before longer user-visible tool work so payment-link/email/callback waits do not sound like the call dropped.
 Use the native static `create_payment_link` execution message for the payment-link bridge; it says “One moment.” Do not add a separate assistant bridge line or a second “one moment” between creating the payment link and sending email or SMS.
+
+The collections number uses two explicit directional agents. Outbound API calls must continue to override `agent_4aa8074d7eabe311109ed6da89`. The signed inbound phone webhook must select `agent_5ca64503754e06c338e12c743f`. Do not use agent-name discovery, do not create another copy during normal setup, and do not change `+18887809963` from this workflow.
 
 Retell public pricing is per minute for voice-agent LLM usage. GPT-5.1 is available in the SDK model list and is slightly cheaper than GPT-4.1 in the public standard tier, but the latest controlled Paul comparison favored GPT-4.1 for the active demo because of tool sequencing and latency. Do not switch models by price alone; rerun the same wrong-person, invoice-detail, payment-refusal, service-issue, email, callback, and final-check simulations before publishing a model change.
 
@@ -99,6 +103,8 @@ See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. I
 ## QuickBooks Future Connection
 
 QuickBooks is scaffolded only. Do not create live QuickBooks payment links until a business authorizes its QuickBooks Online company and the token-storage policy is reviewed. Stripe remains the default provider for the elevator inspection demo.
+
+Use `QUICKBOOKS_CLIENT_CONNECTION_CHECKLIST.md` and the client workbook `Pinnacle_QuickBooks_Connection_Intake.xlsx` for discovery, field mapping, security approvals, and go-live acceptance. The desired 14-day behavior is eligibility 14 calendar days after the confirmed inspection date while the invoice is still unpaid. Current production still requires manual single-call preflight/start; no unattended dialing is enabled.
 
 Required env vars:
 
