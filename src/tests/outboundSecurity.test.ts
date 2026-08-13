@@ -359,6 +359,12 @@ describe("outbound flow guardrails", () => {
         destination_node_id: "outbound_expected_payment_date_function",
       }),
     );
+    expect(mainNode.finetune_transition_examples).toContainEqual(
+      expect.objectContaining({
+        id: "expected_payment_date_after_email_transition_example",
+        destination_node_id: "outbound_expected_payment_date_function",
+      }),
+    );
     expect(resolverNode).toMatchObject({
       type: "function",
       tool_id: "outbound_schedule_followup",
@@ -373,33 +379,35 @@ describe("outbound flow guardrails", () => {
     });
     expect(resolverNode.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: "outbound_expected_payment_date_confirmed_edge",
-        destination_node_id: "outbound_expected_payment_date_confirmation",
-        transition_condition: {
-          type: "equation",
-          equations: [{
-            left: "{{resolved_expected_payment_date_spoken}}",
-            operator: "!=",
-            right: "",
-          }],
-          operator: "&&",
-        },
+        id: "outbound_expected_payment_date_needs_clarification_edge",
+        destination_node_id: "outbound_expected_payment_date_clarification",
+        transition_condition: expect.objectContaining({
+          type: "prompt",
+          prompt: expect.stringContaining("most recent schedule_followup tool result"),
+        }),
       }),
     ]));
     expect(resolverNode.else_edge).toMatchObject({
-      destination_node_id: "outbound_expected_payment_date_clarification",
+      destination_node_id: "outbound_expected_payment_date_confirmation",
       transition_condition: { type: "prompt", prompt: "Else" },
     });
     expect(resolverNode.edges).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_clarification" }),
+      expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_confirmation" }),
     ]));
     expect(clarificationNode.edges).toContainEqual(
       expect.objectContaining({ destination_node_id: "outbound_expected_payment_date_function" }),
     );
     const serializedConfirmationNode = JSON.stringify(confirmationNode);
-    expect(serializedConfirmationNode).toContain("Got it. I'll expect your payment on {{resolved_expected_payment_date_spoken}}.");
+    expect(confirmationNode).toMatchObject({
+      type: "end",
+      instruction: {
+        type: "prompt",
+        text: expect.stringContaining("most recent schedule_followup tool result"),
+      },
+      speak_during_execution: true,
+    });
+    expect(serializedConfirmationNode).toContain("Got it. I'll expect your payment on");
     expect(serializedConfirmationNode).toContain("Have a good day. Goodbye.");
-    expect(confirmationNode).toMatchObject({ type: "end", speak_during_execution: true });
     expect(serializedConfirmationNode).not.toContain("Can you confirm");
     expect(serializedConfirmationNode).not.toContain("Is there anything else I can help you with?");
   });

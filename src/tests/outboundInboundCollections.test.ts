@@ -139,6 +139,10 @@ describe("inbound collections Conversation Flow", () => {
         expect.objectContaining({
           id: "inbound_identity_verified_edge",
           destination_node_id: "outbound_collections_agent",
+          transition_condition: expect.objectContaining({
+            type: "prompt",
+            prompt: expect.stringContaining("tool result says status is verified"),
+          }),
         }),
         expect.objectContaining({
           id: "inbound_verified_bundled_expected_date_edge",
@@ -153,6 +157,10 @@ describe("inbound collections Conversation Flow", () => {
       type: "subagent",
       edges: expect.arrayContaining([
         expect.objectContaining({ destination_node_id: "inbound_identity_retry_lookup_function" }),
+        expect.objectContaining({
+          id: "inbound_identity_corroboration_refused_edge",
+          destination_node_id: "inbound_identity_unverified_explanation",
+        }),
       ]),
     });
     expect(secondLookup).toMatchObject({
@@ -164,6 +172,10 @@ describe("inbound collections Conversation Flow", () => {
         expect.objectContaining({
           id: "inbound_identity_retry_verified_edge",
           destination_node_id: "outbound_collections_agent",
+          transition_condition: expect.objectContaining({
+            type: "prompt",
+            prompt: expect.stringContaining("tool result says status is verified"),
+          }),
         }),
       ]),
       else_edge: expect.objectContaining({
@@ -185,6 +197,7 @@ describe("inbound collections Conversation Flow", () => {
       "Identity has already been verified by the inbound identity node",
     );
     expect(JSON.stringify(flow)).not.toContain("skip_response_edge");
+    expect(JSON.stringify(flow)).toContain("end_unverified_inbound_call");
   });
 
   it("keeps the existing payment, callback, email, SMS-disabled, and terminal tools", () => {
