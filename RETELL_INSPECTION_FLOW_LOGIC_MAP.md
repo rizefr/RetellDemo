@@ -7,7 +7,7 @@ This map documents both directions of the elevator-inspection collections flow s
 - Product: Elevator Inspection Collections - Paul
 - Agent ID: `agent_4aa8074d7eabe311109ed6da89`
 - Conversation Flow ID: `conversation_flow_bebdceabc801`
-- Current published version: V83. Read back Retell before any future publish.
+- Current published outbound version: V91. Read back Retell before any future publish.
 - Model: GPT-4.1
 - Voice: `11labs-Gilfoy`
 - Spoken agent name: `Paul`
@@ -17,10 +17,12 @@ This map documents both directions of the elevator-inspection collections flow s
 - Outbound phone: `+19842075346`
 - Inbound callback agent ID: `agent_5ca64503754e06c338e12c743f`
 - Inbound callback Conversation Flow ID: `conversation_flow_67cfb3f644e1`
-- Inbound callback version: V0, inherited voice/runtime settings, eight wrapped tools
+- Inbound callback version: V5, inherited voice/runtime settings, eight wrapped tools
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
 
-Publishing must target the explicit IDs above. The setup scripts refuse name-based matching and duplicate creation. Production outbound call creation pins the explicit outbound agent to `latest_published`; the signed inbound phone webhook selects the inbound callback agent stored on the business. `/backend` and `/outbound` do not accept an agent architecture override.
+Publishing must target the explicit IDs above. The setup scripts refuse name-based matching and duplicate creation. Production outbound call creation pins the explicit outbound agent to `latest_published`; the signed inbound phone webhook selects the inbound callback agent stored on the business. `/backend` and `/outbound` do not accept an agent architecture override. Retell readback on August 13 showed `+19842075346` inbound assigned to the callback agent and outbound assigned to the inspection agent, both at `latest_published`; `+18887809963` remained assigned only to the separate receptionist agent.
+
+Final provider simulation evidence: outbound V91 passed two transaction/expected-date cases and three repeated opening-stability cases; inbound V5 passed four verified, bundled-date, explicit-opt-out, and unverified privacy-close cases. No simulation placed a telephone call.
 
 ```mermaid
 flowchart LR
@@ -89,7 +91,8 @@ All custom tools are wrapped Retell requests signed by Retell. Backend endpoints
 
 - `/outbound` and `/backend` create outbound calls only with the explicit outbound agent and `latest_published` version.
 - Incoming calls to the collections number enter the signed inbound phone webhook. The response selects the explicit callback agent and supplies only business-level context.
-- Incoming callers provide a name before lookup. A name alone is insufficient; no invoice context is available to the model until `verified=true`.
+- Incoming callers provide a name before a native Function node invokes `lookup_inbound_account` with `wait_for_result:true`. A name alone is insufficient; no invoice context is available to the model until the trusted result says `verified`.
+- A non-verified first result reaches one corroboration subagent. Exactly one spelling/company/invoice/email retry is allowed. Refusal or another non-verified result reaches the privacy-safe unverified terminal branch.
 - After verification, the inbound flow continues through the same invoice-received, invoice-not-received, payment, expected-date, callback, objection, and terminal logic shown below.
 
 ```mermaid
@@ -208,6 +211,7 @@ Explicit do-not-contact, attorney represented, and hostile/abusive outcomes rout
 - SMS is disabled/manual. Text requests log `sms_pending_manual`.
 - QuickBooks is scaffold-only. Paul must not claim a QuickBooks link unless the backend returns a real connected-provider link.
 - Retell exposes ambient call-center sound and bridge-line behavior, not a dedicated keyboard-only tool-wait sound tied to custom-tool execution.
+- Retell Playground mocks do not currently apply custom-tool `response_variables` to Function-node dynamic variables. Native tests inject non-sensitive account speech variables and keep routing assertions tied to the mocked trusted tool result; the deployed custom tool still maps response variables for real calls.
 - No broad batch campaign is supported for demos. Presentation Mode uses temporary demo-number authorization and single-call preflight/start only.
 - The business 14-day field controls future eligibility timing but does not start calls automatically. A QuickBooks connection, approved field mapping, dry-run cohort, written campaign authorization, and separate scheduler rollout are still required.
 
