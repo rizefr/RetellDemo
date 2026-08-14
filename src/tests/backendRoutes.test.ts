@@ -57,6 +57,7 @@ describe("unified backend routes", () => {
     expect(page.status).toBe(200);
     expect(page.text).toContain("Outbound Collections");
     expect(page.text).toContain("Inbound Receptionist");
+    expect(page.text).toContain("Landing Pages");
 
     const legacyOutbound = await request(app).get("/outbound").set("Cookie", loginCookies);
     expect(legacyOutbound.status).toBe(200);
@@ -84,6 +85,7 @@ describe("unified backend routes", () => {
       "overview",
       "outbound",
       "inbound",
+      "landing-pages",
       "settings",
       "docs",
     ]);

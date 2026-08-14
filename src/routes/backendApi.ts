@@ -7,6 +7,7 @@ import {
   requireBackendAdmin,
 } from "../services/backendAuth";
 import { getBackendNavigation, getBackendStatus } from "../services/backendStatus";
+import { getLandingDashboard } from "../services/landingPages";
 import {
   clearOutboundAdminCookie,
   createOutboundAdminCookie,
@@ -67,6 +68,18 @@ backendApiRouter.get("/navigation", (_req, res) => {
 backendApiRouter.get("/status", async (req, res) => {
   try {
     res.json(await getBackendStatus(requestBaseUrl(req)));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+backendApiRouter.get("/landing-pages", async (req, res) => {
+  const requestedRange = Number(req.query.range ?? 30);
+  const rangeDays = [7, 30, 90].includes(requestedRange) ? requestedRange : 30;
+  const includeTest = req.query.include_test === "true";
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await getLandingDashboard(rangeDays, includeTest));
   } catch (error) {
     sendError(res, error);
   }

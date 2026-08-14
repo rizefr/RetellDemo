@@ -4,9 +4,10 @@ dist/
 .env
 .env.*
 !.env.example
-coverage/
+/coverage/
 generated/
 output/
 sop-test-results.json
 *.log
 .vercel/
+.playwright-cli/
