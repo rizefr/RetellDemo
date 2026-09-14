@@ -649,6 +649,11 @@ body.collections-active { background: #f4f7f5; }
 .collections-active .workspace > .topbar h2 { color: #302c2c; }
 .collections-active .workspace > .topbar .eyebrow { color: #108650; }
 .collections-active .workspace > .topbar .secondary { background: #fff; border-color: #c6d3cb; color: #47554d; }
+.collections-active .workspace > .topbar .status-badge { background: #f0f4f2; color: #47554d; border-color: #c6d3cb; }
+.collections-active .workspace > .topbar .status-badge.ready { background: #edf7f0; color: #126941; border-color: #b6dbc4; }
+.collections-active .workspace > .topbar .status-badge.neutral { background: #eef4fa; color: #365b7c; border-color: #c5d6e6; }
+.collections-active .workspace > .topbar .status-badge.warning { background: #fff8e8; color: #845710; border-color: #ead7a8; }
+.collections-active .workspace > .topbar .status-badge.unavailable { background: #fdf0ee; color: #a3382b; border-color: #edc2bc; }
 .collections-active #view-outbound > .section-heading h3 { color: #302c2c; }
 .collections-active #view-outbound > .section-heading p { color: #65736a; }
 .collections-active #view-outbound > .section-heading .button-link { background: #108650; color: #fff; border-color: #108650; }
