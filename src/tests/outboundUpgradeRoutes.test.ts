@@ -175,6 +175,8 @@ describe("outbound upgrade routes", () => {
         service_description: "annual elevator inspection",
         amount_due: "150.00",
         original_due_date: "2026-05-20",
+        inspection_date: "2024-02-29",
+        invoice_date: "2026-05-01",
         external_invoice_id: "ELV-DEMO",
         demo_call_mode: "scam_recovery",
         prior_concern_note: "Caller initially wondered if the call was legitimate.",
@@ -191,9 +193,26 @@ describe("outbound upgrade routes", () => {
       invoicePatch: expect.objectContaining({
         status: undefined,
         demo_call_mode: "scam_recovery",
+        inspection_date: "2024-02-29",
+        invoice_date: "2026-05-01",
+        original_due_date: "2026-05-20",
       }),
     }));
     expect(response.body.invoice.status).toBe("unpaid");
+    const ids = { business_id: "00000000-0000-4000-8000-000000000001", customer_id: "00000000-0000-4000-8000-000000000002", invoice_id: "00000000-0000-4000-8000-000000000003" };
+    for (const field of ["inspection_date", "invoice_date"]) {
+      for (const value of ["2026-02-29", "2024-02-30", "2026-04-31", "20260501", "2026-05-01T10:00:00Z", "0000-01-01"]) {
+        const invalid = await request(createApp()).patch("/api/outbound/demo-details")
+          .set("Authorization", "Bearer upgrade-admin").send({ ...ids, [field]: value });
+        expect(invalid.status).toBe(400);
+      }
+    }
+    expect(updateDemoDetails).toHaveBeenCalledTimes(1);
+    const cleared = await request(createApp()).patch("/api/outbound/demo-details")
+      .set("Authorization", "Bearer upgrade-admin").send({ ...ids, inspection_date: null, invoice_date: null });
+    expect(cleared.status).toBe(200);
+    expect(updateDemoDetails).toHaveBeenLastCalledWith(expect.objectContaining({invoicePatch:expect.objectContaining({inspection_date:null,invoice_date:null,original_due_date:undefined})}));
+
   });
 
   it("returns redacted QuickBooks status and a safe not-connected placeholder", async () => {

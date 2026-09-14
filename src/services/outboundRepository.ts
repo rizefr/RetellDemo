@@ -81,7 +81,7 @@ export async function listOutboundDashboardData(limit = 100) {
   if (followupResult.error) throw new OutboundDatabaseError(followupResult.error.message);
   const invoices = invoiceResult.data ?? [];
   const invoicesWithAccountSummary = invoices.map((invoice) => {
-    const accountInvoices = invoices.filter((candidate) => candidate.customer_id === invoice.customer_id);
+    const accountInvoices = invoices.filter((candidate) => candidate.customer_id === invoice.customer_id && candidate.business_id === invoice.business_id && candidate.currency === invoice.currency);
     const open = accountInvoices.filter((candidate) => ["unpaid", "payment_link_sent"].includes(candidate.status));
     const paid = accountInvoices.filter((candidate) => candidate.status === "paid" && candidate.paid_at).sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at)));
     return {
@@ -89,8 +89,8 @@ export async function listOutboundDashboardData(limit = 100) {
       account_summary: {
         open_invoice_count: open.length,
         total_amount_due_cents: open.reduce((sum, candidate) => sum + Number(candidate.amount_due_cents || 0), 0),
-        oldest_invoice_date: open.map((candidate) => candidate.original_due_date).filter(Boolean).sort()[0] ?? null,
-        most_recent_invoice_date: open.map((candidate) => candidate.original_due_date).filter(Boolean).sort().at(-1) ?? null,
+        oldest_invoice_date: open.map((candidate) => candidate.invoice_date).filter(Boolean).sort()[0] ?? null,
+        most_recent_invoice_date: open.map((candidate) => candidate.invoice_date).filter(Boolean).sort().at(-1) ?? null,
         last_payment_date: paid[0]?.paid_at ?? invoice.outbound_customers?.imported_last_payment_date ?? null,
       },
     };
@@ -131,13 +131,15 @@ export async function getOutboundInvoiceContext(invoiceId: string) {
       .maybeSingle(),
     client
       .from("outbound_invoices")
-      .select("id,invoice_id,status,amount_due_cents,currency,original_due_date,paid_at,service_description")
+      .select("id,invoice_id,status,amount_due_cents,currency,original_due_date,invoice_date,paid_at,service_description")
       .eq("customer_id", invoice.customer_id)
+      .eq("business_id", invoice.business_id)
+      .eq("currency", invoice.currency)
       .order("original_due_date", { ascending: true }),
   ]);
   if (accountInvoiceResult.error) throw new OutboundDatabaseError(accountInvoiceResult.error.message);
   const accountInvoices = (accountInvoiceResult.data ?? []) as Array<Record<string, unknown>>;
-  const openInvoices = accountInvoices.filter((item) => ["unpaid", "payment_link_sent"].includes(String(item.status)));
+  const openInvoices = accountInvoices.filter((item) => item.currency === invoice.currency && ["unpaid", "payment_link_sent"].includes(String(item.status)));
   const paidDates = accountInvoices
     .map((item) => (item.status === "paid" && item.paid_at ? String(item.paid_at) : null))
     .filter((value): value is string => Boolean(value))
@@ -152,9 +154,9 @@ export async function getOutboundInvoiceContext(invoiceId: string) {
       openInvoices,
       openInvoiceCount: openInvoices.length,
       totalAmountDueCents: openInvoices.reduce((sum, item) => sum + Number(item.amount_due_cents || 0), 0),
-      oldestInvoiceDate: openInvoices[0]?.original_due_date ?? null,
-      mostRecentInvoiceDate: openInvoices.at(-1)?.original_due_date ?? null,
-      selectedInvoiceIsMostRecent: String(openInvoices.at(-1)?.id ?? "") === String(invoice.id),
+      oldestInvoiceDate: openInvoices.map(item=>item.invoice_date).filter(Boolean).sort()[0] ?? null,
+      mostRecentInvoiceDate: openInvoices.map(item=>item.invoice_date).filter(Boolean).sort().at(-1) ?? null,
+      selectedInvoiceIsMostRecent: Boolean(invoice.invoice_date) && invoice.invoice_date === openInvoices.map(item=>item.invoice_date).filter(Boolean).sort().at(-1),
       lastPaymentDate: paidDates.at(-1) ?? null,
     },
   };
@@ -471,9 +473,10 @@ export async function updateOutboundCustomer(id: string, patch: Record<string, u
 
 export async function updateOutboundInvoice(id: string, patch: Record<string, unknown>) {
   const current = unwrap(
-    await db().from("outbound_invoices").select("status").eq("id", id).maybeSingle(),
+    await db().from("outbound_invoices").select("status,source_provider").eq("id", id).maybeSingle(),
     true,
-  ) as { status: string };
+  ) as { status: string; source_provider?: string };
+  if (current.source_provider === "quickbooks" && Object.keys(patch).some(key => ["amount_due_cents","currency","original_due_date","invoice_date","inspection_date","inspection_type","service_description","status","customer_id","business_id","invoice_id","source_provider","source_realm_id","provider_invoice_id","provider_customer_id","source_verified_at"].includes(key))) throw new OutboundDatabaseError("QuickBooks accounting fields can only change through verified synchronization",409);
   if (current.status === "paid" && patch.status && patch.status !== "paid") {
     throw new OutboundDatabaseError("Paid invoices cannot be reopened by this demo", 409);
   }
@@ -488,6 +491,10 @@ export async function updateOutboundDemoDetails(input: {
   customerPatch: Record<string, unknown>;
   invoicePatch: Record<string, unknown>;
 }) {
+  const context=await getOutboundInvoiceContext(input.invoiceId);
+  if(String(context.business.id)!==input.businessId || String(context.customer.id)!==input.customerId || String(context.customer.business_id)!==input.businessId || String(context.invoice.business_id)!==input.businessId) throw new OutboundDatabaseError("Demo record associations do not match",403);
+  if(context.invoice.source_provider!=="local" || context.invoice.source_system==="quickbooks" || context.invoice.quickbooks_invoice_id || context.business.is_demo!==true) throw new OutboundDatabaseError("Presentation edits require isolated demo records",409);
+  if (context.invoice.status === "paid") throw new OutboundDatabaseError("Paid invoices cannot be edited in Presentation Mode",409);
   const client = db();
   const cleanPatch = (patch: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
@@ -500,26 +507,36 @@ export async function updateOutboundDemoDetails(input: {
           .from("outbound_businesses")
           .update(businessPatch)
           .eq("id", input.businessId)
+          .eq("is_demo", true)
           .select("*")
           .maybeSingle()
-      : client.from("outbound_businesses").select("*").eq("id", input.businessId).maybeSingle(),
+      : client.from("outbound_businesses").select("*").eq("id", input.businessId)
+          .eq("is_demo", true).maybeSingle(),
     Object.keys(customerPatch).length
       ? client
           .from("outbound_customers")
           .update(customerPatch)
           .eq("id", input.customerId)
+          .eq("business_id", input.businessId)
           .select("*")
           .maybeSingle()
-      : client.from("outbound_customers").select("*").eq("id", input.customerId).maybeSingle(),
+      : client.from("outbound_customers").select("*").eq("id", input.customerId)
+          .eq("business_id", input.businessId).maybeSingle(),
     Object.keys(invoicePatch).length
       ? client
           .from("outbound_invoices")
           .update(invoicePatch)
           .eq("id", input.invoiceId)
+          .eq("business_id", input.businessId)
+          .eq("customer_id", input.customerId)
+          .eq("source_provider", "local")
           .neq("status", "paid")
           .select("*")
           .maybeSingle()
-      : client.from("outbound_invoices").select("*").eq("id", input.invoiceId).maybeSingle(),
+      : client.from("outbound_invoices").select("*").eq("id", input.invoiceId)
+          .eq("business_id", input.businessId)
+          .eq("customer_id", input.customerId)
+          .eq("source_provider", "local").maybeSingle(),
   ]);
   return {
     business: unwrap(businessResult, true),
@@ -576,6 +593,16 @@ export async function importOutboundRows(rows: OutboundCsvRow[], dryRun: boolean
       businesses += 1;
     }
 
+    if(String(row.external_customer_id).startsWith("qbo:") || String(row.invoice_id).startsWith("QBO-")) throw new OutboundDatabaseError("Reserved QuickBooks source IDs cannot be imported from CSV",409);
+    const existingInvoice = (
+      await client
+        .from("outbound_invoices")
+        .select("*")
+        .eq("business_id", business.id)
+        .eq("invoice_id", row.invoice_id)
+        .maybeSingle()
+    ).data as Record<string, unknown> | null;
+    if(existingInvoice?.source_provider==="quickbooks") throw new OutboundDatabaseError("CSV cannot overwrite QuickBooks invoices",409);
     const existingCustomer = (
       await client
         .from("outbound_customers")
@@ -613,14 +640,6 @@ export async function importOutboundRows(rows: OutboundCsvRow[], dryRun: boolean
       if (changed) customersUpdated += 1;
     }
 
-    const existingInvoice = (
-      await client
-        .from("outbound_invoices")
-        .select("*")
-        .eq("business_id", business.id)
-        .eq("invoice_id", row.invoice_id)
-        .maybeSingle()
-    ).data as Record<string, unknown> | null;
     const invoiceStatus = existingInvoice?.status === "paid" ? "paid" : row.status;
     const savedInvoice = unwrap(
       await client

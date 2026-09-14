@@ -3,35 +3,47 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Outbound Collections Demo</title>
+    <title>Pinnacle | Invoice follow-up</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/outbound/outbound.css?v=20260710" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans+Condensed:wght@700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/outbound/outbound.css?v=20260914" />
   </head>
   <body>
+    <a class="skip-link" href="#workspace-title">Skip to workspace</a>
+    <aside class="workspace-sidebar" aria-label="Collections workspace">
+      <a class="brand-lockup" href="/outbound" aria-label="Pinnacle invoice follow-up home"><img src="https://pinnacleelevatorsolutions.com/wp-content/uploads/2023/06/Logo-1.svg" alt="Pinnacle Elevator Solutions" width="168" height="74" /></a>
+      <p class="sidebar-label">Invoice follow-up</p>
+      <nav class="workspace-nav" aria-label="Collections navigation">
+        <button data-workspace-link="queue" class="active" aria-current="page"><span>Invoice queue</span><span id="nav-invoice-count" class="nav-count">—</span></button>
+        <button data-workspace-link="presentation">Presentation mode</button>
+        <button data-workspace-link="connections">Connections &amp; sync</button>
+        <button data-workspace-link="templates">Email &amp; SMS</button>
+        <button data-workspace-link="activity">Activity &amp; payments</button>
+        <button data-workspace-link="settings">Business settings</button>
+      </nav>
+      <div class="sidebar-footer"><span class="sidebar-dot"></span><strong>Manual review first</strong><p>Refresh prepares the queue. Every call needs a fresh server check and a manual start.</p><a href="/backend#outbound">Unified backend ↗</a></div>
+    </aside>
     <header class="topbar">
-      <div>
-        <p class="eyebrow">B2B first-party demo</p>
-        <h1>Outbound collections</h1>
-        <p id="header-business-name" class="header-subtitle">Configured business loads after refresh</p>
-      </div>
-      <div class="header-actions">
-        <span class="safety-badge">No automatic task execution</span>
-        <a class="secondary-link" href="/backend#outbound">Open unified backend</a>
-        <button id="logout" class="secondary">Sign out</button>
-      </div>
+      <div><p class="eyebrow">Collections workspace</p><h1 id="workspace-title" tabindex="-1">Invoice queue</h1><p id="header-business-name" class="header-subtitle">Loading business…</p></div>
+      <div class="header-actions"><span id="workspace-mode" class="state-badge neutral">Checking mode</span><button id="logout" class="secondary">Sign out</button></div>
     </header>
-    <main>
+    <main id="collections-workspace">
       <section class="panel toolbar-panel" aria-label="Dashboard controls">
         <div>
-          <strong>Operational dashboard</strong>
-          <p id="last-refreshed">Not refreshed yet</p>
+          <strong>One place for invoice follow-up</strong>
+          <p id="last-refreshed">Waiting for the first refresh</p>
         </div>
         <button id="refresh-all" class="secondary">Refresh all data</button>
       </section>
 
-      <section class="panel settings-panel" aria-labelledby="settings-heading">
+      <section data-workspace="queue" class="queue-overview" aria-label="Queue summary">
+        <div class="review-intro"><div><p class="eyebrow">Pinnacle Elevator Solutions</p><h2>Keep every invoice<br />moving forward.</h2><p>Review what is owed, resolve the next step, and leave a clear record.</p></div><ol class="review-sequence"><li><span>1</span>Refresh accounting data</li><li><span>2</span>Review the account</li><li><span>3</span>Prepare a controlled call</li></ol></div>
+        <div id="queue-metrics" class="metric-grid" aria-live="polite"><article class="metric-card"><span>Invoice data</span><strong>Loading…</strong><small>Reading the protected backend</small></article></div>
+        <div id="queue-source-notice" class="setup-summary">Accounting connection has not been verified by this page yet.</div>
+      </section>
+
+      <section data-workspace="settings" hidden class="panel settings-panel" aria-labelledby="settings-heading">
         <div class="section-heading">
           <div><h2 id="settings-heading">Business and safety settings</h2><p>Operational values are stored server-side. Provider keys remain in Vercel and are shown only as present or missing.</p></div>
           <button id="save-settings">Save settings</button>
@@ -46,7 +58,7 @@
           <label>Very-overdue threshold days <input id="setting-very-overdue-days" type="number" min="1" max="365" /></label>
           <label>Default timezone <input id="setting-timezone" /></label>
           <label>AI disclosure policy <select id="setting-disclosure"><option value="after_identity">After identity (safer default)</option><option value="on_request">Only when asked (compliance-sensitive)</option><option value="opening">Near the opening</option></select></label>
-          <label>Payment provider <select id="setting-payment-provider"><option value="stripe">Stripe</option><option value="quickbooks_read_only">QuickBooks read-only</option><option value="quickbooks_payment_link_enabled">QuickBooks payment-enabled</option><option value="quickbooks">QuickBooks legacy</option><option value="manual">Manual</option></select></label>
+          <label>Payment provider <select id="setting-payment-provider"><option value="stripe">Stripe</option><option value="quickbooks_read_only">QuickBooks · application reads only</option><option value="quickbooks_payment_link_enabled">QuickBooks · verified payment links</option><option value="quickbooks">QuickBooks legacy</option><option value="manual">Manual</option></select></label>
           <label>Callback number <input id="setting-callback-number" type="tel" /></label>
           <label>Human transfer number <input id="setting-transfer-number" type="tel" /></label>
           <label>Maximum batch size <input id="setting-max-batch" type="number" min="1" max="25" /></label>
@@ -58,7 +70,7 @@
           <label class="check-control"><input id="setting-test-mode" type="checkbox" /> Test mode</label>
           <label class="check-control"><input id="setting-after-hours" type="checkbox" /> Permit gated after-hours self-test</label>
           <label class="check-control"><input id="setting-email-enabled" type="checkbox" /> Request payment email delivery</label>
-          <label class="check-control"><input id="setting-sms-enabled" type="checkbox" /> Request Retell SMS delivery</label>
+          <label class="check-control"><input id="setting-sms-enabled" type="checkbox" disabled /> SMS activation locked for this review</label>
         </div>
         <div class="warning-box settings-confirmations">
           <p>Disabling test mode or raising the batch limit requires an exact phrase. These changes are audit logged.</p>
@@ -68,7 +80,7 @@
         <div id="settings-readiness" class="setup-summary">Load dashboard data to inspect effective provider readiness.</div>
       </section>
 
-      <section class="panel presentation-panel" aria-labelledby="presentation-heading">
+      <section data-workspace="presentation" hidden class="panel presentation-panel" aria-labelledby="presentation-heading">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Presentation mode</p>
@@ -95,7 +107,7 @@
         <p id="demo-last-result" class="muted">Authorize a temporary test number, save demo variables, then run the backend preflight check.</p>
         <div class="demo-editor">
           <h3>Editable demo variables</h3>
-          <p>These values feed the same backend dynamic variables that Retell receives. They are not frontend-only labels.</p>
+          <p>Saved values feed the actual Retell call context. Edit local demo records only; QuickBooks accounting fields stay authoritative.</p>
           <div class="settings-grid">
             <label>First name <input id="demo-first-name" /></label>
             <label>Last name <input id="demo-last-name" /></label>
@@ -104,7 +116,9 @@
             <label>Business name <input id="demo-business-name" /></label>
             <label>Invoice ID <input id="demo-external-invoice-id" /></label>
             <label>Invoice amount <input id="demo-amount-due" inputmode="decimal" /></label>
-            <label>Service/due date <input id="demo-original-due-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
+            <label>Inspection date <input id="demo-inspection-date" type="date" min="0001-01-01" max="9999-12-31" /><small>When the inspection took place.</small></label>
+            <label>Invoice date <input id="demo-invoice-date" type="date" min="0001-01-01" max="9999-12-31" /><small>When the invoice was issued.</small></label>
+            <label>Invoice due date <input id="demo-original-due-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
             <label>Inspection type <select id="demo-inspection-type"><option>Category 1</option><option>Category 5</option><option>Acceptance Test</option><option>Periodic Inspection</option></select></label>
             <label>Expected payment date <input id="demo-expected-payment-date" placeholder="YYYY-MM-DD or YYYYMMDD" /></label>
             <label class="wide">Service description <input id="demo-service-description" /></label>
@@ -123,7 +137,21 @@
         <div id="quickbooks-status" class="setup-summary">QuickBooks status loads after dashboard data.</div>
       </section>
 
-      <section class="panel setup-panel" aria-labelledby="setup-heading">
+      <section data-workspace="connections" hidden class="panel source-panel" aria-labelledby="source-heading">
+        <div class="section-heading"><div><p class="eyebrow">Accounting source</p><h2 id="source-heading">QuickBooks &amp; weekly review</h2><p>Preview the first import before applying it. The review queue never starts customer outreach.</p></div><button id="source-refresh" class="secondary">Refresh connection</button></div>
+        <div id="source-connection-detail" class="setup-summary" role="status">Loading source status…</div>
+        <div id="source-sync-controls"></div><div id="source-sync-result" aria-live="polite"></div>
+        <div id="weekly-review-detail" class="setup-summary" aria-live="polite">Loading weekly review settings…</div>
+      </section>
+      <section data-workspace="templates" hidden class="panel template-panel" aria-labelledby="templates-heading">
+        <div class="section-heading"><div><p class="eyebrow">Customer communication</p><h2 id="templates-heading">Email templates</h2><p>Preview the actual mapped invoice details. Delivery uses the business’s verified sender.</p></div><button id="template-refresh" class="secondary">Refresh templates</button></div>
+        <div id="template-controls"></div><div id="template-status" class="setup-summary" role="status">Loading published and draft templates…</div><div id="template-preview"></div>
+      </section>
+      <section data-workspace="templates" hidden class="panel" aria-labelledby="sms-heading">
+        <div class="section-heading"><div><p class="eyebrow">Prepared, awaiting activation</p><h2 id="sms-heading">SMS readiness</h2><p>A phone number on an invoice is not SMS consent.</p></div><span class="state-badge warning">Sending disabled</span></div>
+        <div id="sms-readiness-detail" class="setup-summary">Provider campaign approval, recorded opt-in, STOP / HELP handling, suppression, and explicit activation must be verified before sending.</div>
+      </section>
+      <section data-workspace="connections" hidden class="panel setup-panel" aria-labelledby="setup-heading">
         <div class="section-heading">
           <div>
             <h2 id="setup-heading">Setup readiness</h2>
@@ -146,7 +174,7 @@
         </details>
       </section>
 
-      <section class="panel workflow-panel" aria-labelledby="workflow-heading">
+      <section data-workspace="presentation" hidden class="panel workflow-panel" aria-labelledby="workflow-heading">
         <div>
           <h2 id="workflow-heading">Single test call controls</h2>
           <p>Normal recipient-local calling hours remain Monday-Friday, 10:00-16:00.</p>
@@ -167,7 +195,7 @@
         <p id="selected-call-status" class="selected-call-status">No customer call gates checked yet.</p>
       </section>
 
-      <section class="panel import-panel upload-panel">
+      <section data-workspace="settings" hidden class="panel import-panel upload-panel">
         <div class="wide">
           <h2>Customer invoice CSV</h2>
           <p>Who to call and what they owe. Phone numbers must be E.164. Dates may be YYYY-MM-DD or YYYYMMDD. Amounts are decimal dollars and store as cents.</p>
@@ -189,61 +217,66 @@
         <output id="business-import-result"></output>
       </section>
 
-      <section class="panel" aria-labelledby="invoice-heading">
+      <section data-workspace="queue" class="panel" aria-labelledby="source-queue-heading">
+        <div class="section-heading"><div><p class="eyebrow">Synced accounting records</p><h2 id="source-queue-heading">QuickBooks source review</h2><p>The backend checks outstanding balance, more than 14 calendar days past due, data freshness, and exclusions. A review-ready row still needs call preflight.</p></div><span id="source-queue-count" class="count-badge">Not verified</span></div>
+        <div id="source-queue-content" class="empty-state">No source refresh has been verified on this page.</div>
+      </section>
+
+      <section data-workspace="queue" class="panel" aria-labelledby="invoice-heading">
         <div class="section-heading">
-          <div><h2 id="invoice-heading">Customers and invoices</h2><p>Human-readable operating view; internal IDs stay collapsed.</p></div>
+          <div><h2 id="invoice-heading">Customers and invoices</h2><p>Review the balance, contact details, and next action before a call. Accounting source fields are labeled separately from local notes.</p></div>
           <div class="filter-row">
-            <label>Filter <select id="invoice-filter"><option value="all">All statuses</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option><option value="disputed">Disputed</option><option value="manual_review">Needs review</option><option value="paused">Paused</option></select></label>
-            <label>Search <input id="invoice-search" type="search" placeholder="Customer or invoice" /></label>
+            <label>Payment / outreach <select id="invoice-filter"><option value="all">All statuses</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option><option value="disputed">Disputed</option><option value="manual_review">Needs review</option><option value="paused">Paused</option></select></label>
+            <label>Source <select id="invoice-source-filter"><option value="all">All sources</option><option value="quickbooks">QuickBooks synced</option><option value="local">Local / demo</option></select></label><label>Search <input id="invoice-search" type="search" placeholder="Customer, account or invoice" /></label>
             <button id="batch-dry-run" class="secondary" disabled>Batch dry run (0)</button>
           </div>
         </div>
-        <p class="batch-note">Batch controls here are dry-run only and place zero calls.</p>
-        <div class="table-wrap"><table class="compact-table"><thead><tr><th>Select</th><th>Customer</th><th>Invoice</th><th>Service / amount</th><th>Status</th><th>Latest activity</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="invoice-rows"></tbody></table></div>
+        <p class="batch-note"><span id="invoice-result-count">Loading invoices…</span> · Batch checks place zero calls. Dates and balances must pass a fresh backend check before outreach.</p>
+        <div class="table-wrap invoice-table-wrap"><table class="compact-table invoice-table"><thead><tr><th>Select</th><th>Customer</th><th>Invoice</th><th>Service / amount</th><th>Status</th><th>Latest activity</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="invoice-rows"></tbody></table></div>
         <div id="invoice-empty" class="empty-state" hidden>No invoices match the current filter.</div>
       </section>
 
-      <section class="panel" aria-labelledby="callbacks-heading">
+      <section data-workspace="activity" hidden class="panel" aria-labelledby="callbacks-heading">
         <div class="section-heading"><div><h2 id="callbacks-heading">Callback tasks</h2><p>Stored preferences only. Every callback still requires manual preflight and the protected one-call start route.</p></div><span id="callback-count" class="count-badge">0 callbacks</span></div>
         <div class="table-wrap"><table class="compact-table callback-table"><thead><tr><th>Customer / invoice</th><th>Requested callback</th><th>Reason / confirmation</th><th>Status</th><th>Actions</th></tr></thead><tbody id="callback-rows"></tbody></table></div>
         <div id="callback-empty" class="empty-state" hidden>No callback tasks recorded.</div>
       </section>
 
-      <section class="panel" aria-labelledby="calls-heading">
+      <section data-workspace="activity" hidden class="panel" aria-labelledby="calls-heading">
         <div class="section-heading"><div><h2 id="calls-heading">Call history</h2><p>Summaries, outcomes, tools, and next actions from Retell.</p></div><span id="call-count" class="count-badge">0 calls</span></div>
         <div class="table-wrap"><table class="compact-table"><thead><tr><th>Date</th><th>Customer / invoice</th><th>Outcome</th><th>Summary</th><th>Duration</th><th>Next action</th><th>Details</th></tr></thead><tbody id="call-rows"></tbody></table></div>
         <div id="call-empty" class="empty-state" hidden>No call attempts recorded.</div>
       </section>
 
-      <section class="panel" aria-labelledby="payments-heading">
-        <div class="section-heading"><div><h2 id="payments-heading">Payment links</h2><p>Stripe test-mode Checkout Sessions and delivery state.</p></div><span id="payment-count" class="count-badge">0 links</span></div>
+      <section data-workspace="activity" hidden class="panel" aria-labelledby="payments-heading">
+        <div class="section-heading"><div><h2 id="payments-heading">Payment links</h2><p>Payment-provider records and confirmed delivery state. QuickBooks invoice links stay with QuickBooks; Stripe links apply only to selected Stripe/demo invoices.</p></div><span id="payment-count" class="count-badge">0 links</span></div>
         <div class="table-wrap"><table class="compact-table"><thead><tr><th>Created</th><th>Customer / invoice</th><th>Amount</th><th>Session status</th><th>Delivery</th><th>Paid / expires</th><th>Actions</th></tr></thead><tbody id="payment-rows"></tbody></table></div>
         <div id="payment-empty" class="empty-state" hidden>No payment links recorded.</div>
       </section>
 
-      <section class="panel" aria-labelledby="events-heading">
-        <div class="section-heading"><div><h2 id="events-heading">Events and debugging</h2><p>Latest 100 provider/admin events. Sensitive fields are redacted server-side.</p></div><span id="event-count" class="count-badge">0 events</span></div>
+      <section data-workspace="activity" hidden class="panel" aria-labelledby="events-heading">
+        <div class="section-heading"><div><h2 id="events-heading">Audit events</h2><p>Latest 100 provider/admin events. Sensitive fields are redacted server-side.</p></div><span id="event-count" class="count-badge">0 events</span></div>
         <div class="filter-row"><label>Source <select id="event-filter"><option value="all">All sources</option><option value="retell">Retell</option><option value="stripe">Stripe</option><option value="admin">Admin</option><option value="system">System</option><option value="retell_function">Retell function</option></select></label></div>
         <div class="table-wrap"><table class="compact-table"><thead><tr><th>Time</th><th>Source</th><th>Event</th><th>Invoice</th><th>Message</th><th>Payload</th></tr></thead><tbody id="event-rows"></tbody></table></div>
         <div id="event-empty" class="empty-state" hidden>No events match the current filter.</div>
       </section>
 
-      <p id="page-status" role="status"></p>
+      <p id="page-status" role="status" aria-live="polite" aria-atomic="true"></p>
     </main>
 
     <template id="invoice-row-template">
       <tr>
-        <td><input data-action="batch-select" type="checkbox" /></td>
-        <td><strong data-field="customer"></strong><span data-field="business" class="subtext"></span><label class="inline-field">Phone <input data-action="phone" type="tel" inputmode="tel" /></label><label class="inline-field">Email <input data-action="email" type="email" /></label><span data-field="contact-context" class="subtext preserve-lines"></span></td>
-        <td><strong data-field="invoice"></strong><details><summary>Internal details</summary><code data-field="ids"></code></details></td>
-        <td><span data-field="service"></span><strong data-field="amount" class="subtext"></strong></td>
-        <td><select data-action="status"></select><span data-field="payment" class="subtext"></span><span data-field="paused" class="subtext"></span></td>
-        <td><span data-field="last-call"></span><span data-field="next-followup" class="subtext"></span><span data-field="gate" class="gate-status">Not checked</span></td>
-        <td><textarea data-action="notes" rows="3" aria-label="Invoice notes"></textarea></td>
-        <td class="row-actions"><button data-action="save" class="secondary">Save</button><button data-action="payment">Payment link</button><button data-action="preflight" class="secondary">Check call gates</button><button data-action="call" class="danger-muted" disabled>Start test call</button><button data-action="pause" class="secondary"></button></td>
+        <td data-label="Select"><input data-action="batch-select" type="checkbox" /></td>
+        <td data-label="Customer / contact"><strong data-field="customer"></strong><span data-field="business" class="subtext"></span><label class="inline-field">Phone <input data-action="phone" type="tel" inputmode="tel" /></label><label class="inline-field">Email <input data-action="email" type="email" /></label><span data-field="contact-context" class="subtext preserve-lines"></span></td>
+        <td data-label="Invoice / source"><strong data-field="invoice"></strong><span data-field="source" class="subtext"></span><details><summary>Internal details</summary><code data-field="ids"></code></details></td>
+        <td data-label="Service / balance"><span data-field="service"></span><strong data-field="amount" class="subtext"></strong></td>
+        <td data-label="Payment / outreach"><select data-action="status"></select><span data-field="payment" class="subtext"></span><span data-field="paused" class="subtext"></span></td>
+        <td data-label="Latest activity"><span data-field="last-call"></span><span data-field="next-followup" class="subtext"></span><span data-field="expected-payment" class="subtext"></span><span data-field="gate" class="gate-status">Not checked</span></td>
+        <td data-label="Local notes"><textarea data-action="notes" rows="3" aria-label="Invoice notes"></textarea></td>
+        <td data-label="Actions" class="row-actions"><button data-action="save" class="secondary">Save</button><button data-action="payment">Payment link</button><button data-action="preflight" class="secondary">Check call gates</button><button data-action="call" class="danger-muted" disabled>Start test call</button><button data-action="pause" class="secondary"></button></td>
       </tr>
     </template>
 
-    <script src="/outbound/outbound.js?v=20260710" defer></script>
+    <script src="/outbound/outbound.js?v=20260914" defer></script>
   </body>
 </html>

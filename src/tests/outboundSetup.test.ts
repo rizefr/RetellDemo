@@ -143,7 +143,7 @@ describe("outbound setup route and page", () => {
     expect(html).toContain("Batch dry run");
     expect(html).toContain("Call history");
     expect(html).toContain("Payment links");
-    expect(html).toContain("Events and debugging");
+    expect(html).toContain('id="event-rows"');
     expect(html).toContain("After-hours self-test override");
     expect(html).toContain('data-action="phone"');
     expect(html).toContain('data-action="call"');

@@ -35,7 +35,7 @@ describe("outbound admin routes", () => {
     expect(login.headers["set-cookie"][0]).toContain("HttpOnly");
     const page = await request(app).get("/outbound").set("Cookie", login.headers["set-cookie"]);
     expect(page.status).toBe(200);
-    expect(page.text).toContain("Customers and invoices");
+    expect(page.text).toContain('id="invoice-rows"');
   });
 
   it("rejects outbound data routes without cookie or bearer authentication", async () => {
@@ -84,6 +84,7 @@ describe("outbound admin routes", () => {
 });
 
 describe("outbound webhook contracts", () => {
+  afterEach(()=>{vi.unstubAllGlobals();vi.doUnmock("../services/outboundRepository");vi.doUnmock("../services/outboundStripe");vi.doUnmock("../services/outboundEmailTemplates");vi.doUnmock("../services/supabase");vi.resetModules();});
   beforeEach(() => {
     process.env.OUTBOUND_RETELL_AGENT_ID = "agent_outbound_test";
   });
@@ -629,7 +630,7 @@ describe("outbound webhook contracts", () => {
     vi.resetModules();
   });
 
-  it("sends a payment email from a signed wrapped Retell tool after trusted agreement and allowlist checks", async () => {
+  it("sends the first email from fresh signed confirmation without a historical invoice agreement, and rejects stale or mismatched confirmation", async () => {
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "retell-email-api-key";
     process.env.EMAIL_PROVIDER = "resend";
@@ -641,6 +642,7 @@ describe("outbound webhook contracts", () => {
       json: async () => ({ id: "email_route_success_1" }),
     }));
     const insertOutboundEvent = vi.fn().mockResolvedValue({});
+    const hasOutboundPaymentLinkAgreement = vi.fn().mockResolvedValue(false);
     const markOutboundPaymentLinkDelivered = vi.fn().mockResolvedValue({});
     const updateOutboundCustomer = vi.fn().mockResolvedValue({});
     vi.doMock("../services/outboundRepository", async () => {
@@ -676,7 +678,7 @@ describe("outbound webhook contracts", () => {
             test_mode: true,
           },
         }),
-        hasOutboundPaymentLinkAgreement: vi.fn().mockResolvedValue(true),
+        hasOutboundPaymentLinkAgreement,
         insertOutboundEvent,
         markOutboundPaymentLinkDelivered,
         updateOutboundCustomer,
@@ -687,15 +689,35 @@ describe("outbound webhook contracts", () => {
         reused: false,
         payment_link: {
           id: "00000000-0000-4000-8000-000000000010",
-          url: "https://checkout.stripe.test/email-route",
+          url: "https://checkout.stripe.com/c/pay/cs_test_email_route",
         },
       }),
     }));
+    vi.doMock("../services/outboundEmailTemplates",()=>({previewOutboundEmail:vi.fn().mockResolvedValue({send_ready:true,template_id:"00000000-0000-4000-8000-000000000020",subject:"Published Pinnacle invoice",html:"<p>Published invoice</p>",text:"Published invoice",reply_to:""})}));
+    let delivery:Record<string,unknown>|null=null;
+    vi.doMock("../services/supabase", () => {
+      const from = (table:string) => {
+        expect(table).toBe("outbound_email_deliveries");
+        return {
+          select(){return this;}, eq(){return this;},
+          maybeSingle: async()=>({data:delivery,error:null}),
+          insert(row:Record<string,unknown>){
+            delivery={...row,id:"delivery-test"};
+            return {select:()=>({single:async()=>({data:{id:"delivery-test"},error:null})})};
+          },
+          update(row:Record<string,unknown>){
+            delivery={...delivery,...row};
+            return {eq:async()=>({error:null})};
+          },
+        };
+      };
+      return {getSupabaseClient:()=>({from})};
+    });
     vi.resetModules();
     const { createApp } = await import("../app");
     const payload = JSON.stringify({
       name: "send_payment_email",
-      args: {},
+      args: {recipient_confirmed:true,confirmed_email:"elixisagency@gmail.com"},
       call: {
         call_id: "call_email_success",
         agent_id: "agent_outbound_test",
@@ -707,6 +729,22 @@ describe("outbound webhook contracts", () => {
         },
       },
     });
+    // A prior invoice-level agreement cannot bypass this call's exact confirmation.
+    hasOutboundPaymentLinkAgreement.mockResolvedValue(true);
+    for (const args of [
+      {},
+      {recipient_confirmed:false,confirmed_email:"elixisagency@gmail.com"},
+      {recipient_confirmed:true,confirmed_email:"someone-else@example.test"},
+    ]) {
+      const unconfirmed = JSON.stringify({...JSON.parse(payload),args});
+      const blocked = await request(createApp()).post("/api/outbound/retell/send-payment-email")
+        .set("content-type","application/json").set("x-retell-signature",await sign(unconfirmed,"retell-email-api-key")).send(unconfirmed);
+      expect(blocked.body).toMatchObject({sent:false,status:"email_confirmation_required"});
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(updateOutboundCustomer).not.toHaveBeenCalled();
+    expect(insertOutboundEvent).not.toHaveBeenCalled();
+    hasOutboundPaymentLinkAgreement.mockResolvedValue(false);
     const signature = await sign(payload, "retell-email-api-key");
     const response = await request(createApp())
       .post("/api/outbound/retell/send-payment-email")
@@ -729,6 +767,13 @@ describe("outbound webhook contracts", () => {
       "email",
     );
     expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({ event_type: "email_requested" }));
+    expect(insertOutboundEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event_type:"email_recipient_confirmed",
+      external_event_id:"email_recipient_confirmed:retell-email:00000000-0000-4000-8000-000000000004",
+      payload:expect.objectContaining({confirmation_source:"signed_current_call",call_attempt_id:"00000000-0000-4000-8000-000000000004",recipient_confirmed:true,recipient_digest:expect.stringMatching(/^[a-f0-9]{64}$/)}),
+    }));
+    expect(JSON.stringify(insertOutboundEvent.mock.calls)).not.toContain("elixisagency@gmail.com");
+    expect(hasOutboundPaymentLinkAgreement).not.toHaveBeenCalled();
     expect(insertOutboundEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: "email_sent",
@@ -741,15 +786,33 @@ describe("outbound webhook contracts", () => {
     expect(body).toMatchObject({
       from: "Elixis Elevator Systems <billing@elixis.agency>",
       to: ["elixisagency@gmail.com"],
-      subject: "Elixis Elevator Systems invoice ELV-EMAIL-ROUTE",
+      subject: "Published Pinnacle invoice",
+      html:"<p>Published invoice</p>",
     });
     expect(String(requestInit.body)).not.toContain("resend-test-key");
+    expect(requestInit.headers).toMatchObject({"Idempotency-Key":"retell-email:00000000-0000-4000-8000-000000000004"});
+    const again=await request(createApp()).post("/api/outbound/retell/send-payment-email").set("content-type","application/json").set("x-retell-signature",signature).send(payload);
+    expect(again.body).toMatchObject({sent:true,status:"email_already_processed"});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const originalDelivery = delivery;
+    for (const mismatch of [{recipient_digest:"different-recipient"},{business_id:"different-business"},{invoice_id:"different-invoice"}]) {
+      delivery = {...(originalDelivery as Record<string,unknown> | null),...mismatch};
+      const replay = await request(createApp()).post("/api/outbound/retell/send-payment-email")
+        .set("content-type","application/json").set("x-retell-signature",signature).send(payload);
+      expect(replay.body).toMatchObject({sent:false,status:"email_already_processed",provider_message_id:null});
+    }
+    delivery = originalDelivery;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const unconfirmed=JSON.stringify({...JSON.parse(payload),args:{recipient_confirmed:false,confirmed_email:"elixisagency@gmail.com"}});
+    const blocked=await request(createApp()).post("/api/outbound/retell/send-payment-email").set("content-type","application/json").set("x-retell-signature",await sign(unconfirmed,"retell-email-api-key")).send(unconfirmed);
+    expect(blocked.body).toMatchObject({sent:false,status:"email_confirmation_required"});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     vi.doUnmock("../services/outboundRepository");
     vi.doUnmock("../services/outboundStripe");
     vi.resetModules();
   });
 
-  it("accepts a signed Stripe completion event with exact trusted metadata", async () => {
+  it.each(["local", "quickbooks"])("only accepts signed Stripe payments for a Stripe-authoritative invoice (source %s)", async (sourceProvider) => {
     process.env.NODE_ENV = "test";
     process.env.STRIPE_SECRET_KEY = "sk_test_placeholder";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_route_test";
@@ -765,6 +828,7 @@ describe("outbound webhook contracts", () => {
           customer_id: "00000000-0000-4000-8000-000000000002",
           business_id: "00000000-0000-4000-8000-000000000001",
           invoice_id: "INV-ROUTE",
+          source_provider: sourceProvider,
           amount_due_cents: 25000,
           currency: "usd",
         }),
@@ -810,7 +874,12 @@ describe("outbound webhook contracts", () => {
       .set("content-type", "application/json")
       .set("stripe-signature", signature)
       .send(payload);
-    expect(response.status).toBe(200);
-    expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ externalEventId: "evt_route_test" }));
+    if (sourceProvider === "quickbooks") {
+      expect(response.status).toBe(422);
+      expect(markPaid).not.toHaveBeenCalled();
+    } else {
+      expect(response.status).toBe(200);
+      expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ externalEventId: "evt_route_test" }));
+    }
   });
 });

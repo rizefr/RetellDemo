@@ -323,19 +323,11 @@ For a callback task, Paul receives `call_purpose=callback_followup` and the trus
 
 If any check fails, leave the allowlist empty. The endpoint returns `email_pending_manual`, and Paul must not claim delivery. SMS remains disabled/manual until a separate Retell SMS-capability rollout; `sms_pending_manual` is expected and the CSV/business settings already preserve the future preference.
 
-#### QuickBooks foundation
+#### QuickBooks read-only integration
 
-The current demo uses Stripe for exact-amount Checkout Sessions. A business can choose `stripe`, `quickbooks_read_only`, `quickbooks_payment_link_enabled`, or `manual` as its payment provider in settings. The legacy `quickbooks` value is treated as read-only compatibility. QuickBooks is scaffold-only until a real business authorizes its QuickBooks Online company and a token-storage/payment-link policy is approved.
+The authenticated integration now supports verified managed connection reads, hashed preview/apply, source reconciliation, an overdue review queue, and a protected operational export. Read-only behavior is enforced by the application; the Intuit accounting OAuth scope is broad. Live use remains blocked until the exact company realm and a scoped server credential are verified. Demo data stays separate from accounting imports.
 
-Configured routes:
-
-- `GET /api/outbound/quickbooks/status`
-- `GET /api/outbound/quickbooks/connect`
-- `GET /api/outbound/quickbooks/callback`
-- `POST /api/outbound/quickbooks/disconnect`
-- `POST /api/outbound/quickbooks/invoice-link`
-
-The connect route builds an Intuit OAuth URL with the accounting scope when `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, and `QUICKBOOKS_REDIRECT_URI` are configured. The callback/token exchange and invoice/payment-link creation intentionally return scaffold responses until a client’s QuickBooks credentials, company authorization, token storage policy, and payment-link behavior are approved. Retell must not claim a QuickBooks link was sent unless the provider is connected in payment-enabled mode and the backend returns a real link.
+See [QUICKBOOKS_INTEGRATION_REVIEW.md](QUICKBOOKS_INTEGRATION_REVIEW.md) for routes, migrations, credential boundaries, payment-link validation, and verification. The current user rule is positive balance and more than 14 calendar days past the invoice due date in America/New_York. Inspection date and invoice date remain distinct. Weekly review is planned for Tuesday noon New York, with activation dependent on connection and reminder tests. QuickBooks invoices never silently fall back to Stripe; existing explicit Stripe/demo invoices keep their selected provider.
 
 ## Stripe setup
 

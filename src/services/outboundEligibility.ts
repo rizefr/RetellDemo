@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { isPossiblePhoneNumber } from "libphonenumber-js";
 
 export const OUTBOUND_DEFAULT_TIMEZONE = "America/New_York";
 const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
@@ -21,7 +22,7 @@ export function normalizeOutboundTimezone(timezone?: string | null): string {
 }
 
 export function isValidE164(phoneNumber: string): boolean {
-  return E164_PATTERN.test(phoneNumber);
+  return E164_PATTERN.test(phoneNumber) && isPossiblePhoneNumber(phoneNumber);
 }
 
 export function isWithinOutboundCallingWindow(now: Date, timezone?: string | null): boolean {

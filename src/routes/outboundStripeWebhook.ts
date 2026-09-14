@@ -35,6 +35,10 @@ outboundStripeWebhookRouter.post("/", async (req, res) => {
       return;
     }
     const invoice = await getOutboundInvoiceForPayment(internalInvoiceId);
+    if (invoice.source_provider === "quickbooks" || invoice.payment_provider === "quickbooks") {
+      res.status(422).json({ error: "QuickBooks remains authoritative for this invoice's payment status" });
+      return;
+    }
     const parsed = parseCompletedCheckoutSession(session, {
       amount_due_cents: Number(invoice.amount_due_cents),
       currency: String(invoice.currency),

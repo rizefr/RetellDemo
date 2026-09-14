@@ -186,8 +186,7 @@ describe("inbound collections Conversation Flow", () => {
       type: "subagent",
       tool_ids: expect.arrayContaining([
         "outbound_schedule_followup",
-        "outbound_create_payment_link",
-        "outbound_send_payment_email",
+        "outbound_log_outcome",
       ]),
     });
     expect((collections as { tool_ids?: string[] } | undefined)?.tool_ids).not.toContain(
@@ -196,8 +195,9 @@ describe("inbound collections Conversation Flow", () => {
     expect(JSON.stringify(collections)).toContain(
       "Identity has already been verified by the inbound identity node",
     );
-    expect(JSON.stringify(flow)).not.toContain("skip_response_edge");
-    expect(JSON.stringify(flow)).toContain("end_unverified_inbound_call");
+    expect(firstLookup).not.toHaveProperty("skip_response_edge");
+    expect(secondLookup).not.toHaveProperty("skip_response_edge");
+    expect(flow.nodes?.find((node) => node.id === "inbound_identity_unverified_explanation")).toMatchObject({ type: "end", instruction: { type: "static_text" } });
   });
 
   it("keeps the existing payment, callback, email, SMS-disabled, and terminal tools", () => {
@@ -295,6 +295,7 @@ describe("signed inbound collections routes", () => {
     Object.assign(process.env, originalEnv);
     vi.resetModules();
     vi.restoreAllMocks();
+    vi.doUnmock("../services/outboundQuickBooksIntegration");
   });
 
   it("returns the configured inbound collections agent from the signed phone webhook", async () => {
@@ -349,7 +350,9 @@ describe("signed inbound collections routes", () => {
     });
   });
 
-  it("creates a trusted inbound call attempt only after verified lookup", async () => {
+  it.each(["stripe", "quickbooks"])("creates a trusted inbound attempt with the selected %s invoice provider after verified lookup", async (provider) => {
+    const reverify = vi.fn().mockResolvedValue({});
+    vi.doMock("../services/outboundQuickBooksIntegration", () => ({ reverifyQuickBooksInvoiceBeforeOutreach: reverify }));
     process.env.NODE_ENV = "test";
     process.env.RETELL_API_KEY = "retell-inbound-key";
     const createOutboundCallAttempt = vi.fn().mockResolvedValue({
@@ -372,6 +375,7 @@ describe("signed inbound collections routes", () => {
           invoice: {
             id: "00000000-0000-4000-8000-000000000002",
             invoice_id: "PIN-1001",
+            ...(provider === "quickbooks" ? { source_provider: "quickbooks", source_verified_at: new Date().toISOString() } : {}),
             status: "unpaid",
             inspection_type: "Category 1",
             inspection_date: "2026-07-01",
@@ -433,7 +437,11 @@ describe("signed inbound collections routes", () => {
       inspection_type: "Category 1",
       inspection_date_spoken: "July first, twenty twenty-six",
       amount_due_spoken: "four hundred eighty dollars",
+      payment_provider: provider,
+      quickbooks_connected: String(provider === "quickbooks"),
+      manual_payment_followup_required: "false",
     });
+    expect(reverify).toHaveBeenCalledTimes(provider === "quickbooks" ? 1 : 0);
     expect(createOutboundCallAttempt).toHaveBeenCalledWith(expect.objectContaining({
       direction: "inbound",
       retell_call_id: "call_inbound_verified",

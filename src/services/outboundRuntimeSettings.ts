@@ -36,6 +36,6 @@ export function outboundBusinessRuntimeSettings(business: Record<string, unknown
     emailTestRecipientAllowlist: stringArray(business.email_test_recipient_allowlist, []),
     smsRequested,
     smsProviderReady,
-    smsEffective: smsRequested && smsProviderReady,
+    smsEffective: false, // Sending requires a separately approved provider adapter and consent gates.
   };
 }
