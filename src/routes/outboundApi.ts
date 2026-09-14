@@ -51,7 +51,7 @@ import {
   revokeOutboundDemoCallAuthorization,
   updateOutboundDemoDetails,
 } from "../services/outboundRepository";
-import { createOutboundCheckoutSession } from "../services/outboundStripe";
+import { resolveOutboundPaymentLink } from "../services/outboundPaymentProvider";
 import { getOutboundSetupStatus } from "../services/outboundSetup";
 import { validateOutboundBusinessSettingsPatch } from "../services/outboundBusinessSettings";
 import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
@@ -374,6 +374,8 @@ outboundApiRouter.patch("/demo-details", async (req, res) => {
         status: undefined,
         invoice_id: input.external_invoice_id,
         amount_due_cents: parseDollarsToCents(input.amount_due),
+        inspection_date: input.inspection_date,
+        invoice_date: input.invoice_date,
         original_due_date: normalizedOriginalDueDate,
         service_description: input.service_description,
         inspection_type: input.inspection_type,
@@ -518,7 +520,7 @@ outboundApiRouter.post("/customers/:id/resume", async (req, res) => {
 outboundApiRouter.post("/invoices/:id/create-checkout-session", async (req, res) => {
   try {
     const id = uuidSchema.parse(req.params.id);
-    res.json(await createOutboundCheckoutSession(id, "admin"));
+    res.json(await resolveOutboundPaymentLink(id, "admin"));
   } catch (error) {
     sendError(res, error);
   }

@@ -2,6 +2,27 @@
 
 This map documents both directions of the elevator-inspection collections flow so future debugging can start from the real system shape instead of rediscovering it.
 
+
+## September 14 review overlay (candidate behavior)
+
+Current readback still identifies published outbound V91 and callback V5; the selected unpublished outbound V96 and callback V7 candidates add the branches below. Their shorter shared prompt retained GPT-4.1 with no observed regression in the matched native comparison; see the evidence report for evaluator discrepancies and limits. Publication status and evidence are tracked in `RETELL_PINNACLE_REVIEW_2026-09-14.md`. Earlier simulation totals in this document are historical, not new production verification.
+
+| Entry / decision | Native nodes / tools | Trusted data and outcome | Terminal path |
+| --- | --- | --- | --- |
+| Caller explicitly selects email, including after SMS fallback | `outbound_email_confirmation` | Full `customer_email_spoken_slow` readback, then a separate answer; initial address/yes is not confirmation | Confirmation proceeds; correction/decline has separate route |
+| Second email readback | `outbound_email_phonetic_confirmation` | `customer_email_spoken_phonetic`; no delivery tool in the question node | Separate confirmation required |
+| Different email | `outbound_email_contact_correction`, `log_outcome` | Confirm once; record `contact_update_requested`; never promise automatic send to untrusted address | Normal final-check |
+| Confirmed email | `outbound_email_create_link` → `outbound_email_send_confirmed` | Exact invoice link from backend; required `recipient_confirmed:true`, `confirmed_email` matching trusted preferred/on-file recipient; backend call-attempt idempotency | `sent:true` → date question; failure → honest manual logging/final-check |
+| Declined link or delivered email | Existing main or `outbound_email_delivered_date` / `outbound_email_declined_date` | Ask “When can I expect the payment?”; resolver uses only the caller's new phrase | Persist once, acknowledge returned date once, native End |
+| Explicit date refusal or inability | `outbound_no_payment_date_function` → `outbound_no_payment_date_end` | Omit date phrase; preserve any prior promise; no repeated question or invented date | Native End; success wording only when tool succeeds |
+| Callback time confirmation, even with goodbye | `outbound_callback_confirm_function` → `outbound_callback_result_end` | Call `schedule_callback confirmed:true` using original proposed phrases before any scheduled claim | Native End gated on `scheduled:true` |
+| Unverified callback refusal / second failed lookup | `inbound_identity_unverified_explanation` | No account-bound `log_outcome`, no saved-review claim, no invoice details or third identity question | Static native End |
+| Callback name bundled with AI question | `inbound_identity_ai_answer` → lookup Function | One truthful AI answer, then trusted lookup; no invoice disclosure | Verified continuation or privacy End |
+| Unverified callback explicit opt-out | `inbound_suppress_caller_function`, `suppress_inbound_caller` | Required `explicit_opt_out:true`; signed callback agent/business/calling number only; no account identity needed | `inbound_suppression_result_end`; stop-calling claim only on `suppressed:true` |
+| Ordinary callback goodbye without name | `inbound_identity_polite_end` | No suppression, lookup or invoice disclosure | Static native End |
+
+The signed lookup response includes exact `customer_email_display`, phonetic email, `email_on_file`, per-invoice `payment_provider`, `quickbooks_connected`, and `manual_payment_followup_required` only after verification. Callback response mappings use documented dot paths, such as `verified` and `customer_email_display`, without a JSONPath prefix. Native snapshots now prove these mapped values replace initial defaults; signed backend route tests separately validate the returned fields. The main and final-check nodes cannot send email directly. Main retains the disabled/manual SMS tool; text selection never implies email consent. Wrong-number recovery and explicit opt-out remain distinct.
+
 ## Active Resources
 
 - Product: Elevator Inspection Collections - Paul
@@ -20,9 +41,9 @@ This map documents both directions of the elevator-inspection collections flow s
 - Inbound callback version: V5, inherited voice/runtime settings, eight wrapped tools
 - Receptionist phone: `+18887809963`, separate inbound resource, do not edit from outbound work.
 
-Publishing must target the explicit IDs above. The setup scripts refuse name-based matching and duplicate creation. Production outbound call creation pins the explicit outbound agent to `latest_published`; the signed inbound phone webhook selects the inbound callback agent stored on the business. `/backend` and `/outbound` do not accept an agent architecture override. Retell readback on August 13 showed `+19842075346` inbound assigned to the callback agent and outbound assigned to the inspection agent, both at `latest_published`; `+18887809963` remained assigned only to the separate receptionist agent.
+Publishing must target the explicit IDs above. The setup scripts refuse name-based matching and duplicate creation. Production outbound call creation pins the explicit outbound agent to `latest_published`; the signed inbound phone webhook selects the inbound callback agent stored on the business. `/backend` and `/outbound` do not accept an agent architecture override. Retell readback on September 14 confirmed `+19842075346` inbound assigned to the callback agent and outbound assigned to the inspection agent, both at `latest_published`; `+18887809963` remained assigned only to the separate receptionist agent.
 
-Final provider simulation evidence: outbound V91 passed two transaction/expected-date cases and three repeated opening-stability cases; inbound V5 passed four verified, bundled-date, explicit-opt-out, and unverified privacy-close cases. No simulation placed a telephone call.
+Historical pre-review provider simulation evidence: outbound V91 passed two transaction/expected-date cases and three repeated opening-stability cases; inbound V5 passed four verified, bundled-date, explicit-opt-out, and unverified privacy-close cases. No simulation placed a telephone call.
 
 ```mermaid
 flowchart LR
@@ -150,7 +171,7 @@ For "what invoice", "what inspection", "why am I getting this call", Paul answer
 
 ### Payment Preference
 
-After explicit agreement, Paul asks text or email before creating a payment link, confirms the spoken-safe contact value, then creates/reuses the exact Stripe link only for delivery paths that can use it. For email, he sends through the backend only after on-file email confirmation. After a tool returns `sent:true`, Paul confirms delivery once and asks exactly `When can I expect the payment?`; a concrete answer enters the same trusted expected-payment-date function route described above. For SMS-disabled text, he logs the confirmed request and calls the SMS fallback tool without creating a Stripe payment link first; the expected result is manual/pending, so he does not claim delivery or ask a post-delivery date. If the caller switches from text to email, Paul confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, he logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
+After explicit agreement, Paul asks text or email before creating a payment link, confirms the spoken-safe contact value, then resolves the exact invoice-selected provider link only for delivery paths that can use it. A QuickBooks source never silently substitutes Stripe. For email, he sends through the backend only after on-file email confirmation. After a tool returns `sent:true`, Paul confirms delivery once and asks exactly `When can I expect the payment?`; a concrete answer enters the same trusted expected-payment-date function route described above. For SMS-disabled text, he logs the confirmed request and calls the SMS fallback tool without creating a Stripe payment link first; the expected result is manual/pending, so he does not claim delivery or ask a post-delivery date. If the caller switches from text to email, Paul confirms the email before sending. `create_payment_link` has a native static execution message of `One moment.` so the bridge line is complete even if the model moves directly into tool execution. If payment-link creation fails, he logs `payment_link_issue`, does not call email/SMS delivery tools, and says the team will follow up.
 
 ### Topic Recovery
 
@@ -211,7 +232,7 @@ Explicit do-not-contact, attorney represented, and hostile/abusive outcomes rout
 - SMS is disabled/manual. Text requests log `sms_pending_manual`.
 - QuickBooks is scaffold-only. Paul must not claim a QuickBooks link unless the backend returns a real connected-provider link.
 - Retell exposes ambient call-center sound and bridge-line behavior, not a dedicated keyboard-only tool-wait sound tied to custom-tool execution.
-- Retell Playground mocks do not currently apply custom-tool `response_variables` to Function-node dynamic variables. Native tests inject non-sensitive account speech variables and keep routing assertions tied to the mocked trusted tool result; the deployed custom tool still maps response variables for real calls.
+- The earlier claim that native mocks could not update Function-node variables was incorrect. September 14 controlled comparison demonstrated the cause: stored mappings used unsupported `$.field` paths. Documented dot paths (`field`) correctly update native snapshot variables, including identity, provider flags, link results and resolved payment date. All scoped candidate tools now use dot paths; regression tests reject the old prefix.
 - No broad batch campaign is supported for demos. Presentation Mode uses temporary demo-number authorization and single-call preflight/start only.
 - The business 14-day field controls future eligibility timing but does not start calls automatically. A QuickBooks connection, approved field mapping, dry-run cohort, written campaign authorization, and separate scheduler rollout are still required.
 

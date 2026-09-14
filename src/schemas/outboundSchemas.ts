@@ -170,6 +170,12 @@ export const demoCallRunSchema = startCallSchema.extend({
   demo_call_authorization_id: uuidSchema,
 });
 
+const demoCalendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").refine((value) => {
+  if (Number(value.slice(0, 4)) < 1) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}, "Enter a valid calendar date");
+
 export const demoDetailsPatchSchema = z
   .object({
     business_id: uuidSchema,
@@ -183,6 +189,8 @@ export const demoDetailsPatchSchema = z
     business_name: z.string().min(1).max(200).optional(),
     service_description: z.string().min(1).max(500).optional(),
     amount_due: z.union([z.string(), z.number()]).optional(),
+    inspection_date: demoCalendarDateSchema.nullable().optional(),
+    invoice_date: demoCalendarDateSchema.nullable().optional(),
     original_due_date: z.string().min(8).max(20).optional(),
     external_invoice_id: z.string().min(1).max(100).optional(),
     demo_call_mode: outboundDemoCallModeSchema.optional(),

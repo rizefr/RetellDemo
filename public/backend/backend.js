@@ -7,7 +7,7 @@ const views = {
 };
 const titles = {
   overview: "Overview",
-  outbound: "Outbound Collections",
+  outbound: "Pinnacle collections",
   inbound: "Inbound Receptionist",
   settings: "Settings / Setup",
   docs: "Docs / Runbooks",
@@ -83,6 +83,7 @@ function cell(value) {
 }
 
 function setView(id) {
+  document.body.classList.toggle("collections-active", id === "outbound");
   Object.entries(views).forEach(([viewId, node]) => node.classList.toggle("active", viewId === id));
   document.querySelectorAll("[data-view-button]").forEach((button) => {
     button.classList.toggle("active", button.dataset.viewButton === id);

@@ -60,7 +60,7 @@ describe("unified backend routes", () => {
 
     const legacyOutbound = await request(app).get("/outbound").set("Cookie", loginCookies);
     expect(legacyOutbound.status).toBe(200);
-    expect(legacyOutbound.text).toContain("Customers and invoices");
+    expect(legacyOutbound.text).toContain('id="invoice-rows"');
   });
 
   it("reports session and protected navigation without exposing the admin token", async () => {

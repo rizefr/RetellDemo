@@ -1,5 +1,24 @@
 const statuses = ["unpaid", "payment_link_sent", "paid", "disputed", "manual_review", "cancelled"];
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+function formatMoney(cents, currency = "USD") {
+  const value = Number(cents);
+  if (cents === null || cents === undefined || cents === "" || !Number.isFinite(value)) return "Amount unavailable";
+  try { return new Intl.NumberFormat("en-US", { style: "currency", currency: String(currency).toUpperCase() }).format(value / 100); }
+  catch { return `${(value / 100).toFixed(2)} ${currency}`; }
+}
+function invoiceCurrency(invoice) { return invoice.currency || invoice.currency_code || "USD"; }
+function isQuickBooksInvoice(invoice) { return invoice.source_system === "quickbooks" || invoice.source_provider === "quickbooks" || Boolean(invoice.quickbooks_invoice_id); }
+function scopedInvoices() { const business = selectedBusiness(); return (dashboardState.invoices || []).filter((invoice) => !business || invoice.business_id === business.id || invoice.outbound_businesses?.id === business.id); }
+function inSelectedBusiness(record) {
+  const business = selectedBusiness();
+  if (!business) return true;
+  if (record.business_id) return record.business_id === business.id;
+  if (record.outbound_businesses?.id) return record.outbound_businesses.id === business.id;
+  if (record.invoice_id) return scopedInvoices().some((invoice) => invoice.id === record.invoice_id);
+  return true; // Older unscoped audit events retain their original label.
+}
+let quickbooksState = null;
+let templateState = [];
+let currentWorkspace = "queue";
 const AFTER_HOURS_CONFIRMATION = "I UNDERSTAND THIS IS AN AFTER-HOURS TEST";
 const DEMO_CALL_CONFIRMATION = "I AUTHORIZE THIS DEMO TEST CALL";
 const pageStatus = document.getElementById("page-status");
@@ -23,6 +42,7 @@ async function api(path, options = {}) {
     headers: { "content-type": "application/json", ...(options.headers || {}) },
   });
   const body = await response.json().catch(() => ({}));
+  if (response.status === 401) throw new Error("Your session expired. Reload this page and sign in to continue.");
   if (!response.ok) {
     const validation = Array.isArray(body.errors)
       ? body.errors.map((error) => `Row ${error.row}: ${error.message}`).join(" ")
@@ -91,7 +111,7 @@ const CALL_GATE_MESSAGES = {
   retell_from_number_missing: "Retell from number is missing.",
   email_not_ready: "Email is not ready.",
   sms_disabled: "SMS is disabled/manual.",
-  quickbooks_not_connected: "QuickBooks is not connected; Stripe remains the ready provider.",
+  quickbooks_not_connected: "QuickBooks is not connected. QuickBooks invoices require a verified source connection.",
 };
 
 function friendlyReason(reason) {
@@ -292,6 +312,8 @@ async function renderSettings() {
   document.getElementById("setting-after-hours").checked = Boolean(business.allow_after_hours_test_override);
   document.getElementById("setting-email-enabled").checked = Boolean(business.payment_email_enabled);
   document.getElementById("setting-sms-enabled").checked = Boolean(business.retell_sms_enabled);
+  document.getElementById("workspace-mode").textContent = business.test_mode !== false ? "Demo · controlled test" : "Live configuration";
+  document.getElementById("workspace-mode").className = `state-badge ${business.test_mode !== false ? "info" : "warning"}`;
   try {
     const response = await api(`/api/outbound/businesses/${business.id}/settings`);
     settingsReadiness = response.readiness;
@@ -347,7 +369,7 @@ async function saveSettings() {
 
 function selectedDemoInvoice() {
   const id = document.getElementById("demo-invoice-select")?.value;
-  return (dashboardState.invoices || []).find((invoice) => invoice.id === id) || (dashboardState.invoices || [])[0] || null;
+  return scopedInvoices().find((invoice) => invoice.id === id) || scopedInvoices()[0] || null;
 }
 
 function populateDemoEditor(invoice) {
@@ -362,6 +384,8 @@ function populateDemoEditor(invoice) {
   document.getElementById("demo-business-name").value = business.business_name || "";
   document.getElementById("demo-external-invoice-id").value = invoice.invoice_id || "";
   document.getElementById("demo-amount-due").value = invoice.amount_due_cents === undefined ? "" : (Number(invoice.amount_due_cents) / 100).toFixed(2);
+  document.getElementById("demo-inspection-date").value = invoice.inspection_date || "";
+  document.getElementById("demo-invoice-date").value = invoice.invoice_date || "";
   document.getElementById("demo-original-due-date").value = invoice.original_due_date || "";
   document.getElementById("demo-inspection-type").value = invoice.inspection_type || business.default_inspection_type || "Category 1";
   document.getElementById("demo-expected-payment-date").value = invoice.expected_payment_date || "";
@@ -374,6 +398,9 @@ function populateDemoEditor(invoice) {
   document.getElementById("demo-prior-concern-note").value = invoice.prior_concern_note || "";
   document.getElementById("demo-callback-details").value = invoice.callback_details || "";
   document.getElementById("demo-mailing-instructions").value = selectedBusiness()?.payment_mailing_instructions || "";
+  const sourceLocked = isQuickBooksInvoice(invoice);
+  document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea, #demo-save-details").forEach((control) => { control.disabled = sourceLocked; });
+  if (sourceLocked) setDemoFeedback("This is a synced QuickBooks invoice. Accounting values are protected; select a local demo invoice to edit presentation details.", [{ label: "Synced · protected", tone: "info" }]);
   activeDemoPreflight = null;
   document.getElementById("demo-start-call").disabled = true;
 }
@@ -381,7 +408,7 @@ function populateDemoEditor(invoice) {
 async function renderPresentationPanel() {
   const select = document.getElementById("demo-invoice-select");
   const previous = select.value;
-  select.replaceChildren(...(dashboardState.invoices || []).map((invoice) => {
+  select.replaceChildren(...scopedInvoices().map((invoice) => {
     const customer = invoice.outbound_customers || {};
     return new Option(`${customer.first_name || ""} ${customer.last_name || ""} · ${invoice.invoice_id || "invoice"}`, invoice.id);
   }));
@@ -389,12 +416,9 @@ async function renderPresentationPanel() {
   populateDemoEditor(selectedDemoInvoice());
   const business = selectedBusiness();
   if (!business) return;
-  try {
-    const qb = await api(`/api/outbound/quickbooks/status?business_id=${encodeURIComponent(business.id)}`);
-    document.getElementById("quickbooks-status").textContent = `Payment provider: ${humanize(qb.provider)}. QuickBooks: ${qb.connected ? "connected" : "not connected"}; OAuth configured: ${qb.configured ? "yes" : "no"}; environment: ${qb.environment}. Stripe remains default unless changed.`;
-  } catch (error) {
-    document.getElementById("quickbooks-status").textContent = `QuickBooks status unavailable: ${error.message}`;
-  }
+  await loadSourceStatus();
+  await loadSourceQueue();
+  await loadWeeklyReviewStatus();
 }
 
 async function authorizeDemoNumber() {
@@ -463,6 +487,8 @@ async function saveDemoDetails() {
         inspection_type: document.getElementById("demo-inspection-type").value,
         expected_payment_date: document.getElementById("demo-expected-payment-date").value.trim() || null,
         amount_due: document.getElementById("demo-amount-due").value.trim(),
+        inspection_date: document.getElementById("demo-inspection-date").value || null,
+        invoice_date: document.getElementById("demo-invoice-date").value || null,
         original_due_date: document.getElementById("demo-original-due-date").value.trim(),
         external_invoice_id: document.getElementById("demo-external-invoice-id").value.trim(),
         demo_call_mode: document.getElementById("demo-call-mode").value,
@@ -577,6 +603,8 @@ function afterHoursOverridePayload() {
 }
 
 function invalidateCallGates() {
+  activeDemoPreflight = null;
+  document.getElementById("demo-start-call").disabled = true;
   document.querySelectorAll('[data-action="call"]').forEach((button) => { button.disabled = true; });
   document.querySelectorAll('[data-field="gate"]').forEach((gate) => {
     gate.textContent = "Recheck required";
@@ -630,9 +658,11 @@ function invoiceMatches(invoice) {
   const filter = document.getElementById("invoice-filter").value;
   const query = document.getElementById("invoice-search").value.trim().toLowerCase();
   const customer = invoice.outbound_customers || {};
+  const source = document.getElementById("invoice-source-filter").value;
+  const sourceMatches = source === "all" || (source === "quickbooks" ? isQuickBooksInvoice(invoice) : !isQuickBooksInvoice(invoice));
   const statusMatches = filter === "all" || invoice.status === filter || (filter === "paused" && customer.outreach_paused);
-  const searchText = `${customer.first_name || ""} ${customer.last_name || ""} ${invoice.invoice_id || ""} ${invoice.service_description || ""}`.toLowerCase();
-  return statusMatches && (!query || searchText.includes(query));
+  const searchText = `${customer.first_name || ""} ${customer.last_name || ""} ${customer.account_company_name || ""} ${invoice.invoice_id || ""} ${invoice.service_description || ""}`.toLowerCase();
+  return sourceMatches && statusMatches && (!query || searchText.includes(query));
 }
 
 function renderInvoice(invoice) {
@@ -648,7 +678,7 @@ function renderInvoice(invoice) {
   const email = row.querySelector('[data-action="email"]');
   const callButton = row.querySelector('[data-action="call"]');
   const batchSelect = row.querySelector('[data-action="batch-select"]');
-  const accountInvoices = (dashboardState.invoices || []).filter((item) => item.customer_id === invoice.customer_id);
+  const accountInvoices = scopedInvoices().filter((item) => item.customer_id === invoice.customer_id && invoiceCurrency(item) === invoiceCurrency(invoice));
   const openAccountInvoices = accountInvoices.filter((item) => ["unpaid", "payment_link_sent"].includes(item.status));
   const accountTotal = openAccountInvoices.reduce((sum, item) => sum + Number(item.amount_due_cents || 0), 0);
   const lastPaid = accountInvoices.filter((item) => item.status === "paid" && item.paid_at).sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at)))[0];
@@ -657,7 +687,7 @@ function renderInvoice(invoice) {
   batchSelect.setAttribute("aria-label", `Select invoice ${invoice.invoice_id} for batch dry run`);
   batchSelect.onchange = updateBatchButton;
   row.querySelector('[data-field="customer"]').textContent = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
-  row.querySelector('[data-field="business"]').textContent = business.business_name || "";
+  row.querySelector('[data-field="business"]').textContent = customer.account_company_name || business.business_name || "";
   const contactContext = [
     customer.payment_contact_preference && customer.payment_contact_preference !== "none" ? `Prefers ${humanize(customer.payment_contact_preference)}` : "",
     customer.preferred_email ? `Preferred email: ${customer.preferred_email}` : "",
@@ -671,23 +701,27 @@ function renderInvoice(invoice) {
   email.value = customer.email || "";
   for (const input of [phone, email]) input.oninput = () => { callButton.disabled = true; row.querySelector('[data-field="gate"]').textContent = "Save changes, then recheck"; };
   row.querySelector('[data-field="invoice"]').textContent = invoice.invoice_id;
-  row.querySelector('[data-field="ids"]').textContent = `customer ${customer.id}\ninvoice ${invoice.id}\nbusiness ${business.id}`;
-  row.querySelector('[data-field="service"]').textContent = `${invoice.service_description} · due ${formatDate(invoice.original_due_date)}`;
-  row.querySelector('[data-field="amount"]').textContent = money.format(invoice.amount_due_cents / 100);
-  row.querySelector('[data-field="amount"]').title = `Account: ${openAccountInvoices.length} open invoice(s), ${money.format(accountTotal / 100)} total due. Last payment: ${lastPaid ? formatDate(lastPaid.paid_at) : formatDate(customer.imported_last_payment_date)}.`;
+  row.querySelector('[data-field="source"]').textContent = isQuickBooksInvoice(invoice) ? "QuickBooks · synced" : "Local / demo";
+  row.querySelector('[data-field="ids"]').textContent = `customer ${customer.id}\ninvoice ${invoice.id}\nbusiness ${business.id}${isQuickBooksInvoice(invoice) ? `\nQuickBooks realm ${invoice.source_realm_id || "unverified"}\nQuickBooks invoice ${invoice.provider_invoice_id || "unverified"}\nBalance verified ${formatDate(invoice.source_verified_at)}\nInvoice date ${formatDate(invoice.invoice_date)}\nOriginal total ${formatMoney(invoice.original_total_cents, invoiceCurrency(invoice))}` : ""}`;
+  row.querySelector('[data-field="service"]').textContent = `${invoice.service_description || "Service not supplied"} · invoice due ${formatDate(invoice.original_due_date)}${invoice.inspection_date ? ` · inspection ${formatDate(invoice.inspection_date)}` : ""}`;
+  row.querySelector('[data-field="amount"]').textContent = formatMoney(invoice.amount_due_cents, invoiceCurrency(invoice));
+  row.querySelector('[data-field="amount"]').title = `Account: ${openAccountInvoices.length} open invoice(s), ${formatMoney(accountTotal, invoiceCurrency(invoice))} total due. Last payment: ${lastPaid ? formatDate(lastPaid.paid_at) : formatDate(customer.imported_last_payment_date)}.`;
   row.querySelector('[data-field="payment"]').textContent = invoice.status === "paid" ? "Payment: paid" : `Payment: ${latest(paymentLinks)?.status || "no session"}`;
   row.querySelector('[data-field="last-call"]').textContent = lastCall ? `${humanize(lastCall.outcome || lastCall.status)}${lastCall.summary ? ` · ${lastCall.summary}` : ""}` : "No calls";
   row.querySelector('[data-field="next-followup"]').textContent = `Next: ${nextTask ? formatDate(nextTask.scheduled_for) : "none"}`;
-  row.querySelector('[data-field="paused"]').textContent = customer.outreach_paused ? "Outreach paused" : "Outreach active";
+  row.querySelector('[data-field="paused"]').textContent = customer.outreach_paused ? "Outreach paused" : "Outreach requires preflight";
+  row.querySelector('[data-field="expected-payment"]').textContent = invoice.expected_payment_date ? `Payment expected: ${formatDate(invoice.expected_payment_date)}` : "Payment date not recorded";
   const statusSelect = row.querySelector('[data-action="status"]');
   statuses.forEach((status) => statusSelect.add(new Option(humanize(status), status, false, status === invoice.status)));
+  statusSelect.disabled = isQuickBooksInvoice(invoice);
+  statusSelect.setAttribute("aria-label", `Payment status for ${invoice.invoice_id}`);
   const notes = row.querySelector('[data-action="notes"]');
   notes.value = invoice.notes || customer.notes || "";
 
   row.querySelector('[data-action="save"]').onclick = async () => {
     try {
       await api(`/api/outbound/customers/${customer.id}`, { method: "PATCH", body: JSON.stringify({ phone_number: phone.value.trim(), email: email.value.trim() }) });
-      await api(`/api/outbound/invoices/${invoice.id}`, { method: "PATCH", body: JSON.stringify({ status: statusSelect.value, notes: notes.value }) });
+      await api(`/api/outbound/invoices/${invoice.id}`, { method: "PATCH", body: JSON.stringify({ ...(isQuickBooksInvoice(invoice) ? {} : { status: statusSelect.value }), notes: notes.value }) });
       setStatus(`Saved customer and invoice ${invoice.invoice_id}.`);
       await refreshAll();
     } catch (error) { setStatus(error.message, true); }
@@ -696,7 +730,7 @@ function renderInvoice(invoice) {
     try {
       const result = await api(`/api/outbound/invoices/${invoice.id}/create-checkout-session`, { method: "POST", body: "{}" });
       window.open(result.payment_link.url, "_blank", "noopener,noreferrer");
-      setStatus(result.reused ? "Reused the active Checkout Session." : "Created an exact-amount Checkout Session.");
+      setStatus(isQuickBooksInvoice(invoice) ? "Opened the verified QuickBooks invoice payment link." : result.reused ? "Reused the active Stripe Checkout Session." : "Created an exact-amount Stripe Checkout Session.");
       await refreshAll();
     } catch (error) { setStatus(error.message, true); }
   };
@@ -724,14 +758,15 @@ function renderInvoice(invoice) {
 }
 
 function renderInvoices() {
-  const invoices = dashboardState.invoices.filter(invoiceMatches);
+  const invoices = scopedInvoices().filter(invoiceMatches);
   document.getElementById("invoice-rows").replaceChildren(...invoices.map(renderInvoice));
   document.getElementById("invoice-empty").hidden = invoices.length > 0;
+  document.getElementById("invoice-result-count").textContent = `${invoices.length} of ${scopedInvoices().length} invoices shown`;
   updateBatchButton();
 }
 
 function renderCallbacks() {
-  const tasks = (dashboardState.followups || []).filter((task) => task.task_type === "callback");
+  const tasks = (dashboardState.followups || []).filter((task) => task.task_type === "callback" && inSelectedBusiness(task));
   const rows = tasks.map((task) => {
     const row = document.createElement("tr");
     const customer = task.outbound_customers || {};
@@ -813,7 +848,7 @@ function renderCallbacks() {
 }
 
 function renderCalls() {
-  const calls = dashboardState.calls || [];
+  const calls = (dashboardState.calls || []).filter(inSelectedBusiness);
   const rows = calls.map((call) => {
     const row = document.createElement("tr");
     const customer = call.outbound_customers || {};
@@ -869,7 +904,7 @@ function renderCalls() {
 }
 
 function renderPayments() {
-  const links = dashboardState.payment_links || [];
+  const links = (dashboardState.payment_links || []).filter(inSelectedBusiness);
   const rows = links.map((link) => {
     const row = document.createElement("tr");
     const customer = link.outbound_customers || {};
@@ -882,7 +917,7 @@ function renderPayments() {
     name.className = "subtext";
     name.textContent = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
     cells[1].append(label, name);
-    cells[2].textContent = money.format(link.amount_cents / 100);
+    cells[2].textContent = formatMoney(link.amount_cents, link.currency || invoiceCurrency(invoice));
     cells[3].append(badge(link.status, link.status === "paid" ? "success" : link.status === "open" ? "info" : "neutral"));
     cells[4].textContent = link.sent_via ? humanize(link.sent_via) : "Not delivered";
     cells[5].textContent = link.paid_at ? `Paid ${formatDate(link.paid_at)}` : link.expires_at ? `Expires ${formatDate(link.expires_at)}` : "No expiry";
@@ -921,7 +956,7 @@ function eventMessage(event) {
 
 function renderEvents() {
   const filter = document.getElementById("event-filter").value;
-  const events = (dashboardState.events || []).filter((event) => filter === "all" || event.source === filter);
+  const events = (dashboardState.events || []).filter((event) => inSelectedBusiness(event) && (filter === "all" || event.source === filter));
   const rows = events.map((event) => {
     const row = document.createElement("tr");
     const invoice = event.outbound_invoices || {};
@@ -950,9 +985,12 @@ async function loadDashboard(silent = false) {
   try {
     if (!silent) setStatus("Refreshing dashboard...");
     dashboardState = await api("/api/outbound/dashboard");
-    renderInvoices();
     await renderSettings();
+    renderInvoices();
+    renderQueueOverview();
     await renderPresentationPanel();
+    await loadTemplates();
+    await loadSmsReadiness();
     renderCallbacks();
     renderCalls();
     renderPayments();
@@ -961,12 +999,16 @@ async function loadDashboard(silent = false) {
     configureActiveCallPolling();
     if (!silent) setStatus(`${dashboardState.invoices.length} invoices, ${dashboardState.calls.length} calls, and ${dashboardState.payment_links.length} payment links loaded.`);
   } catch (error) {
-    setStatus(error.message, true);
+    invalidateCallGates();
+    setStatus(`Dashboard refresh failed. Previously displayed records may be stale. ${error.message}`, true);
   }
 }
 
 async function refreshAll() {
-  await Promise.all([loadSetupStatus(), loadDashboard()]);
+  const button = document.getElementById("refresh-all");
+  button.disabled = true;
+  try { await Promise.all([loadSetupStatus(), loadDashboard()]); }
+  finally { button.disabled = false; }
 }
 
 async function importCsv(dryRun) {
@@ -1013,7 +1055,18 @@ async function importBusinessCsv(dryRun) {
 document.getElementById("csv-file").onchange = () => { validatedCsvText = ""; commitImportButton.disabled = true; importResult.textContent = "Validate the selected file before importing."; };
 document.getElementById("refresh-all").onclick = refreshAll;
 document.getElementById("refresh-setup").onclick = loadSetupStatus;
-document.getElementById("settings-business").onchange = renderSettings;
+document.getElementById("settings-business").onchange = async () => {
+  activeDemoAuthorization = null;
+  activeDemoPreflight = null;
+  document.getElementById("demo-auth-status").textContent = "No demo number authorized";
+  document.getElementById("demo-preflight").disabled = true;
+  document.getElementById("demo-start-call").disabled = true;
+  await renderSettings();
+  renderInvoices(); renderQueueOverview(); renderCallbacks(); renderCalls(); renderPayments(); renderEvents();
+  document.getElementById("source-sync-result").replaceChildren();
+  document.getElementById("template-preview").replaceChildren();
+  await renderPresentationPanel(); await loadTemplates(); await loadSmsReadiness();
+};
 document.getElementById("save-settings").onclick = saveSettings;
 document.getElementById("demo-invoice-select").onchange = () => populateDemoEditor(selectedDemoInvoice());
 document.getElementById("demo-call-mode").onchange = () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; };
@@ -1023,6 +1076,7 @@ document.getElementById("demo-preflight").onclick = demoPreflight;
 document.getElementById("demo-start-call").onclick = startDemoCall;
 document.getElementById("invoice-filter").onchange = renderInvoices;
 document.getElementById("invoice-search").oninput = renderInvoices;
+document.getElementById("invoice-source-filter").onchange = renderInvoices;
 document.getElementById("event-filter").onchange = renderEvents;
 document.getElementById("after-hours-ack").onchange = invalidateCallGates;
 document.getElementById("after-hours-confirmation").oninput = invalidateCallGates;
@@ -1061,4 +1115,300 @@ batchDryRunButton.onclick = async () => {
 };
 document.getElementById("logout").onclick = async () => { await api("/api/outbound/auth/logout", { method: "POST", body: "{}" }); location.reload(); };
 
+function el(tag, content, className) {
+  const node = document.createElement(tag);
+  if (content !== undefined && content !== null) node.textContent = String(content);
+  if (className) node.className = className;
+  return node;
+}
+
+function setWorkspace(name, updateLocation = true) {
+  const labels = { queue: "Invoice queue", presentation: "Presentation mode", connections: "Connections & sync", templates: "Email & SMS", activity: "Activity & payments", settings: "Business settings" };
+  currentWorkspace = Object.hasOwn(labels, name) ? name : "queue";
+  document.querySelectorAll("[data-workspace]").forEach((panel) => { panel.hidden = panel.dataset.workspace !== currentWorkspace; });
+  document.querySelectorAll("[data-workspace-link]").forEach((button) => {
+    const active = button.dataset.workspaceLink === currentWorkspace;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
+  });
+  document.getElementById("workspace-title").textContent = labels[currentWorkspace];
+  if (updateLocation) history.replaceState(null, "", `#${currentWorkspace}`);
+}
+
+function renderQueueOverview() {
+  const invoices = scopedInvoices();
+  const totals = new Map();
+  for (const invoice of invoices.filter((item) => ["unpaid", "payment_link_sent"].includes(item.status))) {
+    const currency = invoiceCurrency(invoice);
+    totals.set(currency, (totals.get(currency) || 0) + Number(invoice.amount_due_cents || 0));
+  }
+  const metrics = document.getElementById("queue-metrics");
+  metrics.replaceChildren();
+  const items = [
+    ["Outstanding balance", totals.size ? [...totals].map(([currency, cents]) => formatMoney(cents, currency)) : ["—"], "Stored balance · rechecked before calls"],
+    ["Invoices to review", String(invoices.length), "Review list · not a call-ready count"],
+    ["Payment dates recorded", String(invoices.filter((invoice) => invoice.expected_payment_date).length), "Customer’s expected payment date"],
+    ["Paused or needs review", String(invoices.filter((invoice) => invoice.outbound_customers?.outreach_paused || ["disputed", "manual_review"].includes(invoice.status)).length), "Resolve the reason before outreach"],
+  ];
+  items.forEach(([label, value, detail]) => {
+    const card = el("article", null, "metric-card");
+    const number = el("strong");
+    if (Array.isArray(value)) value.forEach((amount) => number.append(el("span", amount, "currency-total"))); else number.textContent = value;
+    card.append(el("span", label), number, el("small", detail)); metrics.append(card);
+  });
+  document.getElementById("nav-invoice-count").textContent = String(invoices.length);
+}
+
+function describeFields(container, fields) {
+  const list = el("dl", null, "source-fields");
+  fields.forEach(([name, value]) => { const cell = el("div"); cell.append(el("dt", name), el("dd", value ?? "Not verified")); list.append(cell); });
+  container.append(list);
+}
+
+async function loadSourceStatus() {
+  const business = selectedBusiness();
+  if (!business) return;
+  const detail = document.getElementById("source-connection-detail");
+  const controls = document.getElementById("source-sync-controls");
+  controls.replaceChildren();
+  try {
+    const qb = await api(`/api/outbound/integrations/quickbooks/status?business_id=${encodeURIComponent(business.id)}`);
+    if (selectedBusiness()?.id !== business.id) return;
+    quickbooksState = qb;
+    detail.className = "";
+    const headline = qb.connected ? `${qb.company_name || "Company not verified"} · ${qb.environment || "Environment not verified"}` : "QuickBooks connection requires verification";
+    detail.replaceChildren(el("strong", headline));
+    describeFields(detail, [
+      ["Source company", qb.company_name], ["Company / realm ID", qb.realm_id],
+      ["Application access", "Reads only · no accounting writes"], ["Permission scope", qb.scope_description || "Scope not verified"],
+      ["Last successful sync", qb.last_successful_sync_at ? formatDate(qb.last_successful_sync_at) : "No successful sync recorded"],
+      ["Data freshness", qb.stale ? "Stale · refresh before review" : qb.last_successful_sync_at ? "Current at last sync" : "Unverified"],
+    ]);
+    if (qb.blockers?.length) detail.append(el("p", `Needs attention: ${qb.blockers.map((item) => typeof item === "string" ? humanize(item) : item.message || item.reason || "Verification required").join(" · ")}`));
+    const notice = document.getElementById("queue-source-notice");
+    notice.textContent = qb.connected && qb.last_successful_sync_at
+      ? `QuickBooks: ${qb.company_name || qb.realm_id}. Last successful sync ${formatDate(qb.last_successful_sync_at)}.${qb.stale ? " Data is stale. Refresh before review." : " The backend rechecks the balance immediately before a manual call."}`
+      : "QuickBooks has no verified successful sync here. Local/demo invoices are labeled below; they are not verified accounting balances.";
+    notice.className = `setup-summary ${qb.connected && qb.last_successful_sync_at && !qb.stale ? "ready" : "warning"}`;
+    document.getElementById("quickbooks-status").textContent = `QuickBooks: ${qb.connected ? headline : "not verified"}. Payment provider is selected per invoice; a QuickBooks invoice is never automatically moved to Stripe.`;
+    const actions = el("div", null, "sync-actions");
+    const preview = el("button", "Preview QuickBooks import");
+    preview.disabled = !qb.connected;
+    preview.onclick = previewSourceSync;
+    const report = el("a", "Download operational report", "download-link");
+    report.href = `/api/outbound/integrations/quickbooks/report.csv?business_id=${encodeURIComponent(business.id)}`;
+    actions.append(preview, report); controls.append(actions);
+
+  } catch (error) {
+    if (selectedBusiness()?.id !== business.id) return;
+    quickbooksState = null;
+    detail.textContent = `Connection status unavailable: ${error.message}`;
+    detail.className = "setup-summary warning";
+    document.getElementById("quickbooks-status").textContent = "QuickBooks source could not be verified. No accounting import is available.";
+    document.getElementById("queue-source-notice").textContent = `Accounting verification unavailable. Local dashboard data may be stale. ${error.message}`;
+    document.getElementById("queue-source-notice").className = "setup-summary warning";
+  }
+}
+
+async function loadWeeklyReviewStatus() {
+  const business = selectedBusiness();
+  if (!business) return;
+  const output = document.getElementById("weekly-review-detail");
+  output.replaceChildren(el("p", "Loading weekly review settings…"));
+  try {
+    const response = await api(`/api/outbound/integrations/review-runs/status?business_id=${encodeURIComponent(business.id)}`);
+    if (selectedBusiness()?.id !== business.id) return;
+    output.replaceChildren();
+    const settings = response.settings || {};
+    const review = response.review || {};
+    const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][settings.weekday];
+    const hour = Number(settings.hour);
+    const schedule = weekday && Number.isInteger(hour) && hour >= 0 && hour < 24 ? `${weekday} at ${hour % 12 || 12}:00 ${hour >= 12 ? "PM" : "AM"}` : "Not configured";
+    output.append(el("h3", settings.enabled ? "Weekly review · active" : "Weekly review · activation pending"));
+    describeFields(output, [["Schedule", schedule], ["Timezone", settings.timezone], ["Review reminder", settings.reminder_recipient], ["Source stage", humanize(review.stage || settings.stage || "unverified")], ["Last successful sync", formatDate(review.last_successful_sync_at)], ["Staged snapshot", formatDate(review.staged_snapshot_at || settings.source_snapshot_at)], ["Next review", formatDate(response.calendar?.due_at)]]);
+    output.append(el("p", "Weekly refresh prepares the review queue only. Customer calls still require a fresh balance check and manual start."));
+    if (review.connection_blockers?.length) output.append(el("p", `Needs attention: ${review.connection_blockers.map(humanize).join(" · ")}`, "error"));
+    const spreadsheetUrl = review.spreadsheet_url || settings.spreadsheet_url;
+    if (spreadsheetUrl) {
+      try { const url = new URL(spreadsheetUrl); if (url.protocol === "https:" && url.hostname === "docs.google.com" && !url.username && !url.password) { const link = el("a", "Open private overdue-invoice sheet", "download-link"); link.href = url.href; link.target = "_blank"; link.rel = "noopener noreferrer"; output.append(link); } } catch { /* Invalid source links remain hidden. */ }
+    }
+    if (response.runs?.length) output.append(details("Recent review runs", JSON.stringify(response.runs, null, 2)));
+  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("p", `Weekly review status unavailable: ${error.message}`, "error")); }
+}
+
+async function previewSourceSync() {
+  const business = selectedBusiness();
+  if (!business) return;
+  const output = document.getElementById("source-sync-result");
+  output.replaceChildren(el("p", "Reading QuickBooks and validating the proposed import…"));
+  try {
+    const preview = await api("/api/outbound/integrations/quickbooks/preview", { method: "POST", body: JSON.stringify({ business_id: business.id }) });
+    if (selectedBusiness()?.id !== business.id) return;
+    output.replaceChildren();
+    const result = el("div", null, "sync-result");
+    result.append(el("h3", "Import preview · no records applied yet"));
+    result.append(el("p", `Expires ${formatDate(preview.expires_at)}. Review the counts, currency totals, mappings, and exclusions before applying.`));
+    result.append(details("Counts, totals and exclusions", JSON.stringify({ counts: preview.counts, totals_by_currency: preview.totals_by_currency, exclusions: preview.exclusions }, null, 2)));
+    result.append(details("Proposed invoice mappings", JSON.stringify(preview.rows || [], null, 2)));
+    const apply = el("button", "Apply reviewed import");
+    apply.disabled = preview.status !== "preview" || !preview.id || !preview.hash;
+    apply.onclick = async () => {
+      if (selectedBusiness()?.id !== business.id) return setStatus("The selected business changed. Create a new preview.", true);
+      apply.disabled = true;
+      try {
+        const applied = await api("/api/outbound/integrations/quickbooks/apply", { method: "POST", body: JSON.stringify({ business_id: business.id, preview_id: preview.id, preview_hash: preview.hash }) });
+        output.replaceChildren(el("div", "Import applied to the review database. QuickBooks accounting records were not changed.", "setup-summary ready"), details("Import result", JSON.stringify(applied, null, 2)));
+        await refreshAll();
+      } catch (error) { output.append(el("p", error.message, "error")); }
+    };
+    result.append(apply); output.append(result);
+  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("div", `Import preview failed: ${error.message}`, "setup-summary error")); }
+}
+
+function templateField(label, id, value = "", multiline = false) {
+  const wrapper = el("label", label, multiline ? "wide" : "");
+  const input = el(multiline ? "textarea" : "input");
+  input.id = id; input.value = value;
+  if (multiline) input.rows = 3;
+  wrapper.append(input); return wrapper;
+}
+
+async function loadTemplates() {
+  const business = selectedBusiness();
+  if (!business) return;
+  const controls = document.getElementById("template-controls");
+  const status = document.getElementById("template-status");
+  try {
+    const response = await api(`/api/outbound/email/templates?business_id=${encodeURIComponent(business.id)}`);
+    if (selectedBusiness()?.id !== business.id) return;
+    templateState = response.templates || [];
+    const previous = document.getElementById("email-template-select")?.value;
+    controls.replaceChildren();
+    const form = el("div", null, "template-form");
+    const selectLabel = el("label", "Template / version");
+    const select = el("select"); select.id = "email-template-select";
+    templateState.forEach((template) => select.add(new Option(`${template.content?.name || "Invoice reminder"} · v${template.version} · ${template.status}${template.is_default ? " · default" : ""}`, template.id)));
+    if (templateState.some((template) => template.id === previous)) select.value = previous;
+    else if (response.default_template_id) select.value = response.default_template_id;
+    selectLabel.append(select);
+    const invoiceLabel = el("label", "Preview invoice");
+    const invoiceSelect = el("select"); invoiceSelect.id = "email-preview-invoice";
+    scopedInvoices().forEach((invoice) => invoiceSelect.add(new Option(`${invoice.invoice_id} · ${formatMoney(invoice.amount_due_cents, invoiceCurrency(invoice))}`, invoice.id)));
+    invoiceLabel.append(invoiceSelect);
+    const preview = el("button", "Preview email", "secondary"); preview.disabled = !templateState.length || !scopedInvoices().length; preview.onclick = previewEmailTemplate;
+    const publish = el("button", "Publish selected as default", "secondary");
+    publish.disabled = !templateState.length;
+    publish.onclick = async () => {
+      if (!select.value) return;
+      publish.disabled = true;
+      try { await api(`/api/outbound/email/templates/${encodeURIComponent(select.value)}/publish`, { method: "POST", body: JSON.stringify({ business_id: business.id, make_default: true }) }); setStatus("Template published and saved as this business’s default."); await loadTemplates(); }
+      catch (error) { status.textContent = error.message; } finally { publish.disabled = false; }
+    };
+    form.append(selectLabel, invoiceLabel, preview, publish); controls.append(form);
+    const editor = el("details", null, "template-editor"); editor.append(el("summary", "Create a draft version"));
+    const draft = el("div", null, "template-form");
+    const content = templateState.find((template) => template.id === select.value)?.content || response.starter || {};
+    draft.append(templateField("Template name", "template-draft-name", content.name || "Pinnacle invoice follow-up"), templateField("Subject", "template-draft-subject", content.subject || ""), templateField("Preheader", "template-draft-preheader", content.preheader || ""), templateField("Introduction", "template-draft-introduction", content.introduction || "", true), templateField("Closing", "template-draft-closing", content.closing || "", true));
+    const save = el("button", "Save new draft");
+    save.onclick = async () => {
+      save.disabled = true;
+      const values = Object.fromEntries(["name", "subject", "preheader", "introduction", "closing"].map((key) => [key, document.getElementById(`template-draft-${key}`).value.trim()]));
+      try { await api("/api/outbound/email/templates", { method: "POST", body: JSON.stringify({ business_id: business.id, content: values }) }); setStatus("New draft saved. Preview it before publishing."); await loadTemplates(); }
+      catch (error) { status.textContent = error.message; } finally { save.disabled = false; }
+    };
+    draft.append(save); editor.append(draft); controls.append(editor);
+    status.textContent = templateState.length ? `${templateState.length} stored template version(s). A preview does not send an email.` : "No stored templates yet. Create a draft to begin.";
+    status.className = "setup-summary";
+    select.onchange = () => { document.getElementById("template-preview").replaceChildren(); const template = templateState.find((item) => item.id === select.value); for (const key of ["name", "subject", "preheader", "introduction", "closing"]) document.getElementById(`template-draft-${key}`).value = template?.content?.[key] || ""; };
+    invoiceSelect.onchange = () => document.getElementById("template-preview").replaceChildren();
+  } catch (error) { if (selectedBusiness()?.id !== business.id) return; controls.replaceChildren(); status.textContent = `Template service unavailable: ${error.message}`; status.className = "setup-summary warning"; }
+}
+
+async function previewEmailTemplate() {
+  const business = selectedBusiness();
+  const templateId = document.getElementById("email-template-select")?.value;
+  const invoiceId = document.getElementById("email-preview-invoice")?.value;
+  if (!business || !templateId || !invoiceId) return;
+  const output = document.getElementById("template-preview");
+  output.replaceChildren(el("p", "Rendering the selected invoice with stored template values…"));
+  try {
+    const preview = await api(`/api/outbound/email/preview?${new URLSearchParams({ business_id: business.id, invoice_id: invoiceId, template_id: templateId })}`);
+    if (selectedBusiness()?.id !== business.id || document.getElementById("email-template-select")?.value !== templateId || document.getElementById("email-preview-invoice")?.value !== invoiceId) return;
+    output.replaceChildren();
+    describeFields(output, [["Recipient", preview.recipient], ["From", preview.from], ["Reply to", preview.reply_to], ["Payment provider", preview.payment_provider], ["Payment link", preview.payment_link_available ? "Verified link available" : "Unavailable · manual review"], ["Template version", preview.template_version]]);
+    output.append(el("h3", preview.subject), el("p", preview.preheader));
+    output.append(el("div", preview.send_ready ? "Backend preview is ready. No email has been sent." : `Sending blocked: ${(preview.block_reasons || []).map(humanize).join(" · ") || "Review sender, recipient and payment link"}. No email has been sent.`, `setup-summary ${preview.send_ready ? "ready" : "warning"}`));
+    const frame = el("iframe"); frame.className = "template-preview-frame"; frame.title = "Email template preview"; frame.setAttribute("sandbox", ""); frame.setAttribute("referrerpolicy", "no-referrer"); frame.srcdoc = preview.html; output.append(frame);
+    output.append(details("Plain-text version", preview.text));
+  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("div", `Preview failed: ${error.message}`, "setup-summary error")); }
+}
+
+async function loadSourceQueue() {
+  const business = selectedBusiness();
+  if (!business) return;
+  const content = document.getElementById("source-queue-content");
+  const count = document.getElementById("source-queue-count");
+  try {
+    const queue = await api(`/api/outbound/integrations/quickbooks/queue?business_id=${encodeURIComponent(business.id)}`);
+    if (selectedBusiness()?.id !== business.id) return;
+    const invoices = queue.invoices || [];
+    count.textContent = `${queue.summary?.eligible_count ?? 0} pass source checks · ${queue.summary?.invoice_count ?? invoices.length} source records`;
+    content.replaceChildren();
+    if (!invoices.length) { content.className = "empty-state"; content.textContent = "No QuickBooks source records are stored for this business. Review the company connection and import preview in Connections & sync."; return; }
+    content.className = "";
+    const wrap = el("div", null, "table-wrap"); const table = el("table", null, "compact-table");
+    const head = el("thead"); const heading = el("tr");
+    ["Account / invoice", "Balance / dates", "Contact", "Source checks", "Next action"].forEach(label => heading.append(el("th", label)));
+    head.append(heading); const body = el("tbody");
+    invoices.forEach(invoice => {
+      const row = el("tr"); const cells = Array.from({ length: 5 }, () => el("td"));
+      cells[0].append(el("strong", invoice.customer_account || "Account not mapped"), el("span", invoice.invoice_id, "subtext"), el("span", `QuickBooks · ${invoice.source_realm_id}`, "subtext"));
+      cells[1].append(el("strong", formatMoney(invoice.source_balance_cents, invoice.currency)), el("span", `Original ${formatMoney(invoice.original_total_cents, invoice.currency)}`, "subtext"), el("span", `Due ${formatDate(invoice.original_due_date)} · ${invoice.days_overdue ?? "Unknown"} days overdue`, "subtext"), el("span", `Invoice ${formatDate(invoice.invoice_date)} · inspection ${formatDate(invoice.inspection_date)}`, "subtext"));
+      cells[2].append(el("span", invoice.email || "No email"), el("span", invoice.phone_number || "No phone", "subtext"));
+      cells[3].append(badge(invoice.eligible ? "Source checks pass" : "Needs review", invoice.eligible ? "success" : "warning"), el("span", (invoice.block_reasons || []).map(humanize).join(" · ") || "Fresh call preflight required", "subtext"), el("span", `Verified ${formatDate(invoice.source_verified_at)}`, "subtext"), el("span", invoice.payment_link_available ? "Payment link available" : "Payment link needs manual review", "subtext"));
+      cells[4].append(el("span", humanize(invoice.next_action || "manual_review")), el("span", `Last contact ${formatDate(invoice.last_contact)}`, "subtext"), el("span", invoice.promised_payment_date ? `Expected payment ${formatDate(invoice.promised_payment_date)}` : "No payment date recorded", "subtext"));
+      row.append(...cells); body.append(row);
+    });
+    table.append(head, body); wrap.append(table); content.append(wrap);
+    if (queue.customers?.length) {
+      const summary = el("details"); summary.append(el("summary", "Customer totals · separated by currency"));
+      queue.customers.forEach(customer => summary.append(el("p", `${customer.customer_account} · ${customer.invoice_count} invoice(s) · ${formatMoney(customer.remaining_balance_minor, customer.currency)} remaining · ${formatMoney(customer.overdue_balance_minor, customer.currency)} overdue`)));
+      content.append(summary);
+    }
+  } catch (error) { if (selectedBusiness()?.id !== business.id) return; count.textContent = "Source review unavailable"; content.className = "setup-summary warning"; content.textContent = `No source readiness can be confirmed. ${error.message}`; }
+}
+
+async function loadSmsReadiness() {
+  const business = selectedBusiness(); if (!business) return;
+  const output = document.getElementById("sms-readiness-detail");
+  try {
+    const readiness = await api(`/api/outbound/sms/readiness?business_id=${encodeURIComponent(business.id)}`);
+    if (selectedBusiness()?.id !== business.id) return;
+    output.replaceChildren();
+    describeFields(output, [["Campaign observation", `${humanize(readiness.campaign?.status)} · ${readiness.campaign?.observed_on || "date unavailable"}`], ["Collections number", readiness.campaign?.phone_number], ["Sending", "Disabled · requires explicit activation"], ["Consent evidence records", readiness.consent_record_count ?? "Storage unavailable"], ["Suppressed recipients", readiness.suppression_count ?? "Storage unavailable"], ["Provider events", readiness.provider_webhook_connected ? "Connected" : "Not connected · no live event verification"]]);
+    output.append(el("p", readiness.consent_rule));
+    const checklist = el("ul", null, "check-list"); (readiness.activation_checklist || []).forEach(item => checklist.append(el("li", item))); output.append(checklist);
+    output.append(details("Prepared SMS templates · no messages sent", Object.entries(readiness.templates || {}).map(([name, value]) => `${humanize(name)}: ${value}`).join("\n\n")));
+  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.textContent = `Sending is disabled. Readiness could not be verified: ${error.message}`; }
+}
+
+function initializeWorkspace() {
+  document.body.classList.toggle("embedded-workspace", new URLSearchParams(location.search).get("embedded") === "1");
+  document.querySelectorAll("[data-workspace-link]").forEach((button) => { button.onclick = () => setWorkspace(button.dataset.workspaceLink); });
+  setWorkspace(location.hash.slice(1), false);
+  window.addEventListener("hashchange", () => setWorkspace(location.hash.slice(1), false));
+  document.getElementById("source-refresh").onclick = async () => { await loadSourceStatus(); await loadSourceQueue(); await loadWeeklyReviewStatus(); };
+  document.getElementById("template-refresh").onclick = loadTemplates;
+  setInterval(() => {
+    if (activeDemoAuthorization && demoAuthorizationExpired()) {
+      activeDemoPreflight = null;
+      document.getElementById("demo-start-call").disabled = true;
+      document.getElementById("demo-preflight").disabled = true;
+      document.getElementById("demo-auth-status").textContent = "Demo number authorization expired";
+    }
+  }, 10000);
+  document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea").forEach((input) => input.addEventListener("input", () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; setDemoFeedback("Unsaved demo changes. Save the details, then run the backend preflight again.", [{ label: "Unsaved", tone: "warning" }]); }));
+}
+
+initializeWorkspace();
 refreshAll();

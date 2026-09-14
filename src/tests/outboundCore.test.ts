@@ -3,6 +3,7 @@ import {
   AFTER_HOURS_TEST_CONFIRMATION,
   evaluateAfterHoursTestOverride,
   evaluateOutboundCallEligibility,
+  isValidE164,
   isWithinOutboundCallingWindow,
   validateBatchMode,
 } from "../services/outboundEligibility";
@@ -12,6 +13,13 @@ import { buildOutboundStripeMetadata } from "../services/outboundStripe";
 import { OUTBOUND_OUTCOMES, applyOutcomePolicy } from "../services/outboundOutcomes";
 
 describe("outbound calling safety", () => {
+  it("rejects truncated international numbers before provider requests", () => {
+    expect(isValidE164("+919876543")).toBe(false);
+    expect(isValidE164("+999123456789")).toBe(false);
+    expect(isValidE164("+12125550101")).toBe(true);
+    expect(isValidE164("+919876543210")).toBe(true);
+    expect(isValidE164("2125550101")).toBe(false);
+  });
   it("allows weekdays from 10:00 through 15:59 in the recipient timezone", () => {
     expect(isWithinOutboundCallingWindow(new Date("2026-06-08T14:00:00Z"), "America/New_York")).toBe(true);
     expect(isWithinOutboundCallingWindow(new Date("2026-06-08T19:59:00Z"), "America/New_York")).toBe(true);

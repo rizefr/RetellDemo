@@ -1,3 +1,6 @@
+import { reverifyQuickBooksInvoiceBeforeOutreach } from "./outboundQuickBooksIntegration";
+import { isOutboundPhoneSuppressed } from "./outboundPhoneSuppression";
+import { invoicePaymentProvider } from "./outboundPaymentProvider";
 import { env } from "../config/env";
 import { DateTime } from "luxon";
 import { getRetellClient } from "../retell/retellClient";
@@ -5,6 +8,7 @@ import {
   evaluateAfterHoursTestOverride,
   evaluateOutboundCallEligibility,
   isWithinOutboundCallingWindow,
+  isValidE164,
   normalizeOutboundTimezone,
 } from "./outboundEligibility";
 import {
@@ -103,7 +107,11 @@ export async function inspectOutboundCallEligibility(
   afterHoursOverride?: AfterHoursOverrideRequest,
   demoCallAuthorizationId?: string,
 ) {
-  const context = await getOutboundInvoiceContext(invoiceId);
+  let context = await getOutboundInvoiceContext(invoiceId);
+  if(context.invoice.source_provider === "quickbooks") {
+    await reverifyQuickBooksInvoiceBeforeOutreach(invoiceId);
+    context=await getOutboundInvoiceContext(invoiceId);
+  }
   const runtime = outboundBusinessRuntimeSettings(context.business);
   const demoAuthorization = await activeDemoAuthorization(
     demoCallAuthorizationId,
@@ -133,6 +141,7 @@ export async function inspectOutboundCallEligibility(
     }
   }
   const effectivePhoneNumber = String(demoAuthorization?.phone_number || context.customer.phone_number);
+  if(await isOutboundPhoneSuppressed(String(context.business.id),effectivePhoneNumber)) return {context,eligible:false as const,reason:"number_suppressed",override_used:false,demo_call_authorization:demoAuthorization,effective_phone_number:effectivePhoneNumber};
   const effectiveAllowlist = demoAuthorization
     ? Array.from(new Set([...runtime.allowlist, String(demoAuthorization.phone_number)]))
     : runtime.allowlist;
@@ -214,7 +223,7 @@ export async function describeOutboundCallPreflight(
     within_calling_window: isWithinOutboundCallingWindow(now, timezone),
     test_mode: runtime.testMode,
     allowlisted: !runtime.testMode || allowlist.includes(phoneNumber),
-    phone_valid: /^\+[1-9]\d{7,14}$/.test(phoneNumber),
+    phone_valid: isValidE164(phoneNumber),
     outreach_paused: Boolean(eligibility.context.customer.outreach_paused),
     invoice_status: String(eligibility.context.invoice.status),
     active_call: Boolean(eligibility.context.activeCall),
@@ -290,7 +299,7 @@ export async function startOutboundCall(
     business_id: String(context.business.id),
     customer_id: String(context.customer.id),
     invoice_id: String(context.invoice.id),
-    invoice_number: String(context.invoice.invoice_id),
+    invoice_number: String(context.invoice.source_document_number || context.invoice.invoice_id),
     call_attempt_id: String(attempt.id),
     agent_variant: "conversation_flow",
     conversation_flow_id: selectedAgent.conversationFlowId,
@@ -299,8 +308,8 @@ export async function startOutboundCall(
   const account = context.account ?? {
     openInvoiceCount: 1,
     totalAmountDueCents: Number(context.invoice.amount_due_cents),
-    oldestInvoiceDate: context.invoice.original_due_date,
-    mostRecentInvoiceDate: context.invoice.original_due_date,
+    oldestInvoiceDate: context.invoice.invoice_date || null,
+    mostRecentInvoiceDate: context.invoice.invoice_date || null,
     selectedInvoiceIsMostRecent: true,
     lastPaymentDate: null,
   };
@@ -311,12 +320,12 @@ export async function startOutboundCall(
   const preferredPaymentMethod = String(
     context.invoice.preferred_payment_method || context.customer.payment_contact_preference || "none",
   );
-  const paymentProvider = String(context.business.payment_provider || "stripe");
+  const paymentProvider = invoicePaymentProvider(context.invoice,context.business);
   const quickBooksConnected =
-    Boolean(context.business.quickbooks_connected) &&
+    Boolean(context.invoice.source_provider === "quickbooks" && context.invoice.source_verified_at) &&
     ["quickbooks", "quickbooks_payment_link_enabled"].includes(paymentProvider);
   const inspectionType = String(context.invoice.inspection_type || context.business.default_inspection_type || "Category 1");
-  const inspectionDateRaw = String(context.invoice.inspection_date || context.invoice.original_due_date || "");
+  const inspectionDateRaw = String(context.invoice.inspection_date || "");
   const accountCompanyName =
     String(context.customer.account_company_name || "").trim() ||
     "the business account connected with this number";
@@ -347,8 +356,8 @@ export async function startOutboundCall(
     inspection_date_spoken: formatOutboundDateSpoken(inspectionDateRaw),
     inspection_date_display: formatOutboundDate(inspectionDateRaw),
     service_description: String(context.invoice.service_description),
-    invoice_id: String(context.invoice.invoice_id),
-    invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.invoice_id)),
+    invoice_id: String(context.invoice.source_document_number || context.invoice.invoice_id),
+    invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.source_document_number || context.invoice.invoice_id)),
     payment_link: String(context.paymentLink?.url ?? ""),
     attempt_number: String(attemptNumber),
     business_callback_number: String(context.business.callback_number || env.BUSINESS_CALLBACK_NUMBER || ""),
@@ -407,12 +416,13 @@ export async function startOutboundCall(
     sms_effective: String(runtime.smsEffective),
     manual_payment_followup_required: String(
       paymentProvider === "manual" ||
-        paymentProvider === "quickbooks_read_only" ||
         (["quickbooks", "quickbooks_payment_link_enabled"].includes(paymentProvider) && !quickBooksConnected),
     ),
   };
 
   try {
+    if(context.invoice.source_provider === "quickbooks") await reverifyQuickBooksInvoiceBeforeOutreach(invoiceId);
+    if(await isOutboundPhoneSuppressed(String(context.business.id),effectivePhoneNumber)) throw new Error("Outbound call blocked: number_suppressed");
     const call = await getRetellClient().call.createPhoneCall({
       from_number: env.RETELL_FROM_NUMBER,
       to_number: effectivePhoneNumber,

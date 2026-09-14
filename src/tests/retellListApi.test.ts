@@ -8,7 +8,7 @@ function collectSourceFiles(dir: string): string[] {
   return entries.flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return collectSourceFiles(full);
-    return entry.isFile() && /\.(ts|js|mjs|cjs)$/.test(entry.name) ? [full] : [];
+    return entry.isFile() && /\.(ts|js|mjs|cjs|py)$/.test(entry.name) ? [full] : [];
   });
 }
 
@@ -82,7 +82,9 @@ describe("Retell versioned list APIs", () => {
   });
 
   it("keeps deprecated Retell list endpoints out of source code", () => {
-    const source = collectSourceFiles(path.resolve(process.cwd(), "src"))
+    // Include one-off local diagnostics: production source alone cannot catch Python audit regressions.
+    const roots = ["src", "scripts", ".local-evidence", ".local-review", ...(process.env.RETELL_EXTRA_SOURCE_ROOTS || "").split(path.delimiter).filter(Boolean)];
+    const source = roots.map(root => path.resolve(process.cwd(), root)).filter(root => fs.existsSync(root)).flatMap(collectSourceFiles)
       .filter((file) => !file.endsWith(path.join("src", "tests", "retellListApi.test.ts")))
       .map((file) => [file, fs.readFileSync(file, "utf8")] as const);
 
@@ -91,6 +93,8 @@ describe("Retell versioned list APIs", () => {
       expect(contents, file).not.toMatch(/client\.phoneNumber\.list\s*\(/);
       expect(contents, file).not.toMatch(/(?<!\/v2)\/list-agents/);
       expect(contents, file).not.toMatch(/(?<!\/v2)\/list-phone-numbers/);
+      expect(contents, file).not.toMatch(/\/v2\/list-calls(?:["'?\s]|$)/);
+      expect(contents, file).not.toMatch(/(?<!\/v2)\/list-(?:batch-tests|conversation-flow-components|conversation-flows|retell-llms|test-case-definitions|test-runs)(?:[/?"'\s]|$)/);
       expect(contents, file).not.toContain("pagination_key_version");
     }
   });

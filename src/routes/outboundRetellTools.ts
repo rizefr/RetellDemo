@@ -1,4 +1,6 @@
 import express from "express";
+import { suppressOutboundCaller } from "../services/outboundPhoneSuppression";
+import { reverifyQuickBooksInvoiceBeforeOutreach } from "../services/outboundQuickBooksIntegration";
 import { DateTime } from "luxon";
 import { env } from "../config/env";
 import {
@@ -30,7 +32,7 @@ import {
   resolveTrustedRetellMetadata,
   verifyOutboundRetellSignature,
 } from "../services/outboundRetell";
-import { createOutboundCheckoutSession } from "../services/outboundStripe";
+import { invoicePaymentProvider, resolveOutboundPaymentLink } from "../services/outboundPaymentProvider";
 import { sendOutboundPaymentEmailForInvoice } from "../services/outboundEmail";
 import { resolveOutboundCallback } from "../services/outboundCallbacks";
 import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
@@ -39,6 +41,7 @@ import { chooseInboundCollectionsMatch } from "../services/outboundInboundCollec
 import {
   formatOutboundDateSpoken,
   formatOutboundEmailSpokenSlow,
+  formatOutboundEmailSpokenPhonetic,
   formatOutboundInvoiceIdSpoken,
   formatOutboundMoneySpoken,
   formatOutboundNameSpoken,
@@ -86,6 +89,17 @@ function tool(handler: (req: express.Request) => Promise<Record<string, unknown>
     }
   };
 }
+
+outboundRetellToolsRouter.post("/suppress-inbound-caller",tool(async(req)=>{
+  const raw=Buffer.isBuffer(req.body)?req.body.toString("utf8"):"",signature=String(req.headers["x-retell-signature"]||"");
+  if(!(await verifyOutboundRetellSignature(raw,signature)))throw Object.assign(new Error("Invalid Retell signature"),{status:401});
+  const parsed=JSON.parse(raw) as Record<string,unknown>,envelope=retellToolEnvelopeSchema.parse({...parsed,args:argsFromToolBody(parsed)});
+  const inbound=trustedInboundRetellBusinessMetadata(envelope.call);
+  if(!inbound||envelope.args.explicit_opt_out!==true)throw Object.assign(new Error("Explicit opt-out and trusted callback metadata required"),{status:422});
+  const business=await getOutboundBusinessSettings(inbound.businessId);
+  if(inbound.agentId!=="agent_5ca64503754e06c338e12c743f"||business.inbound_retell_agent_id!==inbound.agentId||String(business.callback_number)!=="+19842075346"||envelope.call.to_number!==business.callback_number)throw Object.assign(new Error("Collection callback binding mismatch"),{status:403});
+  return suppressOutboundCaller(inbound.businessId,String(envelope.call.from_number||""),inbound.callId);
+}));
 
 outboundRetellToolsRouter.post(
   "/lookup-inbound-account",
@@ -146,7 +160,11 @@ outboundRetellToolsRouter.post(
       };
     }
 
-    const context = await getOutboundInvoiceContext(match.candidate.invoiceId);
+    let context = await getOutboundInvoiceContext(match.candidate.invoiceId);
+    if(context.invoice.source_provider === "quickbooks") {
+      await reverifyQuickBooksInvoiceBeforeOutreach(match.candidate.invoiceId);
+      context = await getOutboundInvoiceContext(match.candidate.invoiceId);
+    }
     if (
       String(context.business.id) !== inbound.businessId ||
       String(context.customer.id) !== match.candidate.customerId
@@ -179,8 +197,10 @@ outboundRetellToolsRouter.post(
       external_event_id: `inbound_account_verified:${inbound.callId}`,
       payload: { call_attempt_id: attempt.id, verification: "name_plus_trusted_corroborator" },
     });
-    const inspectionDate = String(context.invoice.inspection_date || context.invoice.original_due_date || "");
+    const inspectionDate = String(context.invoice.inspection_date || "");
     const email = String(context.customer.preferred_email || context.customer.email || "");
+    const paymentProvider = invoicePaymentProvider(context.invoice, context.business);
+    const quickBooksConnected = context.invoice.source_provider === "quickbooks" && Boolean(context.invoice.source_verified_at);
     return {
       status: "verified",
       verified: true,
@@ -198,10 +218,15 @@ outboundRetellToolsRouter.post(
         Number(context.invoice.amount_due_cents || 0),
         String(context.invoice.currency || "usd"),
       ),
-      invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.invoice_id || "")),
+      invoice_id_spoken: formatOutboundInvoiceIdSpoken(String(context.invoice.source_document_number || context.invoice.invoice_id || "")),
+      customer_email_display: String(context.customer.preferred_email || context.customer.email || ""),
+      customer_email_spoken_phonetic: formatOutboundEmailSpokenPhonetic(String(context.customer.preferred_email || context.customer.email || "")),
+      email_on_file: String(Boolean(context.customer.preferred_email || context.customer.email)),
       customer_email_spoken_slow: formatOutboundEmailSpokenSlow(email),
       customer_phone_spoken_chunked: formatOutboundPhoneSpokenChunked(String(context.customer.phone_number || "")),
-      payment_provider: String(context.business.payment_provider || "stripe"),
+      payment_provider: paymentProvider,
+      quickbooks_connected: String(quickBooksConnected),
+      manual_payment_followup_required: String(paymentProvider === "manual" || (paymentProvider === "quickbooks" && !quickBooksConnected)),
       expected_payment_date_spoken: formatOutboundDateSpoken(String(context.invoice.expected_payment_date || ""), ""),
       message_for_agent: "The caller is verified. Continue with the invoice-received question without restarting the introduction.",
     };
@@ -265,7 +290,7 @@ outboundRetellToolsRouter.post(
   "/create-payment-link",
   tool(async (req) => {
     const { metadata } = await trustedEnvelope(req);
-    const result = await createOutboundCheckoutSession(metadata.invoiceId, "manual");
+    const result = await resolveOutboundPaymentLink(metadata.invoiceId, "manual");
     return { created: !result.reused, reused: result.reused, url: result.payment_link.url };
   }),
 );
@@ -398,8 +423,9 @@ outboundRetellToolsRouter.post(
 outboundRetellToolsRouter.post(
   "/send-payment-email",
   tool(async (req) => {
-    const { metadata } = await trustedEnvelope(req);
-    return sendOutboundPaymentEmailForInvoice(metadata.invoiceId);
+    const { metadata, envelope } = await trustedEnvelope(req);
+    const args=envelope.args as Record<string,unknown>;
+    return sendOutboundPaymentEmailForInvoice(metadata.invoiceId,{confirmedEmail:typeof args.confirmed_email==="string"?args.confirmed_email:"",recipientConfirmed:args.recipient_confirmed===true,requestKey:metadata.callAttemptId || ""});
   }),
 );
 

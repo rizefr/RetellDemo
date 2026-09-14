@@ -1,3 +1,4 @@
+import { outboundBusinessRuntimeSettings } from "./outboundRuntimeSettings";
 export type OutboundStripeMetadataInput = {
   internalInvoiceId: string;
   invoiceId: string;
@@ -85,12 +86,22 @@ export async function createOutboundCheckoutSession(invoiceId: string, sentVia =
   const invoice = context.invoice;
   const customer = context.customer;
   const business = context.business;
+  const selectedProvider = String(invoice.payment_provider || business.payment_provider || "stripe");
+  if (invoice.source_provider === "quickbooks" || selectedProvider.startsWith("quickbooks") || selectedProvider === "manual") {
+    throw new Error("Stripe is unavailable for this invoice: use its explicitly selected payment provider");
+  }
   if (!["unpaid", "payment_link_sent"].includes(String(invoice.status))) {
     throw new Error("Checkout Sessions are only available for outstanding invoices");
   }
 
+  const demo=outboundBusinessRuntimeSettings(business).testMode;
+  if(demo && !/^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY)) throw new Error("Demo payment links require a Stripe test-mode key");
   const active = await getActiveOutboundPaymentLink(invoiceId);
-  if (active?.url) return { reused: true, payment_link: active };
+  if (active?.url) {
+    let safeUrl=false;try{const u=new URL(String(active.url));safeUrl=u.protocol==="https:"&&u.hostname==="checkout.stripe.com"&&!u.username&&!u.password&&!u.port;}catch{/* Invalid cached URLs require a new verified session. */}
+    if(safeUrl && String(active.business_id)===String(business.id) && String(active.invoice_id)===invoiceId && Number(active.amount_cents)===Number(invoice.amount_due_cents) && active.currency===invoice.currency && (!active.provider||active.provider==="stripe") && (!demo||String(active.stripe_checkout_session_id).startsWith("cs_test_")))return { reused: true, payment_link: active };
+    await updateOutboundPaymentLinkRecord(String(active.id),{status:"cancelled"});
+  }
 
   const metadata = buildOutboundStripeMetadata({
     internalInvoiceId: String(invoice.id),

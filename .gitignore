@@ -10,3 +10,12 @@ output/
 sop-test-results.json
 *.log
 .vercel/
+
+# Private audit snapshots, customer data, and local browser bridge
+outputs/
+.local-review/
+
+.local-evidence/
+
+__pycache__/
+*.pyc

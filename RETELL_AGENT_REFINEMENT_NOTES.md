@@ -1,5 +1,7 @@
 # Retell Agent Refinement Notes
 
+September 14 evidence and candidate graph changes are recorded in `RETELL_PINNACLE_REVIEW_2026-09-14.md` and the current overlay in `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. Retain GPT-4.1; cheaper models failed confirmation reliability. The selected unpublished versions are outbound V96 and callback V7, with a tested shorter shared prompt. Do not publish the pre-existing V92 Paul-voice draft accidentally. Native text simulation does not prove audio tuning or external tool effects.
+
 These notes capture the live-call fixes applied to the active inspection agent so the future service agent can reuse them without re-discovering the same edge cases.
 
 For a complete active-flow inventory, use `RETELL_INSPECTION_FLOW_LOGIC_MAP.md`. It maps Paul's dynamic variables, tools, `/outbound` connector paths, normal and hard terminal routes, known limitations, and Retell API list-endpoint migration rules.

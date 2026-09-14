@@ -102,41 +102,11 @@ The active Paul inspection conversation map is `RETELL_INSPECTION_FLOW_LOGIC_MAP
 
 See `RETELL_AGENT_REFINEMENT_NOTES.md` before editing the future service copy. It captures the inspection-agent fixes for slow email reading, one bridge line per tool sequence, final-check/end-call routing, do-not-contact vs polite goodbye, responsible-party updates, named-contact requests, and service-agent porting notes.
 
-## QuickBooks Future Connection
+## QuickBooks integration activation
 
-QuickBooks is scaffolded only. Do not create live QuickBooks payment links until a business authorizes its QuickBooks Online company and the token-storage policy is reviewed. Stripe remains the default provider for the elevator inspection demo.
+Use the read-only implementation and verified boundaries documented in [QUICKBOOKS_INTEGRATION_REVIEW.md](QUICKBOOKS_INTEGRATION_REVIEW.md). Complete the explicit realm/environment/managed-account binding and approved server credential, then preview and approve the first application import into a separate non-demo business. Never infer company identity from a display name.
 
-Use `QUICKBOOKS_CLIENT_CONNECTION_CHECKLIST.md` and the client workbook `Pinnacle_QuickBooks_Connection_Intake.xlsx` for discovery, field mapping, security approvals, and go-live acceptance. The desired 14-day behavior is eligibility 14 calendar days after the confirmed inspection date while the invoice is still unpaid. Current production still requires manual single-call preflight/start; no unattended dialing is enabled.
-
-The deliverable workbook is stored at the workspace-level path `../outputs/outbound-inbound-callback-quickbooks-20260813/Pinnacle_QuickBooks_Connection_Intake.xlsx`. It is a client intake/mapping artifact, not a credentials store; keep secrets in Vercel after approval.
-
-Required env vars:
-
-```bash
-QUICKBOOKS_CLIENT_ID=
-QUICKBOOKS_CLIENT_SECRET=
-QUICKBOOKS_REDIRECT_URI=https://elixis.agency/api/outbound/quickbooks/callback
-QUICKBOOKS_ENVIRONMENT=sandbox
-```
-
-After receiving a client’s QuickBooks account details:
-
-1. Create or select the Intuit app in the client-approved workspace.
-2. Add the production callback URL.
-3. Store client ID/secret in Vercel, not in browser settings.
-4. Confirm the business wants `quickbooks_read_only` discovery/sync mode or `quickbooks_payment_link_enabled` mode.
-5. Use `/api/outbound/quickbooks/connect` to start OAuth.
-6. Implement token exchange/storage for the returned `code` and `realmId`.
-7. Read back connection status in `/outbound`.
-8. Map the client’s inspection types from QuickBooks invoice fields: Category 1, Category 5, Acceptance Test, Periodic Inspection, or their local naming.
-9. Implement invoice lookup/payment-link creation for the connected realm only after explicit approval.
-10. Update Retell wording so Paul says “QuickBooks payment link” only when the backend returns a real link.
-
-Future implementation prompt:
-
-```text
-Complete the QuickBooks Online connection for the existing outbound B2B invoice demo. Preserve Stripe as fallback, preserve all Retell safety gates, implement Intuit OAuth token exchange/storage for the approved business only, fetch or create invoice-specific QuickBooks payment links, keep no verbal card collection, and verify with QuickBooks sandbox before any production business account.
-```
+The private staged workbook is a source review, not proof of runtime synchronization. Test its refresh adapter and the Tuesday-noon America/New_York operator reminder before activation. The current due-date rule replaces older inspection-date plans. Preserve the original accounting provider: do not create or send an invoice to obtain a link, and do not substitute Stripe for QuickBooks.
 
 ## Future Client Intake Checklist
 
@@ -207,5 +177,5 @@ When SMS is enabled later, Retell must still confirm the phone number aloud usin
 - Keep demo call mode separate from invoice/payment status.
 - Use speech-safe Retell variables for phone, email, dates, invoice IDs, and amounts.
 - Keep the normal final-check/end-call behavior structural in Retell, not just prose.
-- Keep Stripe as the default provider until QuickBooks is fully connected.
+- Preserve each invoice’s explicit accounting/payment provider. Unverified QuickBooks invoices require manual follow-up.
 - Keep batch campaigns disabled for demos.

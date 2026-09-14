@@ -1,0 +1,17 @@
+import {beforeEach,describe,it,expect,vi} from 'vitest';
+import express from 'express';
+import request from 'supertest';
+const mock=vi.hoisted(()=>({claim:vi.fn(),complete:vi.fn(),configure:vi.fn(),status:vi.fn()}));
+vi.mock('../config/env',()=>({env:{OUTBOUND_ADMIN_TOKEN:'review-admin',APP_BASE_URL:'https://elixis.agency'},isProduction:()=>false}));
+vi.mock('../services/outboundReviewRuns',()=>({claimReviewRun:mock.claim,completeReviewRun:mock.complete,configureReviewRuns:mock.configure,getReviewRunStatus:mock.status,ReviewRunError:class extends Error{status=409;}}));
+import {outboundReviewRunsRouter} from '../routes/outboundReviewRunsApi';
+const business='00000000-0000-4000-8000-000000000001';const run='00000000-0000-4000-8000-000000000002';const token='00000000-0000-4000-8000-000000000003';
+const app=()=>express().use(express.json()).use('/review-runs',outboundReviewRunsRouter);
+beforeEach(()=>{vi.clearAllMocks();mock.claim.mockResolvedValue({can_send:true,recipient:'operator@example.com'});mock.complete.mockResolvedValue({status:'accepted',retry_allowed:false});});
+describe('weekly review authorization and trusted inputs',()=>{
+ it('requires an administrator before reading or claiming',async()=>{expect((await request(app()).get('/review-runs/status').query({business_id:business})).status).toBe(401);expect((await request(app()).post('/review-runs/claim').send({business_id:business})).status).toBe(401);expect(mock.claim).not.toHaveBeenCalled();});
+ it('claims exactly the requested business without accepting recipient or time overrides',async()=>{const ok=await request(app()).post('/review-runs/claim').set('Authorization','Bearer review-admin').send({business_id:business});expect(ok.status).toBe(200);expect(mock.claim).toHaveBeenCalledWith(business);for(const extra of [{recipient:'customer@example.com'},{now:'2099-01-01'},{week_start:'2026-09-14'}])expect((await request(app()).post('/review-runs/claim').set('Authorization','Bearer review-admin').send({business_id:business,...extra})).status).toBe(400);expect(mock.claim).toHaveBeenCalledTimes(1);});
+ it('requires exact business, run and token identifiers on completion',async()=>{const result=await request(app()).post('/review-runs/complete').set('Authorization','Bearer review-admin').send({business_id:business,run_id:run,claim_token:token,outcome:'accepted',provider_message_id:'provider-fixture-id'});expect(result.status).toBe(200);expect(mock.complete).toHaveBeenCalledWith({business_id:business,run_id:run,claim_token:token,outcome:'accepted',provider_message_id:'provider-fixture-id'});expect(result.body.retry_allowed).toBe(false);});
+ it('rejects malformed completion IDs and unsupported delivery outcomes',async()=>{for(const patch of [{claim_token:'wrong'},{outcome:'retry_send'},{recipient:'other@example.com'}])expect((await request(app()).post('/review-runs/complete').set('Authorization','Bearer review-admin').send({business_id:business,run_id:run,claim_token:token,outcome:'uncertain',...patch})).status).toBe(400);expect(mock.complete).not.toHaveBeenCalled();});
+ it('does not accept a new recipient through configuration',async()=>{expect((await request(app()).post('/review-runs/config').set('Authorization','Bearer review-admin').send({business_id:business,stage:'staged_preview',spreadsheet_url:'https://docs.google.com/spreadsheets/d/fixture/edit',enabled:true,reminder_recipient:'other@example.com'})).status).toBe(400);expect(mock.configure).not.toHaveBeenCalled();});
+});

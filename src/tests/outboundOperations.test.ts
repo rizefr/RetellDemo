@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 
 describe("outbound browser operation safety", () => {
   const originalEnv = { ...process.env };
+  beforeEach(()=>vi.doMock("../services/outboundPhoneSuppression",()=>({isOutboundPhoneSuppressed:vi.fn().mockResolvedValue(false)})));
 
   afterEach(() => {
     Object.keys(process.env).forEach((key) => {
@@ -11,6 +12,7 @@ describe("outbound browser operation safety", () => {
     Object.assign(process.env, originalEnv);
     vi.resetModules();
     vi.clearAllMocks();
+    vi.doUnmock("../services/outboundPhoneSuppression");
     vi.doUnmock("../services/outboundCalls");
     vi.doUnmock("../services/outboundRepository");
     vi.doUnmock("../retell/retellClient");
@@ -150,6 +152,7 @@ describe("outbound browser operation safety", () => {
           amount_due_cents: 15000,
           currency: "usd",
           original_due_date: "2026-05-20",
+          inspection_date: "2026-05-18",
           service_description: "annual elevator inspection",
         },
         customer: {
@@ -205,8 +208,8 @@ describe("outbound browser operation safety", () => {
           expected_payment_date_spoken: "",
           original_due_date_spoken: "May twentieth, twenty twenty-six",
           original_due_date_display: "May 20, 2026",
-          inspection_date_spoken: "May twentieth, twenty twenty-six",
-          inspection_date_display: "May 20, 2026",
+          inspection_date_spoken: "May eighteenth, twenty twenty-six",
+          inspection_date_display: "May 18, 2026",
           amount_due_spoken: "one hundred fifty dollars",
           invoice_id_spoken: "invoice E-L-V, test",
           open_invoice_count: "1",
@@ -243,6 +246,7 @@ describe("outbound browser operation safety", () => {
           amount_due_cents: 15000,
           currency: "usd",
           original_due_date: "2026-05-20",
+          inspection_date: "2026-05-18",
           service_description: "annual elevator inspection",
           inspection_type: "Category 5",
           demo_call_mode: "follow_up",
@@ -337,7 +341,7 @@ describe("outbound browser operation safety", () => {
             "b as in Bravo, i as in India, l as in Lima, l as in Lima, i as in India, n as in November, g as in Golf, at example dot test",
           customer_email_display: "billing@example.test",
           original_due_date_spoken: "May twentieth, twenty twenty-six",
-          inspection_date_spoken: "May twentieth, twenty twenty-six",
+          inspection_date_spoken: "May eighteenth, twenty twenty-six",
           previous_call_date_spoken: "June nineteenth, twenty twenty-six",
           followup_reason: "customer asked for a later follow-up",
           prior_concern_note: "Customer initially asked if this was legitimate.",

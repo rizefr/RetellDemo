@@ -68,198 +68,57 @@ describe("provider webhook security", () => {
 });
 
 describe("outbound flow guardrails", () => {
-  it("uses a tool-capable subagent with required safety rules without phone binding operations", () => {
-    const serialized = JSON.stringify(buildOutboundConversationFlow("https://example.com"));
-    const setupScript = fs.readFileSync(
-      path.resolve(process.cwd(), "src/scripts/setupOutboundRetell.ts"),
-      "utf8",
-    );
+  it("keeps trusted context, provider boundaries and separate native terminal paths", () => {
+    const flow = buildOutboundConversationFlow("https://example.com");
+    const serialized = JSON.stringify(flow);
+    const prompt = String(flow.global_prompt);
+    expect(flow.start_node_id).toBe("outbound_collections_agent");
+    const main = flow.nodes.find(node => node.id === flow.start_node_id);
+    expect(main).toMatchObject({ type: "subagent" });
+    expect(serialized).not.toContain('"args_at_root":true');
+    for (const name of ["log_outcome", "create_payment_link", "send_payment_sms", "send_payment_email", "request_human_transfer", "schedule_followup", "schedule_callback"]) {
+      expect(flow.tools?.some(tool => tool.name === name)).toBe(true);
+    }
+    for (const variable of ["business_name", "business_name_spoken", "agent_display_name", "customer_first_name_spoken", "account_company_name", "inspection_type", "inspection_date_spoken", "original_due_date_spoken", "amount_due_spoken", "total_amount_due_spoken", "invoice_id_spoken", "ai_disclosure_instruction"]) {
+      expect(prompt).toContain("{{" + variable + "}}");
+    }
+    for (const rule of [
+      "Retell handles voicemail using the configured short static provider message",
+      "Never collect card details verbally", "Never silently substitute Stripe",
+      "Do not pressure after refusal", "no age or physical office", "Do not repeat disclosure",
+      "Read digits without plus one or area code", "Do not repeat the same recovery question",
+      "Only explicit opt-out phrases",
+    ]) expect(prompt).toContain(rule);
+    expect(prompt).toContain("Only explicit opt-out phrases such as stop calling, don't call me again, or remove me from your call list trigger do_not_contact.");
+    expect(prompt).toContain("Do not treat goodbye, bye, no thanks, that's all, have a good day, or a polite call ending as do_not_contact.");
+    expect(prompt).toContain("Never request DOB, ZIP, SSN, account numbers or sensitive identifiers");
+    expect(prompt).toContain("An overdue threshold does not authorize service interruption, delayed filings, fees, penalties or other invented consequences");
+    expect(prompt).toContain("Second readback uses customer_email_spoken_phonetic");
+    expect(prompt).toContain("Use trusted inspection date, due date and balance as separate fields");
+    expect(prompt).toContain('avoid saying the exact phrase "thank you"');
+    expect(prompt).not.toMatch(/wrong number[^\n]*hard terminal route/i);
+    expect(prompt).not.toMatch(/hard terminal outcomes[^\n]*wrong_number/i);
+    expect(prompt).not.toMatch(/\bI'm Sophia\b|this is Sophia|Agent name: Sophia|Demo Elevator Inspections/);
+    for (const [id, tool, closing] of [
+      ["outbound_normal_terminal_final_check", "end_final_check_call", "Have a good day. Goodbye."],
+      ["outbound_wrong_number_terminal_end", "end_wrong_number_call", "Sorry about that. We'll review the contact information. Goodbye."],
+      ["outbound_hard_terminal_end", "end_hard_terminal_call", "We'll stop calling"],
+    ]) {
+      const node = flow.nodes.find(item => item.id === id);
+      expect(node).toMatchObject({ type: "subagent", tool_ids: ["outbound_log_outcome"] });
+      expect(JSON.stringify(node)).toContain('"type":"end_call"');
+      expect(JSON.stringify(node)).toContain(tool);
+      expect(JSON.stringify(node)).toContain(closing);
+    }
+    const mainJson = JSON.stringify(main);
+    expect(mainJson).toContain("Use only after the assistant has already asked: Is there anything else I can help you with?");
+    expect(mainJson).toContain("Use only after explicit do-not-contact, attorney represented, or hostile/abusive hard terminal outcome has already been acknowledged and logged.");
+  });
+
+  it("preserves dashboard voice tuning and never updates phone bindings during setup", () => {
+    const setupScript = fs.readFileSync(path.resolve(process.cwd(), "src/scripts/setupOutboundRetell.ts"), "utf8");
     const envConfig = fs.readFileSync(path.resolve(process.cwd(), "src/config/env.ts"), "utf8");
     const envExample = fs.readFileSync(path.resolve(process.cwd(), ".env.example"), "utf8");
-    const flow = buildOutboundConversationFlow("https://example.com");
-    const mainNode = flow.nodes.find((node) => node.id === "outbound_collections_agent");
-    const finalCheckNode = flow.nodes.find((node) => node.id === "outbound_normal_terminal_final_check");
-    const hardTerminalNode = flow.nodes.find((node) => node.id === "outbound_hard_terminal_end");
-    const wrongNumberTerminalNode = flow.nodes.find((node) => node.id === "outbound_wrong_number_terminal_end");
-    expect(flow.start_node_id).toBe("outbound_collections_agent");
-    expect(flow.nodes.length).toBeGreaterThanOrEqual(4);
-    expect(serialized).toContain('"type":"subagent"');
-    expect(serialized).toContain('"tool_ids"');
-    expect(serialized).toContain("Retell handles voicemail using the configured short static provider message");
-    expect(serialized).toContain("Do not accept card details verbally");
-    expect(serialized).toContain("Never collect card details verbally");
-    expect(serialized).not.toContain('"args_at_root":true');
-    expect(serialized).toContain('"type":"end"');
-    expect(serialized).toContain('"type":"transfer_call"');
-    expect(serialized).toContain('"tool_id":"outbound_log_outcome"');
-    expect(serialized).toContain('"tool_id":"outbound_create_payment_link"');
-    expect(serialized).toContain('"tool_id":"outbound_send_payment_sms"');
-    expect(serialized).toContain('"tool_id":"outbound_send_payment_email"');
-    expect(serialized).toContain('"tool_id":"outbound_request_human_transfer"');
-    expect(serialized).toContain('"tool_id":"outbound_schedule_followup"');
-    expect(serialized).toContain('"tool_id":"outbound_schedule_callback"');
-    expect(serialized).toContain("confirmed_payment_link_requested");
-    expect(serialized).toContain("sms_pending_manual");
-    expect(serialized).toContain("email_pending_manual");
-    expect(serialized).toContain("email_missing");
-    expect(serialized).toContain("Elixis Elevator Systems");
-    expect(serialized).toContain(
-      "Hi, this is {{agent_display_name}} calling from {{business_name_spoken}}. - I'm calling about an overdue elevator inspection payment. Is this {{customer_first_name_spoken}}?",
-    );
-    expect(serialized).toContain("Speak as if the caller has already asked you to slow down.");
-    expect(serialized).toContain("Keep a steady, lower-energy tone and do not rush the opening, names, emails, phone numbers, dates, or payment instructions.");
-    expect(String(flow.global_prompt)).toContain('avoid saying the exact phrase "thank you"');
-    expect(String(flow.global_prompt)).toContain('do not say "thank you for confirming."');
-    expect(String(flow.global_prompt)).not.toMatch(/wrong number[^\n]*hard terminal route/i);
-    expect(String(flow.global_prompt)).not.toMatch(/hard terminal outcomes[^\n]*wrong_number/i);
-    expect(String(flow.global_prompt)).toContain("use the dedicated wrong-number terminal route");
-    expect(serialized).toContain(
-      "Got it. Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue. I'm following up to make sure it was received.",
-    );
-    expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
-    expect(serialized).toContain("I can resend the invoice now. Would you prefer text or email?");
-    expect(serialized).toContain("Good to hear. Do you need the secure payment link?");
-    expect(serialized).toContain("We value our relationship and want to avoid any interruption in service or delays with future inspection filings");
-    expect(serialized).toContain("Do not mention virtual assistant or AI status automatically in the normal flow.");
-    expect(serialized).toContain(
-      "I apologize. Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?",
-    );
-    expect(serialized).toContain("If they do not have the named person's contact but say they are with {{account_company_name_spoken}}");
-    expect(serialized).toContain("No problem. Is there someone else who handles elevator inspection invoices?");
-    expect(serialized).toContain("company/account confirmed");
-    expect(serialized).toContain("inspection_type");
-    expect(serialized).toContain("days_after_inspection_first_call");
-    expect(serialized).toContain("very_overdue_threshold_days");
-    expect(serialized).toContain("expected_payment_date_spoken");
-    expect(serialized).not.toContain("my name is Paul from Elixis Elevator Systems");
-    expect(serialized).not.toContain("this is Paul from Elixis Elevator Systems");
-    expect(serialized).not.toContain("This is Elixis Elevator Systems, your elevator inspection company");
-    expect(serialized).not.toContain("Hi, this is calling on behalf of Elixis Elevator Systems about an open invoice");
-    expect(serialized).not.toContain("Thanks. I'm an AI voice assistant helping Elixis Elevator Systems");
-    expect(serialized).not.toContain("make sure your elevators are operating properly");
-    expect(serialized).toContain("ai_disclosure_policy");
-    expect(serialized).toContain("Disclosure instruction for this call");
-    expect(serialized).toContain("Do not infer or apply a different disclosure policy");
-    expect(serialized).toContain("service_issue_reported");
-    expect(serialized).toContain("responsible_party_update_requested");
-    expect(serialized).toContain("named_contact_requested");
-    expect(serialized).toContain("mail_instructions_requested");
-    expect(serialized).toContain('"id":"service_issue_logging_example"');
-    expect(serialized).toContain('"id":"callback_propose_then_confirm_example"');
-    expect(serialized).toContain('"id":"mail_check_missing_instructions_example"');
-    expect(serialized).toContain('"id":"do_not_contact_terminal_example"');
-    expect(serialized).toContain('"id":"email_sent_terminal_example"');
-    expect(serialized).toContain('"id":"human_unavailable_terminal_example"');
-    expect(serialized).toContain("your next action must be the schedule_callback tool");
-    expect(serialized).toContain('"id":"outbound_normal_terminal_final_check"');
-    expect(serialized).toContain('"id":"outbound_polite_final_check_end_edge"');
-    expect(serialized).toContain('"id":"outbound_hard_terminal_end"');
-    expect(serialized).toContain('"id":"outbound_wrong_number_terminal_edge"');
-    expect(serialized).toContain('"id":"outbound_wrong_number_terminal_end"');
-    expect(serialized).toContain("Is there anything else I can help you with?");
-    expect(serialized).toContain("Have a good day. Goodbye");
-    expect(serialized).toContain("all required custom tool calls for the terminal outcome are complete");
-    expect(serialized).toContain("When sent is true, confirm delivery once and ask exactly: When can I expect the payment?");
-    expect(serialized).toContain("Do not leave a confirmed email preference as a future team delivery when send_payment_email is available");
-    expect(serialized).toContain("If create_payment_link returns created=false, reused=false, or no payment_url, do not call send_payment_email or send_payment_sms.");
-    expect(serialized).toContain('"id":"payment_link_failure_terminal_example"');
-    expect(serialized).toContain("\\\"sent\\\":true");
-    expect(serialized).toContain("\\\"status\\\":\\\"email_sent\\\"");
-    expect(serialized).toContain("I sent the secure payment link to {{customer_email_spoken_slow}}");
-    expect(serialized).toContain(
-      "I sent the secure payment link to {{customer_email_spoken_slow}}. When can I expect the payment?",
-    );
-    expect(serialized).toContain(
-      "Do you have the right number or email for {{customer_first_name_spoken}} {{customer_last_name_spoken}}?",
-    );
-    expect(serialized).toContain(
-      "After answering a relevant detour briefly, return once to the unresolved payment step",
-    );
-    expect(serialized).toContain("Do not repeat the same recovery question after the caller has answered it");
-    expect(serialized).toContain(
-      "If the payment link has already been sent and you already asked when payment is expected, never step backward",
-    );
-    expect(serialized).toContain('"id":"payment_link_sent_expected_date_example"');
-    expect(serialized).toContain('"id":"wrong_person_contact_request_example"');
-    expect(serialized).toContain('"id":"payment_method_detour_returns_to_outcome_example"');
-    expect(serialized).toContain('"id":"post_send_payment_method_detour_returns_to_date_example"');
-    expect(serialized).toContain("If the person says \\\"hello\\\"");
-    expect(serialized).toContain("State the inspection type, inspection date, and selected balance only when the caller asks");
-    expect(serialized).toContain("amount_due_spoken");
-    expect(serialized).toContain("total_amount_due_spoken");
-    expect(serialized).toContain("invoice_id_spoken");
-    expect(serialized).toContain("open_invoice_count_spoken");
-    expect(serialized).toContain("Yes, I'm an AI voice assistant connected to {{business_name}}'s account records to help with invoice follow-up.");
-    expect(serialized).toContain("I'm following up at the time you requested about your elevator inspection invoice");
-    expect(serialized).toContain("Do not direct them to make an inbound call");
-    expect(serialized).not.toMatch(/call us back later|please call the office/i);
-    expect(serialized).toContain("Normal terminal outcomes must route to the normal final-check node");
-    expect(serialized).toContain("Never close a service-issue call before the tool invocation and final-check routing");
-    expect(serialized).toContain("Do not call log_outcome for service_issue_reported until the caller has provided the concise issue description");
-    expect(serialized).toContain("This isolated final-check node owns defensive terminal logging, the goodbye, and hangup");
-    expect(JSON.stringify(mainNode)).toContain("end_polite_final_check_call");
-    expect(JSON.stringify(mainNode)).toContain("Use only after the assistant has already asked: Is there anything else I can help you with?");
-    expect(JSON.stringify(mainNode)).toContain("end_hard_terminal_call_from_main");
-    expect(JSON.stringify(mainNode)).toContain("Use only after explicit do-not-contact, attorney represented, or hostile/abusive hard terminal outcome has already been acknowledged and logged.");
-    expect(JSON.stringify(mainNode)).toContain("Understood. We'll stop calling this number. Goodbye.");
-    expect(JSON.stringify(mainNode)).toContain('"name":"end_wrong_number_call_from_main"');
-    expect(JSON.stringify(mainNode)).toContain("Sorry about that. We'll review the contact information. Goodbye.");
-    expect(JSON.stringify(finalCheckNode)).toContain('"type":"end_call"');
-    expect(JSON.stringify(finalCheckNode)).toContain("end_final_check_call");
-    expect(JSON.stringify(finalCheckNode)).toContain('"tool_ids":["outbound_log_outcome"]');
-    expect(JSON.stringify(finalCheckNode)).toContain("defensive terminal node");
-    expect(JSON.stringify(finalCheckNode)).toContain('"execution_message_description":"Have a good day. Goodbye."');
-    expect(JSON.stringify(wrongNumberTerminalNode)).toContain('"type":"subagent"');
-    expect(JSON.stringify(wrongNumberTerminalNode)).toContain('"tool_ids":["outbound_log_outcome"]');
-    expect(JSON.stringify(wrongNumberTerminalNode)).toContain("end_wrong_number_call");
-    expect(JSON.stringify(wrongNumberTerminalNode)).toContain("Sorry about that. We'll review the contact information. Goodbye.");
-    expect(JSON.stringify(hardTerminalNode)).toContain('"type":"subagent"');
-    expect(JSON.stringify(hardTerminalNode)).toContain('"tool_ids":["outbound_log_outcome"]');
-    expect(JSON.stringify(hardTerminalNode)).toContain('"type":"end_call"');
-    expect(JSON.stringify(hardTerminalNode)).toContain("end_hard_terminal_call");
-    expect(serialized).toContain('"speak_during_execution":true');
-    expect(serialized).toContain("Payment provider: {{payment_provider}}");
-    expect(serialized).toContain("QuickBooks connected: {{quickbooks_connected}}");
-    expect(serialized).toContain("Only call a link a QuickBooks payment link when the backend returns a real connected-provider link");
-    expect(serialized).toContain("Customer email spoken slowly");
-    expect(serialized).toContain("Customer email spoken phonetic");
-    expect(serialized).toContain("Customer phone spoken in chunks");
-    expect(serialized).toContain("Is {{customer_email_spoken_slow}} still the best email for the secure payment link?");
-    expect(serialized).toContain("Is e l i x i s agency, at gmail, dot com still the best email for the secure payment link?");
-    expect(serialized).toContain("If the caller asks you to repeat the email, says it is wrong, or sounds confused, the second readback must use {{customer_email_spoken_phonetic}}");
-    expect(serialized).toContain("If the caller asks you to repeat the phone number or corrects it, use {{customer_phone_spoken_chunked}}");
-    expect(serialized).toContain('"id":"email_second_readback_phonetic_example"');
-    expect(serialized).toContain('"id":"email_correction_contact_update_example"');
-    expect(serialized).toContain('"id":"phone_correction_contact_update_example"');
-    expect(serialized).toContain("For payment-link creation, do not generate your own separate bridge line");
-    expect(serialized).toContain('"execution_message_description":"One moment."');
-    expect(serialized).toContain("One moment.");
-    expect(serialized).not.toContain("One moment while I prepare that.");
-    expect(serialized).not.toContain("One moment while I pull that up.");
-    expect(serialized).not.toContain("One moment while I send that.");
-    expect(serialized).toContain("Inspection date: {{inspection_date_spoken}}");
-    expect(serialized).toContain("Our records show the {{inspection_type}} invoice from {{inspection_date_spoken}} is overdue");
-    expect(serialized).toContain("Do not treat goodbye, bye, no thanks, that's all, have a good day, or a polite call ending as do_not_contact.");
-    expect(serialized).toContain("Only explicit opt-out phrases such as stop calling, don't call me again, or remove me from your call list trigger do_not_contact.");
-    expect(serialized).toContain("the caller replies with no, goodbye, bye, no thanks, that's all, or another polite no-further-help ending");
-    expect(serialized).toContain("May I ask the reason, so I can note it correctly for the team?");
-    expect(serialized).toContain("I'm a digital assistant, so I don't have an age.");
-    expect(serialized).toContain("I'm a digital assistant, so I'm not physically located at an office.");
-    expect(serialized).toContain("The contact information is listed on the account record for this invoice.");
-    expect(serialized).toContain("We can be. Before I let you go, were you able to receive the invoice, or should I note that it needs to be resent?");
-    expect(serialized).toContain("Yes. I have what I need. Have a good day. Goodbye.");
-    expect(serialized).toContain("I'm doing well, thanks for asking.");
-    expect(serialized).toContain("Who is the best person for payments now?");
-    expect(serialized).toContain("your next action must be log_outcome with outcome responsible_party_update_requested");
-    expect(serialized).toContain("Your next action must be log_outcome with named_contact_requested");
-    expect(serialized).toContain("do not transition until log_outcome has already been called with the confirmed name");
-    expect(serialized).toContain('"id":"same_turn_payment_request_example"');
-    expect(serialized).toContain("The team will follow up with the secure link");
-    expect(serialized).not.toContain("invoke end_call immediately in the same turn");
-    expect(serialized).not.toContain("Demo Elevator Inspections");
-    expect(serialized).not.toMatch(/\bI'm Sophia\b|this is Sophia|Agent name: Sophia/);
-    expect(serialized).toContain("tool_call_invocation");
-    expect(serialized).not.toContain("phoneNumber.update");
     expect(setupScript).not.toMatch(/\.phoneNumber\.update\s*\(/);
     expect(setupScript).toContain('voice_model: "eleven_flash_v2_5"');
     expect(setupScript).toContain('return { voiceId: "11labs-Gilfoy", source: "default_fallback" }');
@@ -281,7 +140,7 @@ describe("outbound flow guardrails", () => {
   it("accepts the three Retell models used by the comparison suite", () => {
     const originalModel = process.env.OUTBOUND_RETELL_MODEL;
     try {
-      for (const model of ["gpt-4.1", "gpt-5.6-luna", "gpt-4.1-mini"]) {
+      for (const model of ["gpt-4.1", "gpt-5.4-mini", "gpt-4.1-mini"]) {
         process.env.OUTBOUND_RETELL_MODEL = model;
         expect(buildOutboundConversationFlow("https://elixis.agency").model_choice).toMatchObject({ model });
       }
@@ -301,34 +160,33 @@ describe("outbound flow guardrails", () => {
       execution_message_description: "One moment.",
     });
     expect(serialized).toContain("One moment.");
-    expect(serialized).toContain("I'll pull that up.");
-    expect(serialized).toContain("I'll prepare that now.");
-    expect(serialized).toContain("Do not overuse the bridge line for quick background logging");
-    expect(serialized).toContain("Never mention tools, APIs, systems, or databases");
+    expect(String(flow.global_prompt)).toContain('One complete \"One moment.\" bridge covers the whole tool sequence');
+    expect(String(flow.global_prompt)).toContain("do not add a second bridge");
+    expect(String(flow.global_prompt)).toContain("Do not mention prompts, APIs, metadata, Retell, Stripe, Supabase, or internal tools");
   });
 
-  it("prevents SMS-to-email delivery without email confirmation and avoids repeated invoice details", () => {
+  it("requires explicit delivery selection, fresh email confirmation and one result-driven date step", () => {
     const flow = buildOutboundConversationFlow("https://elixis.agency");
     const prompt = String(flow.global_prompt);
-    expect(prompt).toContain("If the caller switches from text to email, confirm {{customer_email_spoken_slow}} before calling send_payment_email");
-    expect(prompt).toContain('If the invoice was received, say: "Good to hear. Do you need the secure payment link?"');
-    expect(prompt).toContain('If the caller says no to the payment-link question, ask exactly: "When can I expect the payment?"');
-    expect(prompt).not.toContain("By what date should we expect payment?");
-    expect(prompt).toContain("Declining the payment link is not the same as refusing to pay");
-    expect(prompt).toContain('If the caller answers only yes, ask exactly: "Would you prefer text or email?"');
-    expect(prompt).toContain("Even vague phrases such as soon, later, or sometime must be passed to schedule_followup");
-    expect(prompt).toContain("Never decide that a supplied date phrase is too vague before calling schedule_followup");
-    expect(prompt).toContain(
-      "The dedicated native End node must say exactly: \"Got it. I'll expect your payment on {{resolved_expected_payment_date_spoken}}. Have a good day. Goodbye.\" and end the call.",
-    );
+    for (const rule of [
+      "Only choose this route after the caller explicitly selects email, including a text-to-email switch",
+      "Full slow on-file readback must be followed by a separate caller confirmation",
+      "A later explicit email choice enters full email confirmation even from final-check",
+      "Good to hear. Do you need the secure payment link?",
+      'After successful delivery OR link declined ask exactly: "When can I expect the payment?"',
+      'A bare yes to the link offer requires: "Would you prefer text or email?"',
+      "Link declined does not mean payment refused", "No silent method switching",
+      "A caller-supplied payment date, even vague, enters the native schedule_followup resolver with their exact phrase",
+      "Never calculate, restate or confirm it before the trusted result",
+      "On success, the native End states the returned spoken date once and closes without another confirmation",
+      "On explicit refusal/inability to provide a date, use the finite no-date function and native End",
+      "Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks",
+    ]) expect(prompt).toContain(rule);
     expect(JSON.stringify(flow)).not.toContain("I'll note that payment is expected by");
     expect(JSON.stringify(flow)).toContain("Call this tool for every caller-supplied expected payment date phrase, including vague phrases");
-    expect(prompt).toContain("Only repeat the inspection type, date, amount, or secure-link explanation when the caller asks what the invoice is about, asks how payment works, or asks for the amount.");
-    expect(JSON.stringify(flow)).toContain('"id":"payment_link_declined_expected_date_example"');
-    expect(JSON.stringify(flow)).toContain('"id":"payment_link_sent_expected_date_example"');
-    expect(JSON.stringify(flow)).toContain('"id":"payment_link_yes_asks_delivery_preference_example"');
-    expect(JSON.stringify(flow)).toContain('"id":"ambiguous_expected_date_uses_tool_example"');
-    expect(JSON.stringify(flow)).toContain('\\"expected_payment_date_phrase\\":\\"Friday\\"');
+    for (const id of ["payment_link_declined_expected_date_example", "payment_link_sent_expected_date_example", "payment_link_yes_asks_delivery_preference_example", "ambiguous_expected_date_uses_tool_example"]) {
+      expect(JSON.stringify(flow)).toContain('"id":"' + id + '"');
+    }
   });
 
   it("routes caller-supplied expected payment dates through a native function node", () => {
@@ -374,7 +232,7 @@ describe("outbound flow guardrails", () => {
     });
     expect(flow.tools?.find((tool) => tool.name === "schedule_followup")).toMatchObject({
       response_variables: {
-        resolved_expected_payment_date_spoken: "$.expected_payment_date_spoken",
+        resolved_expected_payment_date_spoken: "expected_payment_date_spoken",
       },
     });
     expect(resolverNode.edges).toEqual(expect.arrayContaining([

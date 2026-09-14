@@ -641,3 +641,21 @@ iframe {
     min-height: 720px;
   }
 }
+
+/* Pinnacle styling applies only while the collections module is selected. */
+body.collections-active { background: #f4f7f5; }
+.collections-active .workspace { background: #f4f7f5; }
+.collections-active .workspace > .topbar { background: #fff; border-bottom-color: #e1e8e3; }
+.collections-active .workspace > .topbar h2 { color: #302c2c; }
+.collections-active .workspace > .topbar .eyebrow { color: #108650; }
+.collections-active .workspace > .topbar .secondary { background: #fff; border-color: #c6d3cb; color: #47554d; }
+.collections-active #view-outbound > .section-heading h3 { color: #302c2c; }
+.collections-active #view-outbound > .section-heading p { color: #65736a; }
+.collections-active #view-outbound > .section-heading .button-link { background: #108650; color: #fff; border-color: #108650; }
+.collections-active #outbound-summary .metric-card { background: #fff; border-color: #e1e8e3; box-shadow: none; padding: 15px 18px; }
+.collections-active #outbound-summary .metric-card strong { color: #302c2c; }
+.collections-active #outbound-summary .metric-card > span { color: #65736a; }
+.collections-active #outbound-summary .pill.ready { background: #edf7f0; color: #126941; border-color: #b6dbc4; }
+.collections-active #outbound-summary .pill.warning { background: #fff8e8; color: #845710; border-color: #ead7a8; }
+.collections-active #view-outbound .embedded-panel { border-color: #d5e2d9; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px #21402b08; }
+.collections-active #outbound-frame { min-height: 1000px; background: #f4f7f5; }

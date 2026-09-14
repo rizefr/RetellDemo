@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/backend/backend.css?v=20260710" />
+    <link rel="stylesheet" href="/backend/backend.css?v=20260914" />
   </head>
   <body>
     <div class="backend-shell">
@@ -24,7 +24,7 @@
           <button class="nav-item" type="button" data-view-button="docs">Docs / Runbooks</button>
         </nav>
         <div class="sidebar-links">
-          <a href="/outbound" target="_blank" rel="noreferrer">Open legacy outbound</a>
+          <a href="/outbound" target="_blank" rel="noreferrer">Open collections workspace</a>
           <a href="/inbound" target="_blank" rel="noreferrer">Open legacy inbound</a>
         </div>
       </aside>
@@ -78,14 +78,14 @@
           <section id="view-outbound" class="view" aria-labelledby="outbound-heading">
             <div class="section-heading">
               <div>
-                <h3 id="outbound-heading">Outbound Collections / Elevator Inspection</h3>
-                <p>The existing outbound dashboard is embedded below so all current setup, preflight, customer, invoice, payment-link, and dry-run controls stay intact.</p>
+                <h3 id="outbound-heading">Pinnacle invoice follow-up</h3>
+                <p>Review invoices, prepare a controlled demo, and inspect source connections and customer communication in one workspace.</p>
               </div>
               <a class="button-link" href="/outbound" target="_blank" rel="noreferrer">Open full page</a>
             </div>
             <div id="outbound-summary" class="metric-grid"></div>
             <section class="panel embedded-panel">
-              <iframe id="outbound-frame" title="Outbound Collections dashboard" data-src="/outbound"></iframe>
+              <iframe id="outbound-frame" title="Pinnacle invoice follow-up workspace" data-src="/outbound?embedded=1"></iframe>
             </section>
           </section>
 
@@ -178,6 +178,6 @@
         </main>
       </div>
     </div>
-    <script src="/backend/backend.js?v=20260710" defer></script>
+    <script src="/backend/backend.js?v=20260914" defer></script>
   </body>
 </html>

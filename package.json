@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",
-    "csv-parse": "6.2.1",
+    "csv-parse": "7.0.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "libphonenumber-js": "^1.12.31",
