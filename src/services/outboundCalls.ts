@@ -3,6 +3,7 @@ import { isOutboundPhoneSuppressed } from "./outboundPhoneSuppression";
 import { invoicePaymentProvider } from "./outboundPaymentProvider";
 import { env } from "../config/env";
 import { DateTime } from "luxon";
+import { APIError } from "retell-sdk";
 import { getRetellClient } from "../retell/retellClient";
 import {
   evaluateAfterHoursTestOverride,
@@ -108,11 +109,31 @@ export async function inspectOutboundCallEligibility(
   demoCallAuthorizationId?: string,
 ) {
   let context = await getOutboundInvoiceContext(invoiceId);
+  if (!outboundBusinessRuntimeSettings(context.business).outreachEnabled) {
+    return {
+      context,
+      eligible: false as const,
+      reason: "business_outreach_disabled",
+      override_used: false,
+      demo_call_authorization: null,
+      effective_phone_number: String(context.customer.phone_number),
+    };
+  }
   if(context.invoice.source_provider === "quickbooks") {
     await reverifyQuickBooksInvoiceBeforeOutreach(invoiceId);
     context=await getOutboundInvoiceContext(invoiceId);
   }
   const runtime = outboundBusinessRuntimeSettings(context.business);
+  if (!runtime.outreachEnabled) {
+    return {
+      context,
+      eligible: false as const,
+      reason: "business_outreach_disabled",
+      override_used: false,
+      demo_call_authorization: null,
+      effective_phone_number: String(context.customer.phone_number),
+    };
+  }
   const demoAuthorization = await activeDemoAuthorization(
     demoCallAuthorizationId,
     String(context.business.id),
@@ -221,6 +242,7 @@ export async function describeOutboundCallPreflight(
     timezone,
     recipient_local_time: DateTime.fromJSDate(now, { zone: timezone }).toISO(),
     within_calling_window: isWithinOutboundCallingWindow(now, timezone),
+    outreach_enabled: runtime.outreachEnabled,
     test_mode: runtime.testMode,
     allowlisted: !runtime.testMode || allowlist.includes(phoneNumber),
     phone_valid: isValidE164(phoneNumber),
@@ -420,17 +442,29 @@ export async function startOutboundCall(
     ),
   };
 
+  let providerRequestStarted = false;
+  let providerAccepted = false;
+  let providerCallId: string | undefined;
   try {
     if(context.invoice.source_provider === "quickbooks") await reverifyQuickBooksInvoiceBeforeOutreach(invoiceId);
     if(await isOutboundPhoneSuppressed(String(context.business.id),effectivePhoneNumber)) throw new Error("Outbound call blocked: number_suppressed");
-    const call = await getRetellClient().call.createPhoneCall({
+    const latestContext = await getOutboundInvoiceContext(invoiceId);
+    if (!outboundBusinessRuntimeSettings(latestContext.business).outreachEnabled) {
+      throw new Error("Outbound call blocked: business_outreach_disabled");
+    }
+    const retell = getRetellClient();
+    providerRequestStarted = true;
+    const call = await retell.call.createPhoneCall({
       from_number: env.RETELL_FROM_NUMBER,
       to_number: effectivePhoneNumber,
       override_agent_id: selectedAgent.agentId,
       override_agent_version: "latest_published",
       metadata,
       retell_llm_dynamic_variables: dynamicVariables,
-    });
+    }, { maxRetries: 0 });
+    providerAccepted = true;
+    providerCallId = typeof call?.call_id === "string" && call.call_id ? call.call_id : undefined;
+    if (!providerCallId) throw new Error("Retell returned an incomplete call submission result");
     await updateOutboundCallAttempt(String(attempt.id), {
       retell_call_id: call.call_id,
       status: call.call_status,
@@ -469,10 +503,33 @@ export async function startOutboundCall(
       agent_label: "Conversation Flow",
     };
   } catch (error) {
+    const definiteRejection = !providerAccepted && error instanceof APIError &&
+      [400, 401, 403, 404, 422, 429].includes(error.status ?? 0);
+    if (providerRequestStarted && !definiteRejection) {
+      // The existing starting/registered reservation must survive an ambiguous
+      // request or a ledger failure after acceptance. Never retry the provider.
+      try {
+        await updateOutboundCallAttempt(String(attempt.id), {
+          ...(providerCallId ? { retell_call_id: providerCallId } : {}),
+          notes: "Call submission requires reconciliation. Do not retry until Retell and this attempt have been checked.",
+        });
+      } catch { /* The original active reservation still blocks a second call. */ }
+      try {
+        await insertOutboundEvent({
+          business_id: String(context.business.id),
+          customer_id: String(context.customer.id),
+          invoice_id: String(context.invoice.id),
+          event_type: "call_submission_reconciliation_required",
+          source: "retell",
+          payload: { call_attempt_id: String(attempt.id), provider_acceptance: providerAccepted ? "accepted" : "unknown", retell_call_id: providerCallId || null, retry_allowed: false },
+        });
+      } catch { /* Recording diagnostics must not release the reservation. */ }
+      throw new Error("Call submission requires reconciliation. Do not retry; check Retell and the call attempt before releasing the hold.");
+    }
     await updateOutboundCallAttempt(String(attempt.id), {
       status: "error",
       ended_at: new Date().toISOString(),
-      notes: error instanceof Error ? error.message.slice(0, 1000) : "Retell call creation failed",
+      notes: definiteRejection ? `Retell rejected the call request (HTTP ${error.status}).` : error instanceof Error ? error.message.slice(0, 1000) : "Retell call creation failed",
     });
     throw error;
   }

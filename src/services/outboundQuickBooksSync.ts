@@ -6,6 +6,7 @@ export type QuickBooksConnection = {
   business_id: string; realm_id: string; company_name: string; environment: 'production' | 'sandbox';
   connected_account_id: string; connection_owner_id: string; timezone: string; verified_at: string;
   status: string; source_country?: string | null; last_successful_sync_at?: string | null; sync_enabled?: boolean;
+  credential_mode?: 'project_api'|'consumer_mcp'; consumer_account_id?:string|null; provider_user_id?:string|null; company_identity_hash?:string|null;
 };
 export type SourceInvoice = {
   source_provider: 'quickbooks'; source_realm_id: string; provider_invoice_id: string; provider_customer_id: string;
@@ -136,30 +137,68 @@ export function buildQuickBooksPreview(connection: QuickBooksConnection, rows: S
   return { ...payload, hash, status:'preview' as const, counts:{fetched:rows.length,eligible:rows.filter(r=>r.eligible).length,quarantined:rows.filter(r=>!r.mapping_valid).length,excluded:rows.filter(r=>!r.eligible).length}, totals_by_currency:Object.values(totals), exclusions:rows.filter(r=>r.block_reasons.length).map(r=>({invoice_id:r.invoice_id,provider_invoice_id:r.provider_invoice_id,reasons:r.block_reasons})),created_at:now.toISOString(),expires_at:new Date(now.getTime()+15*60*1000).toISOString(),accounting_writes:false,outreach_started:false };
 }
 export type ReadExecutor = (tool: string, args: Record<string,unknown>) => Promise<any>;
-export async function readQuickBooksInvoices(execute: ReadExecutor, connection: QuickBooksConnection, now = new Date()) {
+export async function readQuickBooksInvoices(execute: ReadExecutor, connection: QuickBooksConnection, now = new Date(), knownInvoiceIds: string[] = []) {
+  if (!Array.isArray(knownInvoiceIds) || knownInvoiceIds.length > 10000 || knownInvoiceIds.some(id => typeof id !== 'string' || !ID.test(id))) {
+    throw new QuickBooksSyncError('Tracked QuickBooks invoice identities are invalid; nothing imported',409,'invalid_source_identity');
+  }
+  // Consumer tool responses are size bounded; ten-row reads are live verified.
+  const pageSize = connection.credential_mode === 'consumer_mcp' ? 10 : 100;
+  const idChunkSize = connection.credential_mode === 'consumer_mcp' ? 10 : 50;
   const invoices: any[] = [], customers = new Map<string,any>(), seen = new Set<string>();
-  for (let page=0;page<100;page++) {
-    const response = await execute('QUICKBOOKS_QUERY_ENTITIES',{query:`SELECT * FROM Invoice STARTPOSITION ${page*100+1} MAXRESULTS 100`});
+  const readPage = async (entity: 'Invoice' | 'Customer', query: string, startPosition: number, limit: number) => {
+    const response = await execute('QUICKBOOKS_QUERY_ENTITIES',{query});
     const data = response?.QueryResponse;
-    if (!data || typeof data !== 'object') throw new QuickBooksSyncError('QuickBooks query response was incomplete; nothing imported',502,'partial_source_response');
-    const values = data.Invoice ?? [];
-    if (!Array.isArray(values)) throw new QuickBooksSyncError('Invalid QuickBooks invoice page',502);
-    if (!values.length) break;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new QuickBooksSyncError('QuickBooks query response was incomplete; nothing imported',502,'partial_source_response');
+    const values = data[entity] ?? [];
+    if (!Array.isArray(values) || values.length > limit || (!values.length && Number(data.totalCount)>0) || Object.keys(data).some(key => ['Invoice','Customer'].includes(key) && key !== entity)) {
+      throw new QuickBooksSyncError('QuickBooks query returned an invalid page; nothing imported',502,'partial_source_response');
+    }
+    if ((data.startPosition !== undefined && Number(data.startPosition) !== startPosition) ||
+        (data.maxResults !== undefined && Number(data.maxResults) !== values.length)) {
+      throw new QuickBooksSyncError('QuickBooks pagination metadata was incomplete; nothing imported',502,'partial_source_response');
+    }
+    return values;
+  };
+  let startPosition = 1, exhausted = false;
+  for (let page=0;page<1000 && startPosition<=10000;page++) {
+    const values = await readPage('Invoice',`SELECT * FROM Invoice WHERE Balance > '0' STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`,startPosition,pageSize);
+    if (!values.length) { exhausted = true; break; }
     for (const invoice of values) {
-      const id = str(invoice.Id); if (!id || seen.has(id)) throw new QuickBooksSyncError('Repeated or missing invoice ID; sync stopped',502,'duplicate_source_invoice');
+      const id = str(invoice?.Id);
+      if (!ID.test(id) || seen.has(id)) throw new QuickBooksSyncError('Repeated or missing invoice ID; sync stopped',502,'duplicate_source_invoice');
+      if (!(Number(invoice.Balance)>0)) throw new QuickBooksSyncError('QuickBooks open-invoice filter returned an invalid balance; nothing imported',502,'invalid_source_filter');
       seen.add(id); invoices.push(invoice);
     }
-    if (page===99) throw new QuickBooksSyncError('QuickBooks sync exceeded page limit; nothing imported',502,'pagination_limit');
+    // Advance by records actually returned; a provider cap must not skip records.
+    startPosition += values.length;
   }
+  if (!exhausted) throw new QuickBooksSyncError('QuickBooks sync exceeded page limit; nothing imported',502,'pagination_limit');
+
+  // Open invoices cover partial payments. Only tracked IDs absent from that fresh
+  // read need an exact read to establish a full payment. Absence never means paid.
+  const trackedMissing = [...new Set(knownInvoiceIds)].filter(id => !seen.has(id));
+  for (let offset=0;offset<trackedMissing.length;offset+=idChunkSize) {
+    const chunk=trackedMissing.slice(offset,offset+idChunkSize);
+    const query="SELECT * FROM Invoice WHERE Id IN ("+chunk.map(id=>"'"+id+"'").join(',')+") STARTPOSITION 1 MAXRESULTS "+idChunkSize;
+    const values=await readPage('Invoice',query,1,idChunkSize);
+    const returned=new Set<string>();
+    for (const invoice of values) {
+      const id=str(invoice?.Id);
+      if (!chunk.includes(id) || returned.has(id) || seen.has(id)) throw new QuickBooksSyncError('Tracked QuickBooks invoice identity mismatch; nothing imported',502,'invalid_source_identity');
+      returned.add(id); seen.add(id); invoices.push(invoice);
+    }
+    if (returned.size!==chunk.length) throw new QuickBooksSyncError('A tracked QuickBooks invoice is missing; review the source before importing',409,'tracked_invoice_missing');
+  }
+
   const customerIds=[...new Set<string>(invoices.map(invoice=>str(invoice.CustomerRef?.value)).filter(id=>ID.test(id)))];
-  for(let offset=0;offset<customerIds.length;offset+=100) {
-    const chunk=customerIds.slice(offset,offset+100);
-    const query="SELECT * FROM Customer WHERE Id IN ("+chunk.map(id=>"'"+id+"'").join(',')+") STARTPOSITION 1 MAXRESULTS 1000";
-    const response=await execute('QUICKBOOKS_QUERY_ENTITIES',{query});
-    if(!response?.QueryResponse || !Array.isArray(response.QueryResponse.Customer??[])) throw new QuickBooksSyncError('QuickBooks customer query was incomplete; nothing imported',502,'partial_source_response');
-    for(const customer of response.QueryResponse.Customer??[]) {
-      if(!chunk.includes(str(customer.Id)) || customers.has(str(customer.Id))) throw new QuickBooksSyncError('QuickBooks customer identity mismatch',502,'invalid_source_identity');
-      customers.set(str(customer.Id),customer);
+  for(let offset=0;offset<customerIds.length;offset+=idChunkSize) {
+    const chunk=customerIds.slice(offset,offset+idChunkSize);
+    const query="SELECT * FROM Customer WHERE Id IN ("+chunk.map(id=>"'"+id+"'").join(',')+") STARTPOSITION 1 MAXRESULTS "+idChunkSize;
+    const values=await readPage('Customer',query,1,idChunkSize);
+    for(const customer of values) {
+      const id=str(customer?.Id);
+      if(!chunk.includes(id) || customers.has(id)) throw new QuickBooksSyncError('QuickBooks customer identity mismatch',502,'invalid_source_identity');
+      customers.set(id,customer);
     }
   }
   return buildQuickBooksPreview(connection,invoices.map(i=>normalizeQuickBooksInvoice(i,customers.get(str(i.CustomerRef?.value)),connection,now)),now);

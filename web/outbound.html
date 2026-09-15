@@ -49,6 +49,7 @@
           <button id="save-settings">Save settings</button>
         </div>
         <label class="settings-business">Business <select id="settings-business"></select></label>
+        <div id="business-outreach-status" class="setup-summary" role="status">Reading accounting identity and outreach permissions…</div>
         <div class="settings-grid">
           <label>Business display name <input id="setting-business-name" /></label>
           <label>Agent display name <input id="setting-agent-name" value="Paul" /></label>
@@ -67,7 +68,7 @@
           <label>Email sender <input id="setting-email-from" /></label>
           <label class="wide">Payment mailing instructions <textarea id="setting-mailing" rows="3" placeholder="Leave blank if mailing details are not configured"></textarea></label>
           <label class="wide">Callback/follow-up rules (JSON) <textarea id="setting-callback-rules" rows="3"></textarea></label>
-          <label class="check-control"><input id="setting-test-mode" type="checkbox" /> Test mode</label>
+          <label class="check-control"><input id="setting-test-mode" type="checkbox" /> Outreach test mode · allowlisted recipients only</label>
           <label class="check-control"><input id="setting-after-hours" type="checkbox" /> Permit gated after-hours self-test</label>
           <label class="check-control"><input id="setting-email-enabled" type="checkbox" /> Request payment email delivery</label>
           <label class="check-control"><input id="setting-sms-enabled" type="checkbox" disabled /> SMS activation locked for this review</label>
@@ -141,6 +142,7 @@
         <div class="section-heading"><div><p class="eyebrow">Accounting source</p><h2 id="source-heading">QuickBooks &amp; weekly review</h2><p>Preview the first import before applying it. The review queue never starts customer outreach.</p></div><button id="source-refresh" class="secondary">Refresh connection</button></div>
         <div id="source-connection-detail" class="setup-summary" role="status">Loading source status…</div>
         <div id="source-sync-controls"></div><div id="source-sync-result" aria-live="polite"></div>
+        <div id="spreadsheet-sync-detail" class="setup-summary" aria-live="polite">Loading spreadsheet refresh status separately from the accounting import…</div>
         <div id="weekly-review-detail" class="setup-summary" aria-live="polite">Loading weekly review settings…</div>
       </section>
       <section data-workspace="templates" hidden class="panel template-panel" aria-labelledby="templates-heading">
@@ -277,6 +279,6 @@
       </tr>
     </template>
 
-    <script src="/outbound/outbound.js?v=20260914" defer></script>
+    <script src="/outbound/outbound.js?v=20260915review" defer></script>
   </body>
 </html>

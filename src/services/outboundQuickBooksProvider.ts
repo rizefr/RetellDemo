@@ -1,18 +1,24 @@
 import { QuickBooksSyncError, type QuickBooksConnection, type ReadExecutor } from './outboundQuickBooksSync';
+import {QuickBooksConsumerMcp,quickBooksConsumerCredentialConfigured,quickBooksCompanyIdentityHash,readConsumerToolResult,verifyConsumerAccountList} from './outboundQuickBooksConsumerMcp';
 
 const API = 'https://backend.composio.dev/api/v3.1';
-export function quickBooksServerCredentialConfigured(): boolean {
+export function quickBooksServerCredentialConfigured(connection?:QuickBooksConnection): boolean {
+  if(connection?.credential_mode==='consumer_mcp')return quickBooksConsumerCredentialConfigured();
   const key = process.env.QUICKBOOKS_COMPOSIO_API_KEY || '';
   // Personal CLI user credentials must not become a deployment credential.
-  return Boolean(key && !key.startsWith('uak_'));
+  return Boolean(key && !/^(?:uak_|ck_)/.test(key)) || (!connection && quickBooksConsumerCredentialConfigured());
 }
 export class QuickBooksReadOnlyProvider {
-  constructor(readonly connection: QuickBooksConnection, private readonly request: typeof fetch = fetch) {
+  private readonly consumer:QuickBooksConsumerMcp|null;
+  constructor(readonly connection: QuickBooksConnection, private readonly request: typeof fetch = fetch, consumerCredential?:()=>string) {
     if (!/^\d+$/.test(connection.realm_id) || !/^ca_[A-Za-z0-9_-]+$/.test(connection.connected_account_id)) throw new QuickBooksSyncError('QuickBooks company binding is incomplete',409,'connection_unverified');
     if (connection.status !== 'active' || !connection.verified_at) throw new QuickBooksSyncError('QuickBooks company must be verified before use',409,'connection_unverified');
+    if(connection.credential_mode && !['project_api','consumer_mcp'].includes(connection.credential_mode))throw new QuickBooksSyncError('QuickBooks credential transport is unverified',409,'connection_unverified');
+    if(connection.credential_mode==='consumer_mcp' && (!connection.consumer_account_id||!connection.provider_user_id||!/^[a-f0-9]{64}$/.test(connection.company_identity_hash||'')))throw new QuickBooksSyncError('An independently verified consumer account and company fingerprint is required',409,'connection_unverified');
+    this.consumer=connection.credential_mode==='consumer_mcp'?new QuickBooksConsumerMcp(connection,request,consumerCredential):null;
   }
   private async composio(path: string, body?: unknown): Promise<any> {
-    if (!quickBooksServerCredentialConfigured()) throw new QuickBooksSyncError('A scoped server Composio API credential is required. The personal CLI connection is not a deployed integration.',503,'server_credential_missing');
+    if (!quickBooksServerCredentialConfigured(this.connection)) throw new QuickBooksSyncError('A scoped server Composio API credential is required. The personal CLI connection is not a deployed integration.',503,'server_credential_missing');
     for (let attempt=0;attempt<3;attempt++) {
       let response: Response;
       try { response = await this.request(`${API}${path}`,{method:body?'POST':'GET',headers:{'x-api-key':process.env.QUICKBOOKS_COMPOSIO_API_KEY!,'Content-Type':'application/json','Accept':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)}); }
@@ -27,6 +33,12 @@ export class QuickBooksReadOnlyProvider {
     throw new QuickBooksSyncError('QuickBooks provider unavailable',503);
   }
   async verifyCompany() {
+    if(this.consumer){
+      verifyConsumerAccountList(await this.consumer.listConnections(),this.connection);
+      const company=readConsumerToolResult(await this.consumer.executeRead('QUICKBOOKS_GET_COMPANY_INFO',{minorversion:75}),'QUICKBOOKS_GET_COMPANY_INFO');
+      if(company.CompanyName!==this.connection.company_name||quickBooksCompanyIdentityHash(company)!==this.connection.company_identity_hash)throw new QuickBooksSyncError('QuickBooks company differs from the independently verified source realm',403,'company_mismatch');
+      return {company_name:company.CompanyName,source_timezone:company.DefaultTimeZone,source_country:company.Country||null,realm_id:this.connection.realm_id,environment:this.connection.environment,identity_verification:'explicit_account_and_exact_realm_attestation'};
+    }
     const account = await this.composio(`/connected_accounts/${encodeURIComponent(this.connection.connected_account_id)}`);
     if(account.status!=='ACTIVE' || account.is_disabled || account.user_id!==this.connection.connection_owner_id || account.toolkit?.slug!=='quickbooks') throw new QuickBooksSyncError('QuickBooks connected-account owner or status mismatch',403,'connection_owner_mismatch');
     const expectedBase = this.connection.environment==='production'?'https://quickbooks.api.intuit.com':'https://sandbox-quickbooks.api.intuit.com';
@@ -36,9 +48,40 @@ export class QuickBooksReadOnlyProvider {
     if(company.domain!=='QBO' || company.CompanyName!==this.connection.company_name) throw new QuickBooksSyncError('QuickBooks company identity does not match this business',403,'company_mismatch');
     return {company_name:company.CompanyName,source_timezone:company.DefaultTimeZone,source_country:company.Country||null,realm_id:this.connection.realm_id,environment:this.connection.environment};
   }
+  private async consumerQuery(query:string):Promise<any>{
+    try{return readConsumerToolResult(await this.consumer!.executeRead('QUICKBOOKS_QUERY_ENTITIES',{query}),'QUICKBOOKS_QUERY_ENTITIES');}
+    catch(cause){
+      if(!(cause instanceof QuickBooksSyncError)||cause.code!=='consumer_result_truncated')throw cause;
+      const match=/^SELECT \* FROM (Invoice|Customer)(.*?) STARTPOSITION (\d+) MAXRESULTS (\d+)$/.exec(query)!;
+      const [,entity,where,start,count]=match;
+      const ids=/^ WHERE Id IN \('([A-Za-z0-9_\-', ]+)'\)$/.exec(where)?.[1].split(/',\s*'/);
+      if(ids&&ids.length>1){
+        // Each ID appears in exactly one bounded query. Never discard a truncated customer result.
+        const split=Math.ceil(ids.length/2),rows:any[]=[];
+        for(const group of [ids.slice(0,split),ids.slice(split)]){
+          const response=await this.consumerQuery(`SELECT * FROM ${entity} WHERE Id IN ('${group.join("', '")}') STARTPOSITION 1 MAXRESULTS ${group.length}`);
+          const envelope=response.QueryResponse,items=envelope?.[entity]||[];
+          if(!envelope||!Array.isArray(items)||items.length>group.length||items.some((item:any)=>!group.includes(String(item.Id)))||new Set(items.map((item:any)=>String(item.Id))).size!==items.length||(envelope.maxResults!==undefined&&envelope.maxResults!==items.length)||(envelope.startPosition!==undefined&&envelope.startPosition!==1)||(items.length===0&&Number(envelope.totalCount||0)>0))throw new QuickBooksSyncError('QuickBooks split read is incomplete',503,'provider_read_failed');
+          rows.push(...items);
+        }
+        return {QueryResponse:{[entity]:rows,startPosition:Number(start),maxResults:rows.length,totalCount:rows.length}};
+      }
+      if(Number(count)>1)return this.consumerQuery(`SELECT * FROM ${entity}${where} STARTPOSITION ${start} MAXRESULTS ${Math.max(1,Math.floor(Number(count)/2))}`);
+      // A single oversized source cannot be skipped or replaced with the provider's inline preview.
+      throw cause;
+    }
+  }
   async get(relativePath: string, query: Record<string,string> = {}) {
     if(!/^(?:companyinfo\/\d+|invoice\/[A-Za-z0-9_-]+|customer\/[A-Za-z0-9_-]+|query)$/.test(relativePath)) throw new QuickBooksSyncError('Only approved QuickBooks read operations are allowed',403,'operation_not_allowed');
     if(relativePath==='query' && !/^SELECT \* FROM (?:Invoice|Customer)(?: WHERE (?:Balance > '0'|Id IN \('[A-Za-z0-9_\-', ]+'\)))? STARTPOSITION \d+ MAXRESULTS \d+$/.test(query.query||''))throw new QuickBooksSyncError('Only bounded approved QuickBooks queries are allowed',403,'operation_not_allowed');
+    if(relativePath.startsWith('companyinfo/')&&relativePath!==`companyinfo/${this.connection.realm_id}`)throw new QuickBooksSyncError('Company read must match the verified realm',403,'company_mismatch');
+    for(const [key,value] of Object.entries(query))if(!((key==='query'&&relativePath==='query')||(key==='include'&&relativePath.startsWith('invoice/')&&value==='invoiceLink')))throw new QuickBooksSyncError('Unsupported QuickBooks parameter',400,'operation_not_allowed');
+    if(this.consumer){
+      const tool=relativePath==='query'?'QUICKBOOKS_QUERY_ENTITIES':relativePath.startsWith('companyinfo/')?'QUICKBOOKS_GET_COMPANY_INFO':relativePath.startsWith('invoice/')?'QUICKBOOKS_READ_INVOICE':'QUICKBOOKS_READ_CUSTOMER';
+      const args=tool==='QUICKBOOKS_QUERY_ENTITIES'?{query:query.query}:tool==='QUICKBOOKS_GET_COMPANY_INFO'?{minorversion:75}:tool==='QUICKBOOKS_READ_INVOICE'?{invoice_id:relativePath.split('/')[1],minorversion:75}:{customer_id:relativePath.split('/')[1]};
+      // The native consumer invoice tool has no include parameter. Missing InvoiceLink stays a manual fallback.
+      return tool==='QUICKBOOKS_QUERY_ENTITIES'?this.consumerQuery(query.query):readConsumerToolResult(await this.consumer.executeRead(tool,args),tool);
+    }
     const base = this.connection.environment==='production'?'https://quickbooks.api.intuit.com':'https://sandbox-quickbooks.api.intuit.com';
     const url = new URL(`/v3/company/${this.connection.realm_id}/${relativePath}`,base);
     url.searchParams.set('minorversion','75');

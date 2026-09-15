@@ -222,6 +222,10 @@ outboundApiRouter.post("/demo-call/authorize-number", async (req, res) => {
     }
     const business = await getOutboundBusinessSettings(input.business_id);
     const runtime = outboundBusinessRuntimeSettings(business);
+    if (!runtime.outreachEnabled) {
+      res.status(403).json({ error: "business_outreach_disabled" });
+      return;
+    }
     if (!runtime.testMode) {
       res.status(403).json({ error: "Presentation demo numbers require test mode." });
       return;
@@ -654,6 +658,10 @@ outboundApiRouter.post("/calls/start-batch", async (req, res) => {
     const input = startBatchSchema.parse(req.body);
     const batchEligibilities = await Promise.all(input.invoice_ids.map((invoiceId) => inspectOutboundCallEligibility(invoiceId)));
     const runtimes = batchEligibilities.map((eligibility) => outboundBusinessRuntimeSettings(eligibility.context.business));
+    if (input.mode !== "dry_run" && runtimes.some((runtime) => !runtime.outreachEnabled)) {
+      res.status(403).json({ error: "business_outreach_disabled" });
+      return;
+    }
     const businessIds = new Set(batchEligibilities.map((eligibility) => String(eligibility.context.business.id)));
     if (input.mode !== "dry_run" && businessIds.size !== 1) {
       res.status(400).json({ error: "A callable batch cannot mix businesses" });

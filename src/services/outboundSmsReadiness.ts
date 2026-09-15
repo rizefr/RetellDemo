@@ -6,7 +6,8 @@ import { getOutboundBusinessSettings, insertOutboundEvent } from "./outboundRepo
 // An observation, not a live approval check. No environment flag enables sending.
 export const SMS_CAMPAIGN_OBSERVATION = {
   phone_number: "+19842075346",
-  status: "in_review",
+  status: "rejected",
+  rejection_reason: "The campaign submission has been reviewed and rejected because a compliant privacy policy can not be verified.",
   observed_on: "2026-09-14",
   source: "Retell dashboard readback",
 } as const;
@@ -115,13 +116,13 @@ export async function getOutboundSmsReadiness(businessId: string) {
     sending_enabled: false, campaign: SMS_CAMPAIGN_OBSERVATION, provider_webhook_connected: false,
     storage_ready: storageReady, consent_record_count: consents.count ?? null, suppression_count: suppressions.count ?? null,
     recent_delivery_events: events.data || [],
-    blockers: ["explicit_activation_required", "campaign_approval_pending", "provider_webhook_not_connected", ...(!storageReady ? ["readiness_storage_unavailable"] : [])],
+    blockers: ["explicit_activation_required", "campaign_rejected_privacy_policy_unverified", "provider_webhook_not_connected", ...(!storageReady ? ["readiness_storage_unavailable"] : [])],
     consent_rule: "Explicit SMS permission for invoice follow-up is required. QuickBooks phone numbers, email permission, and voice-call permission are not SMS consent.",
     templates: {
       reminder: "{{business_name}}: Invoice {{invoice_number}} has an outstanding balance of {{balance}}. Review the verified payment link: {{payment_url}}. Reply STOP to opt out or HELP for help.",
       stop: "You have opted out of {{business_name}} text messages. No further texts will be sent.",
       help: "For help with {{business_name}} invoices, contact {{verified_business_contact}}. Reply STOP to opt out.",
     },
-    activation_checklist: ["Verify the approved campaign and linked number", "Verify the opt-in wording and evidence", "Connect and test provider signature verification and replay protection", "Verify STOP suppression, HELP handling, and delivery receipts", "Obtain explicit activation approval"],
+    activation_checklist: ["Resolve the privacy-policy verification rejection and obtain a new approved campaign readback for the linked number", "Verify the opt-in wording and evidence", "Connect and test provider signature verification and replay protection", "Verify STOP suppression, HELP handling, and delivery receipts", "Obtain explicit activation approval"],
   };
 }

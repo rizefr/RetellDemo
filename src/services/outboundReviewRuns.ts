@@ -12,14 +12,21 @@ export function reviewCalendar(now=new Date()){
  return {week_start:week.toISODate(),due_at:due.toISO(),due:local>=due,timezone:REVIEW_TIMEZONE};
 }
 export function buildReviewReminder(input:{businessName:string;settings:ReviewSettings;connection:any;queue?:any;now?:Date}){
- const {settings,connection,queue}=input;if(!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(settings.reminder_recipient||""))throw new ReviewRunError("Approved reminder recipient is not configured",409);const blockers=[...connection.blockers||[]];
+ const {settings,queue}=input;const connection=queue?.connection||input.connection;if(!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(settings.reminder_recipient||""))throw new ReviewRunError("Approved reminder recipient is not configured",409);const blockers=[...connection.blockers||[]];
  if(settings.stage==='staged_preview')blockers.push('staged_preview_not_imported');
  if(connection.stale)blockers.push('source_refresh_stale_or_missing');
  if(settings.stage==='live_verified'&&!queue)blockers.push('queue_not_verified');
+ const worksheet=connection.spreadsheet_sync;
+ if(settings.stage==='live_verified'&&(!worksheet||worksheet.stale))blockers.push('spreadsheet_refresh_stale_or_missing');
+ if(settings.stage==='live_verified'&&worksheet?.failure)blockers.push('review_job_failed');
+ if(settings.stage==='live_verified'&&(!queue?.source_run_id||queue.source_run_id!==worksheet?.source_run_id||queue.source_run_id!==worksheet?.latest_source_run_id))blockers.push('spreadsheet_source_snapshot_mismatch');
  const unique=[...new Set<string>(blockers)],ready=settings.stage==='live_verified'&&connection.connected&&!connection.stale&&queue&&unique.length===0;
  const totals:Record<string,number>={};if(ready)for(const row of queue.invoices||[])totals[row.currency]=(totals[row.currency]||0)+Number(row.source_balance_cents||0);
- const review={stage:ready?'live_review':'blocked_review',configured_stage:settings.stage,connection_blockers:unique,company_name:connection.company_name||null,realm_id:connection.realm_id||null,last_successful_sync_at:connection.last_successful_sync_at||null,staged_snapshot_at:settings.source_snapshot_at||null,spreadsheet_url:settings.spreadsheet_url,invoice_count:ready?queue.invoices.length:null,totals_minor_by_currency:ready?totals:null,customer_outreach:false,sync_triggered:false,calendar:reviewCalendar(input.now)};
- const lines=[`${input.businessName} weekly invoice review`,ready?'The last verified import is available for review.':'The current QuickBooks refresh is not verified. Review the connection blockers before relying on invoice balances.',`Review workbook: ${settings.spreadsheet_url}`,`Last successful application sync: ${connection.last_successful_sync_at||'None verified'}.`];
+ const review={stage:ready?'live_review':'blocked_review',configured_stage:settings.stage,connection_blockers:unique,company_name:connection.company_name||null,realm_id:connection.realm_id||null,last_successful_sync_at:connection.last_successful_sync_at||null,staged_snapshot_at:settings.source_snapshot_at||null,spreadsheet_url:settings.spreadsheet_url,spreadsheet_sync:worksheet||{stale:true,last_sheet_success_at:null},invoice_count:ready?queue.invoices.length:null,totals_minor_by_currency:ready?totals:null,customer_outreach:false,sync_triggered:false,calendar:reviewCalendar(input.now)};
+ const blockedIntroduction=connection.connected&&!connection.stale&&settings.stage==='live_verified'?'The application source is available, but the workbook refresh or operational review is not verified. Review the pending checks before relying on the workbook.':'The current QuickBooks refresh is not verified. Review the connection blockers before relying on invoice balances.';
+ const lines=[`${input.businessName} weekly invoice review`,ready?'The last verified import and workbook are available for review.':blockedIntroduction,`Review workbook: ${settings.spreadsheet_url}`,`Last successful application sync: ${connection.last_successful_sync_at||'None verified'}.`];
+ if(settings.stage==='live_verified')lines.push(`Last verified workbook refresh: ${worksheet?.last_sheet_success_at||'None verified'}. Workbook status: ${worksheet?.stale===false&&!unique.includes('spreadsheet_source_snapshot_mismatch')?'Current for the recorded source snapshot':'Stale or unverified'}.`);
+ if(settings.stage==='live_verified'&&worksheet?.failure)lines.push(`Review refresh issue: ${String(worksheet.failure).replace(/[^a-zA-Z0-9_ -]/g,'').slice(0,100)}.`);
  if(settings.source_snapshot_at)lines.push(`Staged source snapshot: ${settings.source_snapshot_at}. This is a historical preview, not a current balance check.`);
  if(unique.length)lines.push(`Pending checks: ${unique.join(', ')}.`);
  if(ready){lines.push(`Overdue invoices in the last verified import: ${queue.invoices.length}.`);for(const [currency,minor]of Object.entries(totals))lines.push(`${currency}: ${(minor/100).toFixed(2)} remaining.`);}

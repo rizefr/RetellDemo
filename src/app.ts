@@ -8,6 +8,7 @@ import { inboundPageRouter } from "./routes/inboundPage";
 import { outboundApiRouter } from "./routes/outboundApi";
 import { outboundIntegrationApiRouter } from "./routes/outboundIntegrationApi";
 import { outboundReviewRunsRouter } from "./routes/outboundReviewRunsApi";
+import { outboundReviewJobsRouter } from "./routes/outboundReviewJobsApi";
 import { outboundSmsApiRouter } from "./routes/outboundSmsApi";
 import { outboundEmailApiRouter } from "./routes/outboundEmailApi";
 import { outboundPageRouter } from "./routes/outboundPage";
@@ -46,6 +47,7 @@ export function createApp() {
   app.use("/api/outbound/email", outboundEmailApiRouter);
   app.use("/api/outbound/integrations", outboundIntegrationApiRouter);
   app.use("/api/outbound/integrations/review-runs", outboundReviewRunsRouter);
+  app.use("/api/outbound/integrations/review-jobs", outboundReviewJobsRouter);
   app.use("/api/outbound/sms", outboundSmsApiRouter);
   app.use(backendPageRouter);
   app.use(inboundPageRouter);
