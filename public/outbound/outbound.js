@@ -446,6 +446,7 @@ function populateDemoEditor(invoice) {
   const sourceLocked = isQuickBooksInvoice(invoice);
   document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea, #demo-save-details").forEach((control) => { control.disabled = sourceLocked; });
   if (sourceLocked) setDemoFeedback("This is a synced QuickBooks invoice. Accounting values are protected; select a local demo invoice to edit presentation details.", [{ label: "Synced · protected", tone: "info" }]);
+  else setDemoFeedback("This is a local demo invoice. Save any changes, then run the backend preflight for the selected test number.", [{ label: "Local · editable", tone: "info" }]);
   activeDemoPreflight = null;
   document.getElementById("demo-start-call").disabled = true;
 }
