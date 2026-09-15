@@ -19,7 +19,8 @@ function dashboardHarness() {
     localStorage:{getItem:(key:string)=>storage.get(key)||null,setItem:(key:string,value:string)=>storage.set(key,value)},
     document: {
       getElementById: node,
-      querySelectorAll: (selector: string) => selector === '[data-action="call"]' ? [callButton] : selector === '[data-field="gate"]' ? [gate] : [],
+      createElement: () => ({textContent:"",className:""}),
+      querySelectorAll: (selector: string) => selector === '[data-action="call"]' ? [callButton] : selector === '[data-field="gate"]' ? [gate] : selector.includes("#demo-save-details") ? [node("demo-save-details"),node("demo-first-name")] : [],
     },
   });
   // Evaluate the same production functions without boot-time network requests.
@@ -91,6 +92,21 @@ describe("collections dashboard state boundaries", () => {
     expect(h.node("demo-inspection-date").value).toBe("2026-04-01");
     expect(h.node("demo-invoice-date").value).toBe("2026-04-07");
     expect(h.node("demo-original-due-date").value).toBe("2026-05-07");
+  });
+
+  it("resets the protected source banner and editable controls when changing QuickBooks to local demo and back",()=>{
+    const h=dashboardHarness();
+    h.run('populateDemoEditor({source_provider:"quickbooks",outbound_customers:{},outbound_businesses:{}})');
+    expect(h.node("demo-save-details").disabled).toBe(true);
+    expect(h.node("demo-last-result").textContent).toContain("synced QuickBooks");
+    h.run('populateDemoEditor({source_provider:"local",outbound_customers:{},outbound_businesses:{is_demo:true}})');
+    expect(h.node("demo-save-details").disabled).toBe(false);
+    expect(h.node("demo-last-result").textContent).toContain("local demo invoice");
+    expect(h.node("demo-last-result").textContent).not.toContain("synced QuickBooks");
+    expect(h.run('document.getElementById("demo-feedback-badges").options[0].textContent')).toBe("Local · editable");
+    h.run('populateDemoEditor({source_provider:"quickbooks",outbound_customers:{},outbound_businesses:{}})');
+    expect(h.node("demo-save-details").disabled).toBe(true);
+    expect(h.run('document.getElementById("demo-feedback-badges").options[0].textContent')).toBe("Synced · protected");
   });
 
   it("clears old tenant controls immediately and starts independent business panels without waiting for source reads",async()=>{
