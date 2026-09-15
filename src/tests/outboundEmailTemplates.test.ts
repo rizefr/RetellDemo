@@ -1,6 +1,7 @@
 import { describe,it,expect,vi } from "vitest";
 import request from "supertest";
-import { emailTemplateContentSchema, PINNACLE_EMAIL_TEMPLATE, renderOutboundEmailTemplate, safeEmailPaymentUrl, validatedPreviewPaymentUrl, type EmailInvoiceVariables } from "../services/outboundEmailTemplates";
+import { emailTemplateContentSchema, PINNACLE_EMAIL_TEMPLATE, previewOutboundEmail, renderOutboundEmailTemplate, safeEmailPaymentUrl, validatedPreviewPaymentUrl, type EmailInvoiceVariables } from "../services/outboundEmailTemplates";
+import * as outboundRepository from "../services/outboundRepository";
 import { createApp } from "../app";
 
 const variables:EmailInvoiceVariables={business_name:"Pinnacle Elevator Solutions",customer_name:'<script>alert("x")</script>',invoice_number:"6474",service_description:"Category 1 inspection",inspection_date:"July 2, 2026",invoice_date:"July 6, 2026",due_date:"August 5, 2026",balance:"$450.00",currency:"USD",payment_url:"https://connect.intuit.com/portal/app/CommerceNetwork/view/scs-v1-example",contact_phone:"646-893-1695",contact_email:"hello@pinnacleelevatorsolutions.com",pinnacle_brand:true,demo:true};
@@ -29,6 +30,34 @@ describe("branded invoice templates",()=>{
   const app=createApp();
   expect((await request(app).get("/api/outbound/email/preview")).status).toBe(401);
   expect((await request(app).post("/api/outbound/email/templates").send({})).status).toBe(401);
+ });
+});
+
+describe("preview accounting identity and delivery safety",()=>{
+ it.each([
+  {is_demo:false,test_mode:true},
+  {is_demo:false,test_mode:true,account_name:"Example <Facilities>"},
+  {is_demo:true,test_mode:true},
+  {is_demo:true,test_mode:false},
+ ])("labels stored accounting identity independently of delivery mode %j",async mode=>{
+  const businessId="00000000-0000-4000-8000-000000000031";
+  const invoiceId="00000000-0000-4000-8000-000000000032";
+  const accountName="account_name" in mode?mode.account_name:"";
+  vi.spyOn(outboundRepository,"getOutboundInvoiceContext").mockResolvedValue({
+   business:{id:businessId,business_name:"Example Elevator Services",email_brand:"pinnacle",payment_provider:"quickbooks",outreach_enabled:false,payment_email_enabled:false,email_test_recipient_allowlist:[],...mode},
+   customer:{id:"00000000-0000-4000-8000-000000000033",business_id:businessId,first_name:accountName?"":"Casey",account_company_name:accountName,email:"customer@example.test",outreach_paused:false},
+   invoice:{id:invoiceId,business_id:businessId,invoice_id:"QBO-42",source_provider:"quickbooks",status:"unpaid",amount_due_cents:17550,currency:"usd",service_description:"Category 1 inspection",inspection_date:"2026-07-02",invoice_date:"2026-07-06",original_due_date:"2026-08-05"},
+   paymentLink:null,activeCall:null,
+   account:{openInvoices:[],openInvoiceCount:1,totalAmountDueCents:17550,oldestInvoiceDate:null,mostRecentInvoiceDate:null,selectedInvoiceIsMostRecent:true,lastPaymentDate:null},
+  });
+  const result=await previewOutboundEmail(businessId,invoiceId);
+  expect(result.subject.startsWith("[Demo] ")).toBe(mode.is_demo);
+  expect(result.html.includes("No payment is requested for demo records.")).toBe(mode.is_demo);
+  expect(result.text.includes("no payment is requested for demo records.")).toBe(mode.is_demo);
+  expect(result.text).toContain("$175.50 USD");
+  if(accountName){expect(result.text).toContain(`Hello ${accountName},`);expect(result.html).toContain("Hello Example &lt;Facilities&gt;,");expect(result.html).not.toContain("<Facilities>");}
+  expect(result.block_reasons.includes("Recipient is outside the test allowlist")).toBe(mode.test_mode);
+  expect(result.send_ready).toBe(false);
  });
 });
 

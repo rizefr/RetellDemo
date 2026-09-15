@@ -141,12 +141,12 @@ export async function previewOutboundEmail(businessId: string, invoiceId: string
   let balance="Amount requires review";
   try { if(currencyValid&&Number.isSafeInteger(Number(i.amount_due_cents))&&Number(i.amount_due_cents)>=0) balance=new Intl.NumberFormat("en-US",{style:"currency",currency}).format(Number(i.amount_due_cents)/100); } catch { /* The preview remains inspectable with an explicit blocked amount. */ }
   const rendered=renderOutboundEmailTemplate(template ? emailTemplateContentSchema.parse(template.content) : PINNACLE_EMAIL_TEMPLATE, {
-    business_name:String(b.business_name),customer_name:[c.first_name,c.last_name].filter(Boolean).join(" "),invoice_number:String(i.source_document_number || i.invoice_id),
+    business_name:String(b.business_name),customer_name:[c.first_name,c.last_name].filter(Boolean).join(" ").trim() || String(c.account_company_name || ""),invoice_number:String(i.source_document_number || i.invoice_id),
     service_description:String(i.service_description || ""),inspection_date:formatOutboundDate(String(i.inspection_date || ""), ""),
     invoice_date:formatOutboundDate(String(i.invoice_date || ""), ""),due_date:formatOutboundDate(String(i.original_due_date || ""), ""),
     balance,currency,payment_url:rawUrl,
     contact_phone:pinnacle ? "646-893-1695" : String(b.callback_number || ""),contact_email:pinnacle ? "hello@pinnacleelevatorsolutions.com" : "",
-    pinnacle_brand:pinnacle,demo:runtime.testMode,
+    pinnacle_brand:pinnacle,demo:b.is_demo === true,
   });
   const recipient=String(c.preferred_email || c.email || "").trim();
   const blockReasons:string[]=[];

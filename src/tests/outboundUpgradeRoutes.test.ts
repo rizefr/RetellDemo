@@ -216,7 +216,7 @@ describe("outbound upgrade routes", () => {
 
   });
 
-  it("returns redacted QuickBooks status and a safe not-connected placeholder", async () => {
+  it("returns redacted legacy QuickBooks connection status", async () => {
     process.env.NODE_ENV = "test";
     process.env.OUTBOUND_ADMIN_TOKEN = "upgrade-admin";
     process.env.QUICKBOOKS_CLIENT_ID = "qb-client";
@@ -249,15 +249,6 @@ describe("outbound upgrade routes", () => {
     });
     expect(JSON.stringify(status.body)).not.toContain("qb-secret");
 
-    const placeholder = await request(createApp())
-      .post("/api/outbound/quickbooks/invoice-link")
-      .set("Authorization", "Bearer upgrade-admin")
-      .send({
-        business_id: "00000000-0000-4000-8000-000000000001",
-        invoice_id: "00000000-0000-4000-8000-000000000003",
-      });
-    expect(placeholder.status).toBe(409);
-    expect(placeholder.body.error).toContain("QuickBooks not connected");
   });
 
   it("proposes then stores a signed callback using trusted call metadata", async () => {

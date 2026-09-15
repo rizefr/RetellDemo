@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans+Condensed:wght@700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/outbound/outbound.css?v=20260914" />
+    <link rel="stylesheet" href="/outbound/outbound.css?v=20260915workspace" />
   </head>
   <body>
     <a class="skip-link" href="#workspace-title">Skip to workspace</a>
@@ -30,8 +30,11 @@
     </header>
     <main id="collections-workspace">
       <section class="panel toolbar-panel" aria-label="Dashboard controls">
-        <div>
-          <strong>One place for invoice follow-up</strong>
+        <div class="workspace-switcher">
+          <label for="workspace-business">Choose a workspace</label>
+          <select id="workspace-business" disabled><option>Loading businesses…</option></select>
+          <button id="open-demo-workspace" class="secondary" disabled>Open demo</button>
+          <p id="workspace-demo-note" role="status">Loading the available Demo and Live workspaces…</p>
           <p id="last-refreshed">Waiting for the first refresh</p>
         </div>
         <button id="refresh-all" class="secondary">Refresh all data</button>
@@ -279,6 +282,6 @@
       </tr>
     </template>
 
-    <script src="/outbound/outbound.js?v=20260915review" defer></script>
+    <script src="/outbound/outbound.js?v=20260915workspace" defer></script>
   </body>
 </html>

@@ -18,6 +18,9 @@ function inSelectedBusiness(record) {
 }
 let quickbooksState = null;
 let templateState = [];
+let emailPreviewRevision = 0;
+let templateLoadRevision = 0;
+let businessSelectionRevision = 0;
 let currentWorkspace = "queue";
 const AFTER_HOURS_CONFIRMATION = "I UNDERSTAND THIS IS AN AFTER-HOURS TEST";
 const DEMO_CALL_CONFIRMATION = "I AUTHORIZE THIS DEMO TEST CALL";
@@ -34,6 +37,9 @@ let settingsReadiness = null;
 let activeCallPoll = null;
 let activeDemoAuthorization = null;
 let activeDemoPreflight = null;
+let demoReadinessRevision = 0;
+let demoAuthorizationRequestRevision = 0;
+let demoPreflightRequestRevision = 0;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -283,11 +289,31 @@ function selectedBusiness() {
   return (dashboardState.businesses || []).find((business) => business.id === id) || dashboardState.businesses?.[0] || null;
 }
 
+const BUSINESS_SELECTION_KEY = "pinnacle-collections:selected-business:v1";
+function rememberedBusinessId() { try { return localStorage.getItem(BUSINESS_SELECTION_KEY) || ""; } catch { return ""; } }
+function rememberBusiness(id) { if (!(dashboardState.businesses || []).some(business => business.id === id)) return; try { localStorage.setItem(BUSINESS_SELECTION_KEY, id); } catch { /* A blocked preference store does not prevent using the workspace. */ } }
+function renderBusinessChoices() {
+  const businesses = dashboardState.businesses || [];
+  const current = document.getElementById("settings-business").value;
+  const remembered = rememberedBusinessId();
+  const selectedId = businesses.some(business => business.id === current) ? current : businesses.some(business => business.id === remembered) ? remembered : businesses[0]?.id || "";
+  for (const id of ["settings-business", "workspace-business"]) {
+    const select = document.getElementById(id);
+    select.replaceChildren(...businesses.map(business => new Option(`${business.is_demo === true ? "Demo" : business.is_demo === false ? "Live accounting" : "Unverified"} · ${business.business_name}`, business.id)));
+    select.value = selectedId;
+    select.disabled = !businesses.length;
+  }
+  if (selectedId) rememberBusiness(selectedId);
+  document.getElementById("open-demo-workspace").disabled = !businesses.some(business => business.is_demo === true);
+  const demo = businesses.find(business => business.id === selectedId)?.is_demo === true;
+  document.getElementById("workspace-demo-note").textContent = demo
+    ? "Controlled sample data. Edit the sample invoice, preview payment and email details, then check the test-call gates."
+    : "Open demo to use controlled sample data. Live accounting and its outreach lock remain separate.";
+}
+
 async function renderSettings() {
-  const select = document.getElementById("settings-business");
-  const previous = select.value;
-  select.replaceChildren(...(dashboardState.businesses || []).map((business) => new Option(business.business_name, business.id)));
-  if (previous && [...select.options].some((option) => option.value === previous)) select.value = previous;
+  const revision = businessSelectionRevision;
+  renderBusinessChoices();
   const business = selectedBusiness();
   if (!business) return;
   document.getElementById("header-business-name").textContent = business.business_name || "Configured business";
@@ -332,6 +358,7 @@ async function renderSettings() {
   ].join(" ");
   try {
     const response = await api(`/api/outbound/businesses/${business.id}/settings`);
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     settingsReadiness = response.readiness;
     document.getElementById("settings-readiness").textContent = [
       `Email requested: ${response.readiness.emailRequested ? "yes" : "no"}; provider ready: ${response.readiness.emailProviderReady ? "yes" : "no"}; effective: ${response.readiness.emailEffective ? "enabled" : "disabled/manual"}.`,
@@ -339,6 +366,7 @@ async function renderSettings() {
       "Secret values remain in Vercel. A sender change must match the verified server-side sender.",
     ].join(" ");
   } catch (error) {
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     document.getElementById("settings-readiness").textContent = error.message;
   }
 }
@@ -389,6 +417,7 @@ function selectedDemoInvoice() {
 }
 
 function populateDemoEditor(invoice) {
+  demoReadinessRevision++;
   if (!invoice) return;
   const customer = invoice.outbound_customers || {};
   const business = invoice.outbound_businesses || {};
@@ -432,14 +461,13 @@ async function renderPresentationPanel() {
   populateDemoEditor(selectedDemoInvoice());
   const business = selectedBusiness();
   if (!business) return;
-  await loadSourceStatus();
-  await loadSourceQueue();
-  await loadWeeklyReviewStatus();
+  await Promise.allSettled([loadSourceStatus(), loadSourceQueue(), loadWeeklyReviewStatus()]);
 }
 
 async function authorizeDemoNumber() {
   const business = selectedBusiness();
   if (!business) return setStatus("Select a business before authorizing a demo number.", true);
+  const businessRevision = businessSelectionRevision;
   if (!document.getElementById("demo-authorize-ack").checked) {
     const message = "Warning checkbox is required before authorizing a temporary test number.";
     setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
@@ -451,19 +479,27 @@ async function authorizeDemoNumber() {
     setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
     return setStatus(message, true);
   }
+  const phoneNumber = document.getElementById("demo-phone-number").value.trim();
+  const callMode = document.getElementById("demo-call-mode").value;
+  const requestRevision = ++demoAuthorizationRequestRevision;
+  const current = () => businessSelectionRevision === businessRevision && selectedBusiness()?.id === business.id && demoAuthorizationRequestRevision === requestRevision && document.getElementById("demo-phone-number").value.trim() === phoneNumber && document.getElementById("demo-call-mode").value === callMode;
+  activeDemoAuthorization = null;
+  invalidateCallGates();
+  document.getElementById("demo-preflight").disabled = true;
   try {
     const result = await api("/api/outbound/demo-call/authorize-number", {
       method: "POST",
       body: JSON.stringify({
         business_id: business.id,
-        phone_number: document.getElementById("demo-phone-number").value.trim(),
-        demo_call_mode: document.getElementById("demo-call-mode").value,
-        scenario: document.getElementById("demo-call-mode").value,
+        phone_number: phoneNumber,
+        demo_call_mode: callMode,
+        scenario: callMode,
         ttl_minutes: Number(document.getElementById("demo-ttl-minutes").value || 240),
         acknowledged: true,
         confirmation,
       }),
     });
+    if (!current()) return;
     activeDemoAuthorization = result.authorization;
     activeDemoPreflight = null;
     document.getElementById("demo-preflight").disabled = false;
@@ -476,6 +512,7 @@ async function authorizeDemoNumber() {
     setStatus("Temporary demo test number authorized. Run the real backend preflight next.");
     await loadDashboard(true);
   } catch (error) {
+    if (!current()) return;
     const message = friendlyErrorMessage(error);
     setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
     setStatus(message, true);
@@ -548,11 +585,22 @@ function demoRunPayload() {
 }
 
 async function demoPreflight() {
+  const businessId = selectedBusiness()?.id;
+  const businessRevision = businessSelectionRevision;
+  const readinessRevision = demoReadinessRevision;
+  const requestRevision = ++demoPreflightRequestRevision;
+  let payload;
+  const current = () => selectedBusiness()?.id === businessId && businessSelectionRevision === businessRevision && demoReadinessRevision === readinessRevision && demoPreflightRequestRevision === requestRevision && (!payload || (selectedDemoInvoice()?.id === payload.invoice_id && activeDemoAuthorization?.id === payload.demo_call_authorization_id && !demoAuthorizationExpired() && JSON.stringify(afterHoursOverridePayload()) === JSON.stringify(payload.after_hours_override)));
+  activeDemoPreflight = null;
+  document.getElementById("demo-start-call").disabled = true;
   try {
-    activeDemoPreflight = await api("/api/outbound/demo-call/preflight", {
+    payload = demoRunPayload();
+    const result = await api("/api/outbound/demo-call/preflight", {
       method: "POST",
-      body: JSON.stringify(demoRunPayload()),
+      body: JSON.stringify(payload),
     });
+    if (!current()) return;
+    activeDemoPreflight = result;
     document.getElementById("demo-start-call").disabled = !activeDemoPreflight.eligible;
     const reason = activeDemoPreflight.after_hours_override_block_reason || activeDemoPreflight.reason;
     const message = activeDemoPreflight.eligible
@@ -574,6 +622,7 @@ async function demoPreflight() {
       : `Demo call blocked: ${message}`,
       !activeDemoPreflight.eligible);
   } catch (error) {
+    if (!current()) return;
     document.getElementById("demo-start-call").disabled = true;
     const message = friendlyErrorMessage(error);
     setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);
@@ -619,6 +668,7 @@ function afterHoursOverridePayload() {
 }
 
 function invalidateCallGates() {
+  demoReadinessRevision++;
   activeDemoPreflight = null;
   document.getElementById("demo-start-call").disabled = true;
   document.querySelectorAll('[data-action="call"]').forEach((button) => { button.disabled = true; });
@@ -1001,12 +1051,10 @@ async function loadDashboard(silent = false) {
   try {
     if (!silent) setStatus("Refreshing dashboard...");
     dashboardState = await api("/api/outbound/dashboard");
-    await renderSettings();
+    const settings = renderSettings();
     renderInvoices();
     renderQueueOverview();
-    await renderPresentationPanel();
-    await loadTemplates();
-    await loadSmsReadiness();
+    await Promise.allSettled([settings, renderPresentationPanel(), loadTemplates(), loadSmsReadiness()]);
     renderCallbacks();
     renderCalls();
     renderPayments();
@@ -1071,21 +1119,45 @@ async function importBusinessCsv(dryRun) {
 document.getElementById("csv-file").onchange = () => { validatedCsvText = ""; commitImportButton.disabled = true; importResult.textContent = "Validate the selected file before importing."; };
 document.getElementById("refresh-all").onclick = refreshAll;
 document.getElementById("refresh-setup").onclick = loadSetupStatus;
-document.getElementById("settings-business").onchange = async () => {
+function clearBusinessPanels() {
+  businessSelectionRevision++;
+  emailPreviewRevision++;
+  templateLoadRevision++;
+  templateState = [];
+  quickbooksState = null;
+  settingsReadiness = null;
+  for (const id of ["template-controls", "template-preview", "source-sync-controls", "source-sync-result"]) document.getElementById(id).replaceChildren();
+  for (const id of ["template-status", "source-connection-detail", "spreadsheet-sync-detail", "weekly-review-detail", "source-queue-content", "sms-readiness-detail", "settings-readiness", "quickbooks-status", "queue-source-notice"]) document.getElementById(id).textContent = "Loading the selected business…";
+  document.getElementById("source-queue-count").textContent = "Loading source records…";
+}
+
+async function changeBusiness(businessId) {
+  if (!(dashboardState.businesses || []).some(business => business.id === businessId)) return;
+  document.getElementById("settings-business").value = businessId;
+  document.getElementById("workspace-business").value = businessId;
+  rememberBusiness(businessId);
+  clearBusinessPanels();
   activeDemoAuthorization = null;
   activeDemoPreflight = null;
   document.getElementById("demo-auth-status").textContent = "No demo number authorized";
   document.getElementById("demo-preflight").disabled = true;
   document.getElementById("demo-start-call").disabled = true;
-  await renderSettings();
+  const settings = renderSettings();
   renderInvoices(); renderQueueOverview(); renderCallbacks(); renderCalls(); renderPayments(); renderEvents();
-  document.getElementById("source-sync-result").replaceChildren();
-  document.getElementById("template-preview").replaceChildren();
-  await renderPresentationPanel(); await loadTemplates(); await loadSmsReadiness();
+  await Promise.allSettled([settings, renderPresentationPanel(), loadTemplates(), loadSmsReadiness()]);
+}
+document.getElementById("settings-business").onchange = () => changeBusiness(document.getElementById("settings-business").value);
+document.getElementById("workspace-business").onchange = () => changeBusiness(document.getElementById("workspace-business").value);
+document.getElementById("open-demo-workspace").onclick = async () => {
+  const current = selectedBusiness();
+  const demo = current?.is_demo === true ? current : (dashboardState.businesses || []).find(business => business.is_demo === true);
+  if (!demo) return;
+  setWorkspace("presentation");
+  await changeBusiness(demo.id);
 };
 document.getElementById("save-settings").onclick = saveSettings;
 document.getElementById("demo-invoice-select").onchange = () => populateDemoEditor(selectedDemoInvoice());
-document.getElementById("demo-call-mode").onchange = () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; };
+document.getElementById("demo-call-mode").onchange = invalidateCallGates;
 document.getElementById("demo-authorize-number").onclick = authorizeDemoNumber;
 document.getElementById("demo-save-details").onclick = saveDemoDetails;
 document.getElementById("demo-preflight").onclick = demoPreflight;
@@ -1213,13 +1285,14 @@ function renderSpreadsheetStatus(sync) {
 async function loadSourceStatus() {
   const business = selectedBusiness();
   if (!business) return;
+  const revision = businessSelectionRevision;
   const detail = document.getElementById("source-connection-detail");
   const controls = document.getElementById("source-sync-controls");
   controls.replaceChildren();
   document.getElementById("spreadsheet-sync-detail").textContent = "Reading spreadsheet refresh status…";
   try {
     const qb = await api(`/api/outbound/integrations/quickbooks/status?business_id=${encodeURIComponent(business.id)}`);
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     quickbooksState = qb;
     renderSpreadsheetStatus(qb.spreadsheet_sync);
     detail.className = "";
@@ -1247,7 +1320,7 @@ async function loadSourceStatus() {
     actions.append(preview, report); controls.append(actions);
 
   } catch (error) {
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     quickbooksState = null;
     renderSpreadsheetStatus(null);
     detail.textContent = `Connection status unavailable: ${error.message}`;
@@ -1261,11 +1334,12 @@ async function loadSourceStatus() {
 async function loadWeeklyReviewStatus() {
   const business = selectedBusiness();
   if (!business) return;
+  const revision = businessSelectionRevision;
   const output = document.getElementById("weekly-review-detail");
   output.replaceChildren(el("p", "Loading weekly review settings…"));
   try {
     const response = await api(`/api/outbound/integrations/review-runs/status?business_id=${encodeURIComponent(business.id)}`);
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     output.replaceChildren();
     const settings = response.settings || {};
     const review = response.review || {};
@@ -1282,17 +1356,18 @@ async function loadWeeklyReviewStatus() {
       try { const url = new URL(spreadsheetUrl); if (url.protocol === "https:" && url.hostname === "docs.google.com" && !url.username && !url.password) { const link = el("a", "Open private overdue-invoice sheet", "download-link"); link.href = url.href; link.target = "_blank"; link.rel = "noopener noreferrer"; output.append(link); } } catch { /* Invalid source links remain hidden. */ }
     }
     if (response.runs?.length) output.append(details("Recent review runs", JSON.stringify(response.runs, null, 2)));
-  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("p", `Weekly review status unavailable: ${error.message}`, "error")); }
+  } catch (error) { if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return; output.replaceChildren(el("p", `Weekly review status unavailable: ${error.message}`, "error")); }
 }
 
 async function previewSourceSync() {
   const business = selectedBusiness();
   if (!business) return;
+  const revision = businessSelectionRevision;
   const output = document.getElementById("source-sync-result");
   output.replaceChildren(el("p", "Reading QuickBooks and validating the proposed import…"));
   try {
     const preview = await api("/api/outbound/integrations/quickbooks/preview", { method: "POST", body: JSON.stringify({ business_id: business.id }) });
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     output.replaceChildren();
     const result = el("div", null, "sync-result");
     result.append(el("h3", "Import preview · no records applied yet"));
@@ -1302,16 +1377,17 @@ async function previewSourceSync() {
     const apply = el("button", "Apply reviewed import");
     apply.disabled = preview.status !== "preview" || !preview.id || !preview.hash;
     apply.onclick = async () => {
-      if (selectedBusiness()?.id !== business.id) return setStatus("The selected business changed. Create a new preview.", true);
+      if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return setStatus("The selected business changed. Create a new preview.", true);
       apply.disabled = true;
       try {
         const applied = await api("/api/outbound/integrations/quickbooks/apply", { method: "POST", body: JSON.stringify({ business_id: business.id, preview_id: preview.id, preview_hash: preview.hash }) });
+        if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
         output.replaceChildren(el("div", "Import applied to the review database. QuickBooks accounting records were not changed.", "setup-summary ready"), details("Import result", JSON.stringify(applied, null, 2)));
         await refreshAll();
-      } catch (error) { output.append(el("p", error.message, "error")); }
+      } catch (error) { if (selectedBusiness()?.id === business.id && businessSelectionRevision === revision) output.append(el("p", error.message, "error")); }
     };
     result.append(apply); output.append(result);
-  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("div", `Import preview failed: ${error.message}`, "setup-summary error")); }
+  } catch (error) { if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return; output.replaceChildren(el("div", `Import preview failed: ${error.message}`, "setup-summary error")); }
 }
 
 function templateField(label, id, value = "", multiline = false) {
@@ -1325,13 +1401,16 @@ function templateField(label, id, value = "", multiline = false) {
 async function loadTemplates() {
   const business = selectedBusiness();
   if (!business) return;
+  const loadRevision = ++templateLoadRevision;
+  emailPreviewRevision++;
   const controls = document.getElementById("template-controls");
   const status = document.getElementById("template-status");
   try {
     const response = await api(`/api/outbound/email/templates?business_id=${encodeURIComponent(business.id)}`);
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || templateLoadRevision !== loadRevision) return;
     templateState = response.templates || [];
     const previous = document.getElementById("email-template-select")?.value;
+    const previousInvoice = document.getElementById("email-preview-invoice")?.value;
     controls.replaceChildren();
     const form = el("div", null, "template-form");
     const selectLabel = el("label", "Template / version");
@@ -1343,17 +1422,52 @@ async function loadTemplates() {
     const invoiceLabel = el("label", "Preview invoice");
     const invoiceSelect = el("select"); invoiceSelect.id = "email-preview-invoice";
     scopedInvoices().forEach((invoice) => invoiceSelect.add(new Option(`${invoice.invoice_id} · ${formatMoney(invoice.amount_due_cents, invoiceCurrency(invoice))}`, invoice.id)));
+    if (scopedInvoices().some((invoice) => invoice.id === previousInvoice)) invoiceSelect.value = previousInvoice;
     invoiceLabel.append(invoiceSelect);
     const preview = el("button", "Preview email", "secondary"); preview.disabled = !templateState.length || !scopedInvoices().length; preview.onclick = previewEmailTemplate;
+    const retrieve = el("button", "Retrieve QuickBooks payment link", "secondary");
+    retrieve.id = "template-quickbooks-link";
+    const linkStatus = el("p", "QuickBooks only. Reads the existing invoice; no email is sent.", "muted wide");
+    linkStatus.setAttribute("role", "status");
+    let selectionRevision = 0;
+    let retrieving = false;
+    const selectedSourceInvoice = () => scopedInvoices().find((invoice) => invoice.id === invoiceSelect.value);
+    const updateRetrieval = () => {
+      const invoice = selectedSourceInvoice();
+      retrieve.disabled = retrieving || invoice?.business_id !== business.id || invoice?.source_provider !== "quickbooks" || !invoice.provider_invoice_id || !invoice.source_realm_id || !Number.isSafeInteger(Number(invoice.amount_due_cents)) || Number(invoice.amount_due_cents) <= 0 || !["unpaid", "payment_link_sent"].includes(invoice.status);
+    };
+    retrieve.onclick = async () => {
+      const invoice = selectedSourceInvoice();
+      if (retrieve.disabled || !invoice) return;
+      const revision = selectionRevision;
+      const current = () => selectedBusiness()?.id === business.id && templateLoadRevision === loadRevision && selectionRevision === revision && invoiceSelect.value === invoice.id && controls.contains(retrieve);
+      retrieving = true; updateRetrieval();
+      linkStatus.textContent = "Checking the current QuickBooks invoice and its genuine customer payment link…";
+      try {
+        const result = await api("/api/outbound/quickbooks/invoice-link", { method: "POST", body: JSON.stringify({ business_id: business.id, invoice_id: invoice.id }) });
+        if (!current()) return;
+        const refreshed = await api("/api/outbound/dashboard");
+        if (!current()) return;
+        dashboardState = refreshed;
+        renderInvoices(); renderQueueOverview(); renderPayments(); renderEvents();
+        linkStatus.textContent = result.available && result.provider === "quickbooks" ? `Verified QuickBooks payment link ${result.reused ? "rechecked" : "retrieved"}. No email was sent.` : "No verified QuickBooks link is available. Review the existing invoice’s Share link in QuickBooks for manual follow-up.";
+        await previewEmailTemplate();
+      } catch (error) {
+        if (!current()) return;
+        linkStatus.textContent = error.message;
+        await previewEmailTemplate();
+      } finally { retrieving = false; if (controls.contains(retrieve)) updateRetrieval(); }
+    };
+    updateRetrieval();
     const publish = el("button", "Publish selected as default", "secondary");
     publish.disabled = !templateState.length;
     publish.onclick = async () => {
       if (!select.value) return;
       publish.disabled = true;
-      try { await api(`/api/outbound/email/templates/${encodeURIComponent(select.value)}/publish`, { method: "POST", body: JSON.stringify({ business_id: business.id, make_default: true }) }); setStatus("Template published and saved as this business’s default."); await loadTemplates(); }
-      catch (error) { status.textContent = error.message; } finally { publish.disabled = false; }
+      try { await api(`/api/outbound/email/templates/${encodeURIComponent(select.value)}/publish`, { method: "POST", body: JSON.stringify({ business_id: business.id, make_default: true }) }); if (selectedBusiness()?.id !== business.id || templateLoadRevision !== loadRevision) return; setStatus("Template published and saved as this business’s default."); await loadTemplates(); }
+      catch (error) { if (selectedBusiness()?.id === business.id && templateLoadRevision === loadRevision) status.textContent = error.message; } finally { if (controls.contains(publish)) publish.disabled = false; }
     };
-    form.append(selectLabel, invoiceLabel, preview, publish); controls.append(form);
+    form.append(selectLabel, invoiceLabel, preview, retrieve, publish, linkStatus); controls.append(form);
     const editor = el("details", null, "template-editor"); editor.append(el("summary", "Create a draft version"));
     const draft = el("div", null, "template-form");
     const content = templateState.find((template) => template.id === select.value)?.content || response.starter || {};
@@ -1362,15 +1476,15 @@ async function loadTemplates() {
     save.onclick = async () => {
       save.disabled = true;
       const values = Object.fromEntries(["name", "subject", "preheader", "introduction", "closing"].map((key) => [key, document.getElementById(`template-draft-${key}`).value.trim()]));
-      try { await api("/api/outbound/email/templates", { method: "POST", body: JSON.stringify({ business_id: business.id, content: values }) }); setStatus("New draft saved. Preview it before publishing."); await loadTemplates(); }
-      catch (error) { status.textContent = error.message; } finally { save.disabled = false; }
+      try { await api("/api/outbound/email/templates", { method: "POST", body: JSON.stringify({ business_id: business.id, content: values }) }); if (selectedBusiness()?.id !== business.id || templateLoadRevision !== loadRevision) return; setStatus("New draft saved. Preview it before publishing."); await loadTemplates(); }
+      catch (error) { if (selectedBusiness()?.id === business.id && templateLoadRevision === loadRevision) status.textContent = error.message; } finally { if (controls.contains(save)) save.disabled = false; }
     };
     draft.append(save); editor.append(draft); controls.append(editor);
     status.textContent = templateState.length ? `${templateState.length} stored template version(s). A preview does not send an email.` : "No stored templates yet. Create a draft to begin.";
     status.className = "setup-summary";
-    select.onchange = () => { document.getElementById("template-preview").replaceChildren(); const template = templateState.find((item) => item.id === select.value); for (const key of ["name", "subject", "preheader", "introduction", "closing"]) document.getElementById(`template-draft-${key}`).value = template?.content?.[key] || ""; };
-    invoiceSelect.onchange = () => document.getElementById("template-preview").replaceChildren();
-  } catch (error) { if (selectedBusiness()?.id !== business.id) return; controls.replaceChildren(); status.textContent = `Template service unavailable: ${error.message}`; status.className = "setup-summary warning"; }
+    select.onchange = () => { selectionRevision++; emailPreviewRevision++; document.getElementById("template-preview").replaceChildren(); const template = templateState.find((item) => item.id === select.value); for (const key of ["name", "subject", "preheader", "introduction", "closing"]) document.getElementById(`template-draft-${key}`).value = template?.content?.[key] || ""; };
+    invoiceSelect.onchange = () => { selectionRevision++; emailPreviewRevision++; document.getElementById("template-preview").replaceChildren(); linkStatus.textContent = "QuickBooks only. Reads the existing invoice; no email is sent."; updateRetrieval(); };
+  } catch (error) { if (selectedBusiness()?.id !== business.id || templateLoadRevision !== loadRevision) return; controls.replaceChildren(); status.textContent = `Template service unavailable: ${error.message}`; status.className = "setup-summary warning"; }
 }
 
 async function previewEmailTemplate() {
@@ -1378,28 +1492,31 @@ async function previewEmailTemplate() {
   const templateId = document.getElementById("email-template-select")?.value;
   const invoiceId = document.getElementById("email-preview-invoice")?.value;
   if (!business || !templateId || !invoiceId) return;
+  const revision = ++emailPreviewRevision;
+  const current = () => emailPreviewRevision === revision && selectedBusiness()?.id === business.id && document.getElementById("email-template-select")?.value === templateId && document.getElementById("email-preview-invoice")?.value === invoiceId;
   const output = document.getElementById("template-preview");
   output.replaceChildren(el("p", "Rendering the selected invoice with stored template values…"));
   try {
     const preview = await api(`/api/outbound/email/preview?${new URLSearchParams({ business_id: business.id, invoice_id: invoiceId, template_id: templateId })}`);
-    if (selectedBusiness()?.id !== business.id || document.getElementById("email-template-select")?.value !== templateId || document.getElementById("email-preview-invoice")?.value !== invoiceId) return;
+    if (!current()) return;
     output.replaceChildren();
     describeFields(output, [["Recipient", preview.recipient], ["From", preview.from], ["Reply to", preview.reply_to], ["Payment provider", preview.payment_provider], ["Payment link", preview.payment_link_available ? "Verified link available" : "Unavailable · manual review"], ["Template version", preview.template_version]]);
     output.append(el("h3", preview.subject), el("p", preview.preheader));
     output.append(el("div", preview.send_ready ? "Preview ready. Opening this preview does not send an email." : `Sending blocked: ${(preview.block_reasons || []).map(humanize).join(" · ") || "Review sender, recipient and payment link"}. Opening this preview does not send an email.`, `setup-summary ${preview.send_ready ? "ready" : "warning"}`));
     const frame = el("iframe"); frame.className = "template-preview-frame"; frame.title = "Email template preview"; frame.setAttribute("sandbox", ""); frame.setAttribute("referrerpolicy", "no-referrer"); frame.srcdoc = preview.html; output.append(frame);
     output.append(details("Plain-text version", preview.text));
-  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("div", `Preview failed: ${error.message}`, "setup-summary error")); }
+  } catch (error) { if (!current()) return; output.replaceChildren(el("div", `Preview failed: ${error.message}`, "setup-summary error")); }
 }
 
 async function loadSourceQueue() {
   const business = selectedBusiness();
   if (!business) return;
+  const revision = businessSelectionRevision;
   const content = document.getElementById("source-queue-content");
   const count = document.getElementById("source-queue-count");
   try {
     const queue = await api(`/api/outbound/integrations/quickbooks/queue?business_id=${encodeURIComponent(business.id)}`);
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     const invoices = queue.invoices || [];
     count.textContent = `${queue.summary?.eligible_count ?? 0} pass source checks · ${queue.summary?.invoice_count ?? invoices.length} source records`;
     content.replaceChildren();
@@ -1424,22 +1541,23 @@ async function loadSourceQueue() {
       queue.customers.forEach(customer => summary.append(el("p", `${customer.customer_account} · ${customer.invoice_count} invoice(s) · ${formatMoney(customer.remaining_balance_minor, customer.currency)} remaining · ${formatMoney(customer.overdue_balance_minor, customer.currency)} overdue`)));
       content.append(summary);
     }
-  } catch (error) { if (selectedBusiness()?.id !== business.id) return; count.textContent = "Source review unavailable"; content.className = "setup-summary warning"; content.textContent = `No source readiness can be confirmed. ${error.message}`; }
+  } catch (error) { if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return; count.textContent = "Source review unavailable"; content.className = "setup-summary warning"; content.textContent = `No source readiness can be confirmed. ${error.message}`; }
 }
 
 async function loadSmsReadiness() {
   const business = selectedBusiness(); if (!business) return;
+  const revision = businessSelectionRevision;
   const output = document.getElementById("sms-readiness-detail");
   try {
     const readiness = await api(`/api/outbound/sms/readiness?business_id=${encodeURIComponent(business.id)}`);
-    if (selectedBusiness()?.id !== business.id) return;
+    if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return;
     output.replaceChildren();
     describeFields(output, [["Campaign observation", `${humanize(readiness.campaign?.status)} · ${readiness.campaign?.observed_on || "date unavailable"}`], ["Collections number", readiness.campaign?.phone_number], ["Sending", "Disabled · requires explicit activation"], ["Consent evidence records", readiness.consent_record_count ?? "Storage unavailable"], ["Suppressed recipients", readiness.suppression_count ?? "Storage unavailable"], ["Provider events", readiness.provider_webhook_connected ? "Connected" : "Not connected · no live event verification"]]);
     if (readiness.campaign?.rejection_reason) output.append(el("div", `Retell rejection: ${readiness.campaign.rejection_reason}`, "setup-summary error"));
     output.append(el("p", readiness.consent_rule));
     const checklist = el("ul", null, "check-list"); (readiness.activation_checklist || []).forEach(item => checklist.append(el("li", item))); output.append(checklist);
     output.append(details("Prepared SMS templates · no messages sent", Object.entries(readiness.templates || {}).map(([name, value]) => `${humanize(name)}: ${value}`).join("\n\n")));
-  } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.textContent = `Sending is disabled. Readiness could not be verified: ${error.message}`; }
+  } catch (error) { if (selectedBusiness()?.id !== business.id || businessSelectionRevision !== revision) return; output.textContent = `Sending is disabled. Readiness could not be verified: ${error.message}`; }
 }
 
 function initializeWorkspace() {
@@ -1457,7 +1575,7 @@ function initializeWorkspace() {
       document.getElementById("demo-auth-status").textContent = "Demo number authorization expired";
     }
   }, 10000);
-  document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea").forEach((input) => input.addEventListener("input", () => { activeDemoPreflight = null; document.getElementById("demo-start-call").disabled = true; setDemoFeedback("Unsaved demo changes. Save the details, then run the backend preflight again.", [{ label: "Unsaved", tone: "warning" }]); }));
+  document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea").forEach((input) => input.addEventListener("input", () => { invalidateCallGates(); setDemoFeedback("Unsaved demo changes. Save the details, then run the backend preflight again.", [{ label: "Unsaved", tone: "warning" }]); }));
 }
 
 initializeWorkspace();
