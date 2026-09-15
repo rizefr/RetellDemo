@@ -4,15 +4,19 @@ import vm from "node:vm";
 import { describe, expect, it } from "vitest";
 
 function dashboardHarness() {
-  const nodes = new Map<string, { value: string; disabled: boolean; textContent: string; className: string }>();
+  type HarnessNode={value:string;checked:boolean;disabled:boolean;textContent:string;className:string;options:Array<{text:string;value:string}>;replaceChildren:(...children:Array<{text:string;value:string}>)=>void};
+  const nodes = new Map<string, HarnessNode>();
+  const storage = new Map<string,string>();
   const node = (id: string) => {
-    if (!nodes.has(id)) nodes.set(id, { value: "", disabled: false, textContent: "", className: "" });
+    if (!nodes.has(id)) {const created:HarnessNode={value:"",checked:false,disabled:false,textContent:"",className:"",options:[],replaceChildren:(...children)=>{created.textContent="";created.options=children;}};nodes.set(id,created);}
     return nodes.get(id)!;
   };
   const callButton = node("row-call");
   const gate = node("row-gate");
   const context = vm.createContext({
     Intl, URL, URLSearchParams, console,
+    Option:class {constructor(public text:string,public value:string){}},
+    localStorage:{getItem:(key:string)=>storage.get(key)||null,setItem:(key:string,value:string)=>storage.set(key,value)},
     document: {
       getElementById: node,
       querySelectorAll: (selector: string) => selector === '[data-action="call"]' ? [callButton] : selector === '[data-field="gate"]' ? [gate] : [],
@@ -22,7 +26,7 @@ function dashboardHarness() {
   const script = fs.readFileSync(path.resolve(process.cwd(), "public/outbound/outbound.js"), "utf8")
     .replace(/\ninitializeWorkspace\(\);\nrefreshAll\(\);\s*$/, "");
   vm.runInContext(script, context);
-  return { node, run: (source: string) => vm.runInContext(source, context) };
+  return { node, storage, run: (source: string) => vm.runInContext(source, context) };
 }
 
 describe("collections dashboard state boundaries", () => {
@@ -89,4 +93,104 @@ describe("collections dashboard state boundaries", () => {
     expect(h.node("demo-original-due-date").value).toBe("2026-05-07");
   });
 
+  it("clears old tenant controls immediately and starts independent business panels without waiting for source reads",async()=>{
+    const h=dashboardHarness();
+    h.run(`dashboardState={businesses:[{id:"company-a"},{id:"company-b"}],invoices:[]};templateState=[{id:"old-draft"}];
+      var pendingPanels=[],startedPanels=[];
+      for(const name of ["renderSettings","renderPresentationPanel","loadTemplates","loadSmsReadiness"])globalThis[name]=()=>{startedPanels.push(name);return new Promise(resolve=>pendingPanels.push(resolve));};
+      for(const name of ["renderInvoices","renderQueueOverview","renderCallbacks","renderCalls","renderPayments","renderEvents"])globalThis[name]=()=>{};`);
+    for(const id of ["template-controls","template-preview","source-sync-controls","source-sync-result","sms-readiness-detail","source-queue-content"])h.node(id).textContent="Previous business data";
+    h.node("settings-business").value="company-b";
+    const pending=h.run('document.getElementById("settings-business").onchange()');
+    expect(h.node("template-controls").textContent).toBe("");expect(h.node("template-preview").textContent).toBe("");expect(h.run("templateState.length")).toBe(0);
+    expect(h.node("sms-readiness-detail").textContent).toBe("Loading the selected business…");
+    expect(h.node("source-queue-content").textContent).toBe("Loading the selected business…");
+    expect(h.run("startedPanels.join(',')")).toBe("renderSettings,renderPresentationPanel,loadTemplates,loadSmsReadiness");
+    h.run("pendingPanels.forEach(resolve=>resolve())");await pending;
+  });
+
+  it.each(["loadSourceStatus","loadSourceQueue","loadWeeklyReviewStatus","loadSmsReadiness"])("discards stale %s response after switching away and back",async loader=>{
+    const h=dashboardHarness();h.node("settings-business").value="company-a";
+    h.run(`dashboardState={businesses:[{id:"company-a"},{id:"company-b"}],invoices:[]};el=(_tag,text)=>text;
+      api=async()=>{document.getElementById("settings-business").value="company-b";clearBusinessPanels();document.getElementById("settings-business").value="company-a";clearBusinessPanels();return {company_name:"Old source",invoices:[],summary:{invoice_count:99},campaign:{status:"old"},settings:{}};};`);
+    await h.run(`${loader}()`);
+    for(const id of ["source-connection-detail","source-queue-content","weekly-review-detail","sms-readiness-detail"])expect(h.node(id).textContent).toBe("Loading the selected business…");
+    expect(h.run("quickbooksState")).toBeNull();
+  });
+
+  it("mirrors the visible Demo/Live choice and restores only an authorized business ID",async()=>{
+    const h=dashboardHarness();
+    h.run(`dashboardState={businesses:[{id:"demo-id",business_name:"Same business name",is_demo:true},{id:"live-id",business_name:"Same business name",is_demo:false}],invoices:[]};renderBusinessChoices();`);
+    expect(h.node("workspace-business").options.map(option=>option.text)).toEqual(["Demo · Same business name","Live accounting · Same business name"]);
+    h.run(`for(const name of ["renderSettings","renderPresentationPanel","loadTemplates","loadSmsReadiness","renderInvoices","renderQueueOverview","renderCallbacks","renderCalls","renderPayments","renderEvents"])globalThis[name]=async()=>{};`);
+    h.node("workspace-business").value="live-id";
+    await h.run('document.getElementById("workspace-business").onchange()');
+    expect(h.node("settings-business").value).toBe("live-id");
+    h.node("workspace-business").value="";h.node("settings-business").value="";
+    h.run("renderBusinessChoices()");
+    expect(h.node("workspace-business").value).toBe("live-id");
+    h.node("workspace-business").value="";h.node("settings-business").value="";
+    h.storage.set("pinnacle-collections:selected-business:v1","not-in-authenticated-response");
+    h.run("renderBusinessChoices()");
+    expect(h.node("workspace-business").value).toBe("demo-id");
+    expect(h.storage.get("pinnacle-collections:selected-business:v1")).toBe("demo-id");
+  });
+
+  it("opens a real Demo record in Presentation mode without authorizing or starting a call",async()=>{
+    const h=dashboardHarness();
+    h.run(`dashboardState={businesses:[{id:"live-id",is_demo:false},{id:"demo-id",is_demo:true}],invoices:[]};var openedWorkspace=null,changedId=null;setWorkspace=name=>{openedWorkspace=name;};changeBusiness=async id=>{changedId=id;};`);
+    h.node("settings-business").value="live-id";
+    await h.run('document.getElementById("open-demo-workspace").onclick()');
+    expect(h.run("openedWorkspace")).toBe("presentation");expect(h.run("changedId")).toBe("demo-id");expect(h.run("activeDemoAuthorization")).toBeNull();
+  });
+
+});
+
+function pendingDemoHarness(){
+ const h=dashboardHarness();
+ h.node("settings-business").value="company-a";h.node("demo-invoice-select").value="invoice-a";
+ h.node("demo-authorize-ack").checked=true;h.node("demo-authorize-confirmation").value="I AUTHORIZE THIS DEMO TEST CALL";
+ h.node("demo-phone-number").value="+12125550123";h.node("demo-call-mode").value="first_reminder";h.node("demo-ttl-minutes").value="5";
+ h.run(`dashboardState={businesses:[{id:"company-a"},{id:"company-b"}],invoices:[{id:"invoice-a",business_id:"company-a"},{id:"invoice-b",business_id:"company-a"}]};
+  activeDemoAuthorization={id:"auth-a",business_id:"company-a",phone_number:"+12125550123",expires_at:"2050-01-01T00:00:00Z"};
+  var pendingReply;api=()=>new Promise((resolve,reject)=>{pendingReply={resolve,reject};});setDemoFeedback=()=>{};
+  for(const name of ["renderSettings","renderPresentationPanel","loadTemplates","loadSmsReadiness","renderInvoices","renderQueueOverview","renderCallbacks","renderCalls","renderPayments","renderEvents","loadDashboard"])globalThis[name]=async()=>{};`);
+ return h;
+}
+const authorizationResult='{authorization:{id:"old-response-auth",business_id:"company-a",phone_number:"+12125550123",expires_at:"2050-01-01T00:00:00Z"}}';
+const preflightResult='{eligible:true,destination_phone_number:"+12125550123",agent_label:"Conversation Flow",demo_call_authorization_id:"auth-a"}';
+describe("pending presentation response isolation",()=>{
+ it.each(["authorizeDemoNumber","demoPreflight"])("ignores late successful %s after A→B→A workspace changes",async operation=>{
+  const h=pendingDemoHarness();const pending=h.run(`${operation}()`);
+  await h.run('changeBusiness("company-b")');await h.run('changeBusiness("company-a")');
+  if(operation==="demoPreflight")h.run('activeDemoAuthorization={id:"auth-a",expires_at:"2050-01-01T00:00:00Z"}');
+  h.run(`pendingReply.resolve(${operation==="authorizeDemoNumber"?authorizationResult:preflightResult})`);await pending;
+  expect(h.run("activeDemoPreflight")).toBeNull();expect(h.node("demo-start-call").disabled).toBe(true);
+  if(operation==="authorizeDemoNumber")expect(h.run("activeDemoAuthorization")).toBeNull();
+ });
+ it.each(["authorizeDemoNumber","demoPreflight"])("ignores late failed %s after A→B→A workspace changes",async operation=>{
+  const h=pendingDemoHarness();const pending=h.run(`${operation}()`);
+  await h.run('changeBusiness("company-b")');await h.run('changeBusiness("company-a")');
+  h.node("page-status").textContent="Current workspace state";
+  h.run('pendingReply.reject(new Error("Old workspace error"))');await pending;
+  expect(h.node("page-status").textContent).toBe("Current workspace state");expect(h.node("demo-start-call").disabled).toBe(true);
+ });
+ it("ignores preflight after invoice selection changes away and back",async()=>{
+  const h=pendingDemoHarness();const pending=h.run("demoPreflight()");
+  h.node("demo-invoice-select").value="invoice-b";h.run('document.getElementById("demo-invoice-select").onchange()');
+  h.node("demo-invoice-select").value="invoice-a";h.run('document.getElementById("demo-invoice-select").onchange()');
+  h.run(`pendingReply.resolve(${preflightResult})`);await pending;
+  expect(h.run("activeDemoPreflight")).toBeNull();expect(h.node("demo-start-call").disabled).toBe(true);
+ });
+ it("ignores preflight after the after-hours confirmation is invalidated",async()=>{
+  const h=pendingDemoHarness();const pending=h.run("demoPreflight()");h.run("invalidateCallGates()");
+  h.run(`pendingReply.resolve(${preflightResult})`);await pending;
+  expect(h.run("activeDemoPreflight")).toBeNull();expect(h.node("demo-start-call").disabled).toBe(true);
+ });
+ it.each(["authorizeDemoNumber","demoPreflight"])("accepts the current unchanged %s response",async operation=>{
+  const h=pendingDemoHarness();const pending=h.run(`${operation}()`);
+  h.run(`pendingReply.resolve(${operation==="authorizeDemoNumber"?authorizationResult:preflightResult})`);await pending;
+  if(operation==="authorizeDemoNumber"){expect(h.run("activeDemoAuthorization.id")).toBe("old-response-auth");expect(h.node("demo-preflight").disabled).toBe(false);expect(h.node("demo-start-call").disabled).toBe(true);}
+  else {expect(h.run("activeDemoPreflight.eligible")).toBe(true);expect(h.node("demo-start-call").disabled).toBe(false);}
+ });
 });

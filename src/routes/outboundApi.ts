@@ -42,6 +42,7 @@ import {
   updateOutboundCustomer,
   updateOutboundInvoice,
   getOutboundBusinessSettings,
+  getOutboundInvoiceContext,
   updateOutboundBusinessSettings,
   getOutboundFollowupTask,
   updateOutboundFollowupTask,
@@ -52,6 +53,7 @@ import {
   updateOutboundDemoDetails,
 } from "../services/outboundRepository";
 import { resolveOutboundPaymentLink } from "../services/outboundPaymentProvider";
+import { QuickBooksSyncError } from "../services/outboundQuickBooksSync";
 import { getOutboundSetupStatus } from "../services/outboundSetup";
 import { validateOutboundBusinessSettingsPatch } from "../services/outboundBusinessSettings";
 import { outboundBusinessRuntimeSettings } from "../services/outboundRuntimeSettings";
@@ -456,17 +458,36 @@ outboundApiRouter.post("/quickbooks/disconnect", async (req, res) => {
 });
 
 outboundApiRouter.post("/quickbooks/invoice-link", async (req, res) => {
+  let auditIds: {business_id:string;customer_id:string;invoice_id:string}|undefined;
   try {
-    const input = quickBooksInvoiceLinkSchema.parse(req.body);
-    const business = await getOutboundBusinessSettings(input.business_id);
-    const status = buildOutboundQuickBooksStatus(business);
-    if (!status.connected) {
-      res.status(409).json({ error: "QuickBooks not connected", status });
-      return;
-    }
-    res.status(501).json({ error: "QuickBooks invoice/payment-link creation is scaffolded only.", status });
+    const input = quickBooksInvoiceLinkSchema.strict().parse(req.body);
+    const context = await getOutboundInvoiceContext(input.invoice_id);
+    if(context.invoice.business_id!==input.business_id || context.customer.business_id!==input.business_id || context.business.id!==input.business_id || context.invoice.customer_id!==context.customer.id)throw new QuickBooksSyncError("Invoice does not belong to the selected business",403,"invoice_business_mismatch");
+    if(context.invoice.source_provider!=="quickbooks")throw new QuickBooksSyncError("A mapped QuickBooks source invoice is required",409,"quickbooks_invoice_unverified");
+    auditIds={business_id:input.business_id,customer_id:String(context.customer.id),invoice_id:input.invoice_id};
+    const result=await resolveOutboundPaymentLink(input.invoice_id,"admin_retrieval",input.business_id);
+    const link=result.payment_link;
+    await insertOutboundEvent({...auditIds,event_type:"quickbooks_payment_link_retrieved",source:"admin",payload:{provider:"quickbooks",payment_link_id:link.id,reused:result.reused,delivery_requested:false}});
+    res.setHeader("Cache-Control","no-store");
+    res.json({provider:"quickbooks",available:true,reused:result.reused,manual_fallback:false,sent:false,accounting_writes:false,payment_link:{id:link.id,url:link.url,amount_cents:link.amount_cents,currency:link.currency,expires_at:link.expires_at}});
   } catch (error) {
-    sendError(res, error);
+    const failures:Record<string,{status:number;message:string}>={
+      invoice_business_mismatch:{status:403,message:"Invoice does not belong to the selected business."},
+      quickbooks_invoice_unverified:{status:409,message:"Select an invoice imported from QuickBooks. Other payment providers are not used by this action."},
+      manual_payment_followup_required:{status:409,message:"QuickBooks did not return a verified customer payment link. Review the existing invoice’s Share link in QuickBooks for manual follow-up; do not send or create an invoice to obtain a link."},
+      invoice_paid:{status:409,message:"QuickBooks confirms this invoice is paid. No payment link was retrieved; outreach has stopped."},
+      source_changed:{status:409,message:"The invoice changed in QuickBooks. Refresh and review the source before retrieving its payment link."},
+      customer_mismatch:{status:409,message:"The QuickBooks customer mapping changed. Review the invoice mapping."},
+      company_mismatch:{status:409,message:"The QuickBooks company mapping could not be verified."},
+      invalid_balance:{status:409,message:"The current QuickBooks amount or currency could not be verified."},
+      not_overdue:{status:409,message:"This invoice is not more than 14 calendar days overdue."},
+      outreach_blocked:{status:409,message:"This invoice is paused or requires review."},
+      source_mapping_unverified:{status:409,message:"Refresh and review the QuickBooks invoice mapping first."},
+    };
+    const code=error instanceof QuickBooksSyncError && failures[error.code]?error.code:error instanceof Error && error.name==="ZodError"?"invalid_request":"payment_link_unavailable";
+    const failure=failures[code]||{status:code==="invalid_request"?400:503,message:code==="invalid_request"?"Invalid invoice-link request.":"The QuickBooks payment link could not be verified. Check the connection and try again after review."};
+    if(auditIds)await insertOutboundEvent({...auditIds,event_type:"quickbooks_payment_link_retrieval_blocked",source:"admin",payload:{provider:"quickbooks",code,delivery_requested:false}}).catch(()=>undefined);
+    res.status(failure.status).json({error:failure.message,code,provider:"quickbooks",available:false,manual_fallback:code==="manual_payment_followup_required",sent:false,accounting_writes:false});
   }
 });
 

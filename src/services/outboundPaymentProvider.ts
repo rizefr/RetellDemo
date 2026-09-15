@@ -19,8 +19,10 @@ export function verifiedCachedPaymentUrl(invoice:Record<string,unknown>,business
   if(provider!=='stripe' || (link.provider && link.provider!=='stripe'))return null;
   try {const url=new URL(String(link.url));return url.protocol==='https:' && !url.username && !url.password && ['checkout.stripe.com','buy.stripe.com'].includes(url.hostname)?url.toString():null;}catch{return null;}
 }
-export async function resolveOutboundPaymentLink(invoiceId:string,sentVia='admin') {
+export async function resolveOutboundPaymentLink(invoiceId:string,sentVia='admin',quickBooksBusinessId?:string) {
   const context=await getOutboundInvoiceContext(invoiceId), provider=invoicePaymentProvider(context.invoice,context.business);
+  if(quickBooksBusinessId && (context.invoice.business_id!==quickBooksBusinessId || context.customer.business_id!==quickBooksBusinessId || context.business.id!==quickBooksBusinessId || context.invoice.customer_id!==context.customer.id))throw new QuickBooksSyncError('Invoice does not belong to the selected business',403,'invoice_business_mismatch');
+  if(quickBooksBusinessId && context.invoice.source_provider!=='quickbooks')throw new QuickBooksSyncError('A mapped QuickBooks source invoice is required',409,'quickbooks_invoice_unverified');
   if(provider==='stripe')return {...await createOutboundCheckoutSession(invoiceId,sentVia),provider};
   if(provider==='manual')throw new QuickBooksSyncError('Manual payment follow-up is required; no verified online payment link is available',409,'manual_payment_followup_required');
   if(context.invoice.source_provider!=='quickbooks')throw new QuickBooksSyncError('QuickBooks invoice source has not been verified. Manual payment follow-up required.',409,'quickbooks_invoice_unverified');

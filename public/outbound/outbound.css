@@ -99,6 +99,14 @@ select option { background: #fff; color: var(--ivory); }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0.15rem; font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: -0.03em; }
 .header-subtitle { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem; }
+.workspace-switcher { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; min-width: 0; max-width: 690px; flex: 1; }
+.workspace-switcher label { grid-column: 1 / -1; color: var(--silver); font-weight: 700; font-size: .8rem; }
+.workspace-switcher select { min-width: 0; width: 100%; }
+.workspace-switcher select, .workspace-switcher button { min-height: 42px; }
+.workspace-switcher p { grid-column: 1 / -1; margin: 0; font-size: .76rem; }
+.toolbar-panel .workspace-switcher p { font-size: .76rem; }
+.workspace-switcher #last-refreshed { color: var(--muted); font-size: .7rem; }
+@media (max-width: 520px) { .workspace-switcher { width: 100%; flex-basis: 100%; } .workspace-switcher select { grid-column: 1 / -1; } .workspace-switcher button { justify-self: start; } }
 h2 { margin-bottom: 0.35rem; font-size: clamp(1.15rem, 1.8vw, 1.45rem); font-weight: 700; letter-spacing: -0.02em; }
 h3 { margin: 0 0 0.65rem; color: var(--ivory); font-size: 0.95rem; font-weight: 650; }
 p { color: var(--silver); }
@@ -128,7 +136,7 @@ main {
   box-shadow: 0 2px 8px rgba(33, 64, 43, 0.025);
 }
 
-.toolbar-panel { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.toolbar-panel { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .toolbar-panel strong { color: var(--ivory); }
 .toolbar-panel p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.82rem; }
 
