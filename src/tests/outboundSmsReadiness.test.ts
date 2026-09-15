@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { classifySmsInbound, nextSmsDeliveryState, smsSendDecision, validateSmsConsent, validateSmsProviderEvent } from "../services/outboundSmsReadiness";
+import { classifySmsInbound, nextSmsDeliveryState, SMS_CAMPAIGN_OBSERVATION, smsSendDecision, validateSmsConsent, validateSmsProviderEvent } from "../services/outboundSmsReadiness";
 
 const businessId = "00000000-0000-4000-8000-000000000001";
 const now = new Date("2026-09-14T14:00:00Z");
@@ -30,6 +30,8 @@ describe("SMS readiness without activation", () => {
   it("keeps sending hard-disabled even with claimed campaign approval and valid consent", () => {
     const decision = smsSendDecision({ consent, phone_number: consent.phone_number, suppressed: false, campaign_approved: true });
     expect(decision).toEqual({ allowed: false, blockers: ["sms_sending_not_activated"] });
+    const observedDecision = smsSendDecision({ consent, phone_number: consent.phone_number, suppressed: false, campaign_approved: String(SMS_CAMPAIGN_OBSERVATION.status) === "approved" });
+    expect(observedDecision).toEqual({ allowed: false, blockers: ["sms_sending_not_activated", "campaign_not_approved"] });
     expect(smsSendDecision({ consent, phone_number: "+15555550123", suppressed: true }).blockers).toEqual(expect.arrayContaining(["recipient_suppressed", "explicit_sms_consent_required", "campaign_not_approved"]));
   });
 

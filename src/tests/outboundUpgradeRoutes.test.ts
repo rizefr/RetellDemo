@@ -101,6 +101,7 @@ describe("outbound upgrade routes", () => {
           test_mode: true,
           test_phone_allowlist: ["+13475850249"],
           max_batch_size: 1,
+          outreach_enabled: true,
         }),
         createOutboundDemoCallAuthorization: createAuthorization,
         insertOutboundEvent,

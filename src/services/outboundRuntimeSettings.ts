@@ -21,6 +21,9 @@ export function outboundBusinessRuntimeSettings(business: Record<string, unknown
   const smsRequested = Boolean(business.retell_sms_enabled);
   const smsProviderReady = Boolean(env.OUTBOUND_RETELL_SMS_ENABLED && env.OUTBOUND_RETELL_SMS_CHAT_AGENT_ID);
   return {
+    // Existing businesses retain their call gates; new accounting-only businesses
+    // are provisioned with an explicit false that browser settings cannot change.
+    outreachEnabled: business.outreach_enabled === true,
     testMode,
     allowlist,
     maxBatchSize,

@@ -168,6 +168,7 @@ describe("outbound browser operation safety", () => {
           id: "00000000-0000-4000-8000-000000000001",
           business_name: "Elixis Elevator Systems",
           default_timezone: "America/New_York",
+          outreach_enabled: true,
           ai_disclosure_policy: "on_request",
         },
         activeCall: null,
@@ -222,6 +223,7 @@ describe("outbound browser operation safety", () => {
           ai_disclosure_instruction: expect.stringContaining("Do not mention or volunteer AI status"),
         }),
       }),
+      { maxRetries: 0 },
     );
     expect(insertOutboundEvent.mock.invocationCallOrder[0]).toBeLessThan(createPhoneCall.mock.invocationCallOrder[0]);
   });
@@ -270,6 +272,7 @@ describe("outbound browser operation safety", () => {
         business: {
           id: "00000000-0000-4000-8000-000000000001",
           business_name: "Hudson Lift Services",
+          outreach_enabled: true,
           business_name_spoken: "Hudson Lift Services",
           agent_display_name: "Paul",
           product_type: "elevator_inspection",
@@ -350,6 +353,7 @@ describe("outbound browser operation safety", () => {
           ai_disclosure_instruction: expect.stringContaining("Do not mention or volunteer AI status"),
         }),
       }),
+      { maxRetries: 0 },
     );
     expect(touchOutboundDemoCallAuthorization).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000099");
     expect(updateOutboundInvoice).not.toHaveBeenCalled();

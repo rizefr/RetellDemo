@@ -312,8 +312,24 @@ async function renderSettings() {
   document.getElementById("setting-after-hours").checked = Boolean(business.allow_after_hours_test_override);
   document.getElementById("setting-email-enabled").checked = Boolean(business.payment_email_enabled);
   document.getElementById("setting-sms-enabled").checked = Boolean(business.retell_sms_enabled);
-  document.getElementById("workspace-mode").textContent = business.test_mode !== false ? "Demo · controlled test" : "Live configuration";
-  document.getElementById("workspace-mode").className = `state-badge ${business.test_mode !== false ? "info" : "warning"}`;
+  const accountingIdentity = business.is_demo === true ? "Demo" : business.is_demo === false ? "Live accounting" : "Accounting identity unverified";
+  const outreachStatus = business.outreach_enabled === true ? "enabled" : business.outreach_enabled === false ? "locked" : "unverified";
+  let modeDetail = `outreach ${outreachStatus}`;
+  if (business.is_demo === true) modeDetail = business.test_mode !== false ? "controlled test" : "test mode off";
+  else if (outreachStatus === "enabled" && business.test_mode !== false) modeDetail = "controlled test";
+  document.getElementById("workspace-mode").textContent = `${accountingIdentity} · ${modeDetail}`;
+  document.getElementById("workspace-mode").className = `state-badge ${business.test_mode !== false && outreachStatus !== "unverified" ? "info" : "warning"}`;
+  document.getElementById("business-outreach-status").textContent = [
+    `${accountingIdentity}.`,
+    outreachStatus === "locked"
+      ? "Customer outreach is locked for this business. Saving settings does not unlock it."
+      : outreachStatus === "enabled"
+        ? "Business outreach permission is enabled; each call still requires current backend checks and a manual start."
+        : "Business outreach permission has not been verified by this page.",
+    business.test_mode !== false
+      ? "Outreach test mode is on and restricts recipients to the approved test allowlists. It does not change the accounting source."
+      : "Outreach test mode is off. The accounting source and business outreach permission are separate settings.",
+  ].join(" ");
   try {
     const response = await api(`/api/outbound/businesses/${business.id}/settings`);
     settingsReadiness = response.readiness;
@@ -1165,29 +1181,60 @@ function describeFields(container, fields) {
   container.append(list);
 }
 
+function renderSpreadsheetStatus(sync) {
+  const output = document.getElementById("spreadsheet-sync-detail");
+  const failure = sync?.failure || sync?.failure_code || sync?.job?.failure_code;
+  const jobStatus = sync?.job?.status;
+  const freshness = sync?.stale === false ? "Current for the imported snapshot"
+    : sync?.stale === true ? sync.last_sheet_success_at ? "Stale · refresh required" : "No verified refresh recorded"
+      : "Not verified";
+  const coverage = sync?.source_run_id && sync?.latest_source_run_id
+    ? sync.source_run_id === sync.latest_source_run_id ? "Matches the latest QuickBooks import" : "Does not include the latest QuickBooks import"
+    : "No matching imported snapshot verified";
+  const jobLabels = { active: "Refresh in progress", completed: "Completed", failed: "Failed", expired: "Expired · refresh unverified" };
+  output.className = `setup-summary ${failure || jobStatus === "failed" || jobStatus === "expired" ? "error" : sync?.stale === false ? "ready" : "warning"}`;
+  output.replaceChildren(el("h3", "Overdue spreadsheet · separate refresh"));
+  describeFields(output, [
+    ["Sheet freshness", freshness],
+    ["Last verified sheet refresh", sync?.last_sheet_success_at ? formatDate(sync.last_sheet_success_at) : "None recorded"],
+    ["QuickBooks snapshot in sheet", coverage],
+    ["Latest sheet refresh", jobLabels[jobStatus] || "No refresh job recorded"],
+  ]);
+  if (failure) output.append(el("p", `Sheet refresh needs attention: ${humanize(failure)}.`, "error"));
+  output.append(el("p", "QuickBooks import status and spreadsheet refresh status are tracked separately. The sheet remains an operational view; backend checks control customer outreach."));
+  if (sync?.job) output.append(details("Spreadsheet refresh audit", JSON.stringify({
+    confirmation_method: sync.attestation_mode || "unverified",
+    last_successful_source_run_id: sync.source_run_id || null,
+    latest_imported_source_run_id: sync.latest_source_run_id || null,
+    job: sync.job,
+  }, null, 2)));
+}
+
 async function loadSourceStatus() {
   const business = selectedBusiness();
   if (!business) return;
   const detail = document.getElementById("source-connection-detail");
   const controls = document.getElementById("source-sync-controls");
   controls.replaceChildren();
+  document.getElementById("spreadsheet-sync-detail").textContent = "Reading spreadsheet refresh status…";
   try {
     const qb = await api(`/api/outbound/integrations/quickbooks/status?business_id=${encodeURIComponent(business.id)}`);
     if (selectedBusiness()?.id !== business.id) return;
     quickbooksState = qb;
+    renderSpreadsheetStatus(qb.spreadsheet_sync);
     detail.className = "";
     const headline = qb.connected ? `${qb.company_name || "Company not verified"} · ${qb.environment || "Environment not verified"}` : "QuickBooks connection requires verification";
     detail.replaceChildren(el("strong", headline));
     describeFields(detail, [
       ["Source company", qb.company_name], ["Company / realm ID", qb.realm_id],
       ["Application access", "Reads only · no accounting writes"], ["Permission scope", qb.scope_description || "Scope not verified"],
-      ["Last successful sync", qb.last_successful_sync_at ? formatDate(qb.last_successful_sync_at) : "No successful sync recorded"],
-      ["Data freshness", qb.stale ? "Stale · refresh before review" : qb.last_successful_sync_at ? "Current at last sync" : "Unverified"],
+      ["Last QuickBooks import", qb.last_successful_sync_at ? formatDate(qb.last_successful_sync_at) : "No successful import recorded"],
+      ["Imported accounting freshness", qb.stale ? "Stale · refresh before review" : qb.last_successful_sync_at ? "Current at last import" : "Unverified"],
     ]);
     if (qb.blockers?.length) detail.append(el("p", `Needs attention: ${qb.blockers.map((item) => typeof item === "string" ? humanize(item) : item.message || item.reason || "Verification required").join(" · ")}`));
     const notice = document.getElementById("queue-source-notice");
     notice.textContent = qb.connected && qb.last_successful_sync_at
-      ? `QuickBooks: ${qb.company_name || qb.realm_id}. Last successful sync ${formatDate(qb.last_successful_sync_at)}.${qb.stale ? " Data is stale. Refresh before review." : " The backend rechecks the balance immediately before a manual call."}`
+      ? `QuickBooks: ${qb.company_name || qb.realm_id}. Last accounting import ${formatDate(qb.last_successful_sync_at)}.${qb.stale ? " Data is stale. Refresh before review." : " The backend rechecks the balance immediately before a manual call."}`
       : "QuickBooks has no verified successful sync here. Local/demo invoices are labeled below; they are not verified accounting balances.";
     notice.className = `setup-summary ${qb.connected && qb.last_successful_sync_at && !qb.stale ? "ready" : "warning"}`;
     document.getElementById("quickbooks-status").textContent = `QuickBooks: ${qb.connected ? headline : "not verified"}. Payment provider is selected per invoice; a QuickBooks invoice is never automatically moved to Stripe.`;
@@ -1202,6 +1249,7 @@ async function loadSourceStatus() {
   } catch (error) {
     if (selectedBusiness()?.id !== business.id) return;
     quickbooksState = null;
+    renderSpreadsheetStatus(null);
     detail.textContent = `Connection status unavailable: ${error.message}`;
     detail.className = "setup-summary warning";
     document.getElementById("quickbooks-status").textContent = "QuickBooks source could not be verified. No accounting import is available.";
@@ -1221,11 +1269,12 @@ async function loadWeeklyReviewStatus() {
     output.replaceChildren();
     const settings = response.settings || {};
     const review = response.review || {};
+    if (review.spreadsheet_sync) renderSpreadsheetStatus(review.spreadsheet_sync);
     const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][settings.weekday];
     const hour = Number(settings.hour);
     const schedule = weekday && Number.isInteger(hour) && hour >= 0 && hour < 24 ? `${weekday} at ${hour % 12 || 12}:00 ${hour >= 12 ? "PM" : "AM"}` : "Not configured";
     output.append(el("h3", settings.enabled ? "Weekly review · active" : "Weekly review · activation pending"));
-    describeFields(output, [["Schedule", schedule], ["Timezone", settings.timezone], ["Review reminder", settings.reminder_recipient], ["Source stage", humanize(review.stage || settings.stage || "unverified")], ["Last successful sync", formatDate(review.last_successful_sync_at)], ["Staged snapshot", formatDate(review.staged_snapshot_at || settings.source_snapshot_at)], ["Next review", formatDate(response.calendar?.due_at)]]);
+    describeFields(output, [["Schedule", schedule], ["Timezone", settings.timezone], ["Review reminder", settings.reminder_recipient], ["Source stage", humanize(review.stage || settings.stage || "unverified")], ["Last QuickBooks import", formatDate(review.last_successful_sync_at)], ["Staged snapshot", formatDate(review.staged_snapshot_at || settings.source_snapshot_at)], ["Next review", formatDate(response.calendar?.due_at)]]);
     output.append(el("p", "Weekly refresh prepares the review queue only. Customer calls still require a fresh balance check and manual start."));
     if (review.connection_blockers?.length) output.append(el("p", `Needs attention: ${review.connection_blockers.map(humanize).join(" · ")}`, "error"));
     const spreadsheetUrl = review.spreadsheet_url || settings.spreadsheet_url;
@@ -1337,7 +1386,7 @@ async function previewEmailTemplate() {
     output.replaceChildren();
     describeFields(output, [["Recipient", preview.recipient], ["From", preview.from], ["Reply to", preview.reply_to], ["Payment provider", preview.payment_provider], ["Payment link", preview.payment_link_available ? "Verified link available" : "Unavailable · manual review"], ["Template version", preview.template_version]]);
     output.append(el("h3", preview.subject), el("p", preview.preheader));
-    output.append(el("div", preview.send_ready ? "Backend preview is ready. No email has been sent." : `Sending blocked: ${(preview.block_reasons || []).map(humanize).join(" · ") || "Review sender, recipient and payment link"}. No email has been sent.`, `setup-summary ${preview.send_ready ? "ready" : "warning"}`));
+    output.append(el("div", preview.send_ready ? "Preview ready. Opening this preview does not send an email." : `Sending blocked: ${(preview.block_reasons || []).map(humanize).join(" · ") || "Review sender, recipient and payment link"}. Opening this preview does not send an email.`, `setup-summary ${preview.send_ready ? "ready" : "warning"}`));
     const frame = el("iframe"); frame.className = "template-preview-frame"; frame.title = "Email template preview"; frame.setAttribute("sandbox", ""); frame.setAttribute("referrerpolicy", "no-referrer"); frame.srcdoc = preview.html; output.append(frame);
     output.append(details("Plain-text version", preview.text));
   } catch (error) { if (selectedBusiness()?.id !== business.id) return; output.replaceChildren(el("div", `Preview failed: ${error.message}`, "setup-summary error")); }
@@ -1386,6 +1435,7 @@ async function loadSmsReadiness() {
     if (selectedBusiness()?.id !== business.id) return;
     output.replaceChildren();
     describeFields(output, [["Campaign observation", `${humanize(readiness.campaign?.status)} · ${readiness.campaign?.observed_on || "date unavailable"}`], ["Collections number", readiness.campaign?.phone_number], ["Sending", "Disabled · requires explicit activation"], ["Consent evidence records", readiness.consent_record_count ?? "Storage unavailable"], ["Suppressed recipients", readiness.suppression_count ?? "Storage unavailable"], ["Provider events", readiness.provider_webhook_connected ? "Connected" : "Not connected · no live event verification"]]);
+    if (readiness.campaign?.rejection_reason) output.append(el("div", `Retell rejection: ${readiness.campaign.rejection_reason}`, "setup-summary error"));
     output.append(el("p", readiness.consent_rule));
     const checklist = el("ul", null, "check-list"); (readiness.activation_checklist || []).forEach(item => checklist.append(el("li", item))); output.append(checklist);
     output.append(details("Prepared SMS templates · no messages sent", Object.entries(readiness.templates || {}).map(([name, value]) => `${humanize(name)}: ${value}`).join("\n\n")));

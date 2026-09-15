@@ -373,9 +373,10 @@ export async function importOutboundBusinesses(rows: OutboundBusinessCsvRow[], d
     const existing = (
       await client.from("outbound_businesses").select("*").ilike("business_name", row.business_name).limit(1).maybeSingle()
     ).data as Record<string, unknown> | null;
-    const payload = { ...row, is_demo: true };
+    if (existing && existing.is_demo !== true) throw new OutboundDatabaseError("CSV import cannot modify a Live or unverified business; use its verified accounting source", 409);
+    const payload = { ...row };
     if (!existing) {
-      unwrap(await client.from("outbound_businesses").insert(payload).select("*").single());
+      unwrap(await client.from("outbound_businesses").insert({ ...payload, is_demo: true, outreach_enabled: true }).select("*").single());
       created += 1;
       continue;
     }
@@ -582,11 +583,12 @@ export async function importOutboundRows(rows: OutboundCsvRow[], dryRun: boolean
     let business = (
       await client.from("outbound_businesses").select("*").ilike("business_name", row.business_name).limit(1).maybeSingle()
     ).data as Record<string, unknown> | null;
+    if (business && business.is_demo !== true) throw new OutboundDatabaseError("CSV import cannot add demo records to a Live or unverified business", 409);
     if (!business) {
       business = unwrap(
         await client
           .from("outbound_businesses")
-          .insert({ business_name: row.business_name, industry: "elevator_inspection", is_demo: true })
+          .insert({ business_name: row.business_name, industry: "elevator_inspection", is_demo: true, outreach_enabled: true })
           .select("*")
           .single(),
       ) as Record<string, unknown>;
