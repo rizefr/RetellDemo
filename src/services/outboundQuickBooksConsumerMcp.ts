@@ -16,6 +16,19 @@ export function quickBooksCompanyIdentityHash(company:JsonObject){
 }
 export function readConsumerToolResult(result:JsonObject,tool:string):JsonObject {
  const data=result?.data,rows=data?.results;
+ if(tool==='QUICKBOOKS_READ_INVOICE'&&!data?.remote_file_info&&typeof result?.successful==='boolean'&&data?.total_count===1&&data.success_count===0&&data.error_count===1&&Array.isArray(rows)&&rows.length===1&&rows[0].index===0&&rows[0].tool_slug===tool&&rows[0].response?.successful===false){
+  const response=rows[0].response;
+  for(const value of [response.data?.Fault?{Fault:response.data.Fault}:null,response.error,response.data?.message]){
+   let fault:any=value;
+   if(typeof value==='string'){
+    const marker='API response: ',position=value.lastIndexOf(marker);
+    if(position<0)continue;
+    try{fault=JSON.parse(value.slice(position+marker.length));}catch{continue;}
+   }
+   const errors=fault?.Fault?.Error;
+   if(fault?.Fault?.type==='ValidationFault'&&Array.isArray(errors)&&errors.length===1&&String(errors[0].code)==='610'&&errors[0].Message==='Object Not Found')throw error('QuickBooks source invoice is unavailable','invoice_unavailable',409);
+  }
+ }
  if(result?.successful!==true||result.error||data?.total_count!==1||data.success_count!==1||data.error_count!==0||!Array.isArray(rows)||rows.length!==1)throw error('QuickBooks read is incomplete or failed','provider_read_failed');
  const row=rows[0];
  if(data.remote_file_info){

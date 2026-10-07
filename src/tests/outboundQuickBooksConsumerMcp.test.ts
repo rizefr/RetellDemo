@@ -78,6 +78,26 @@ describe('Composio consumer read-only transport',()=>{
   const tool='QUICKBOOKS_GET_COMPANY_INFO';const good=toolData(tool,company);expect(readConsumerToolResult(good,tool)).toEqual(company);
   for(const changed of [{...good,successful:false},{...good,error:'private-provider-detail'},{...good,data:{...good.data,error_count:1}},{...good,data:{...good.data,remote_file_info:{path:'/tmp/partial.json'}}},{...good,data:{...good.data,results:[]}},toolData('QUICKBOOKS_READ_INVOICE',company),{...good,data:{...good.data,results:[{...good.data.results[0],response:{successful:false,data:company}}]}}])expect(()=>readConsumerToolResult(changed,tool)).toThrow(/read/);
  });
+ it('recognizes only an exact native Invoice Object Not Found fault and keeps all other failures redacted',()=>{
+  const fault={Fault:{type:'ValidationFault',Error:[{code:'610',Message:'Object Not Found'}]}};
+  const missing={successful:true,data:{total_count:1,success_count:0,error_count:1,results:[{index:0,tool_slug:'QUICKBOOKS_READ_INVOICE',response:{successful:false,error:'Read failed. API response: '+JSON.stringify(fault)}}]}};
+  expect(()=>readConsumerToolResult(missing,'QUICKBOOKS_READ_INVOICE')).toThrow(expect.objectContaining({code:'invoice_unavailable'}));
+  for(const patch of [
+    {...missing,data:{...missing.data,remote_file_info:{path:'private'}}},
+    {...missing,data:{...missing.data,total_count:2}},
+    {...missing,data:{...missing.data,results:[{...missing.data.results[0],tool_slug:'QUICKBOOKS_READ_CUSTOMER'}]}},
+    {...missing,data:{...missing.data,results:[{...missing.data.results[0],response:{successful:false,error:'authorization denied'}}]}},
+  ])expect(()=>readConsumerToolResult(patch,'QUICKBOOKS_READ_INVOICE')).toThrow(expect.objectContaining({code:'provider_read_failed'}));
+  expect(()=>readConsumerToolResult(missing,'QUICKBOOKS_READ_CUSTOMER')).toThrow(expect.objectContaining({code:'provider_read_failed'}));
+ });
+ it('binds an unavailable invoice to the actual read ID and pinned realm',async()=>{
+  const fault={Fault:{type:'ValidationFault',Error:[{code:'610',Message:'Object Not Found'}]}};
+  const result={successful:true,data:{total_count:1,success_count:0,error_count:1,results:[{index:0,tool_slug:'QUICKBOOKS_READ_INVOICE',response:{successful:false,error:'Read failed. API response: '+JSON.stringify(fault)}}]}};
+  const h=harness({toolResult:{structuredContent:result}});
+  const provider=new QuickBooksReadOnlyProvider(consumerConnection,h.request as typeof fetch,()=>key);
+  await expect(provider.execute('QUICKBOOKS_READ_INVOICE',{invoice_id:'81'})).rejects.toMatchObject({code:'invoice_unavailable',evidence:{provider_invoice_id:'81',realm_id:'12345',fault_code:'610'}});
+  expect(h.calls.at(-1).body.params.arguments.tools[0]).toEqual({tool_slug:'QUICKBOOKS_READ_INVOICE',account:'ca_fixture',arguments:{invoice_id:'81',minorversion:75}});
+ });
  it('anchors company creation and legal identity to the independent exact-realm read',()=>{
   expect(quickBooksCompanyIdentityHash({...company,Id:'1',SyncToken:'updated',DefaultTimeZone:'America/Los_Angeles'})).toBe(consumerConnection.company_identity_hash);
   expect(quickBooksCompanyIdentityHash({...company,MetaData:{CreateTime:'2024-01-01T00:00:00Z'}})).not.toBe(consumerConnection.company_identity_hash);

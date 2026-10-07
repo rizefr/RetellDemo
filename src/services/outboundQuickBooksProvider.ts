@@ -80,7 +80,11 @@ export class QuickBooksReadOnlyProvider {
       const tool=relativePath==='query'?'QUICKBOOKS_QUERY_ENTITIES':relativePath.startsWith('companyinfo/')?'QUICKBOOKS_GET_COMPANY_INFO':relativePath.startsWith('invoice/')?'QUICKBOOKS_READ_INVOICE':'QUICKBOOKS_READ_CUSTOMER';
       const args=tool==='QUICKBOOKS_QUERY_ENTITIES'?{query:query.query}:tool==='QUICKBOOKS_GET_COMPANY_INFO'?{minorversion:75}:tool==='QUICKBOOKS_READ_INVOICE'?{invoice_id:relativePath.split('/')[1],minorversion:75}:{customer_id:relativePath.split('/')[1]};
       // The native consumer invoice tool has no include parameter. Missing InvoiceLink stays a manual fallback.
-      return tool==='QUICKBOOKS_QUERY_ENTITIES'?this.consumerQuery(query.query):readConsumerToolResult(await this.consumer.executeRead(tool,args),tool);
+      try{return tool==='QUICKBOOKS_QUERY_ENTITIES'?this.consumerQuery(query.query):readConsumerToolResult(await this.consumer.executeRead(tool,args),tool);}
+      catch(cause){
+        if(tool==='QUICKBOOKS_READ_INVOICE'&&cause instanceof QuickBooksSyncError&&cause.code==='invoice_unavailable')throw new QuickBooksSyncError('QuickBooks source invoice is unavailable; manual review required',409,'invoice_unavailable',{provider_invoice_id:relativePath.split('/')[1],realm_id:this.connection.realm_id,fault_code:'610'});
+        throw cause;
+      }
     }
     const base = this.connection.environment==='production'?'https://quickbooks.api.intuit.com':'https://sandbox-quickbooks.api.intuit.com';
     const url = new URL(`/v3/company/${this.connection.realm_id}/${relativePath}`,base);
@@ -97,6 +101,7 @@ export class QuickBooksReadOnlyProvider {
       return this.get('query',{query});
     }
     if(tool==='QUICKBOOKS_READ_CUSTOMER' && /^[A-Za-z0-9_-]+$/.test(String(args.customer_id))) return this.get(`customer/${args.customer_id}`);
+    if(tool==='QUICKBOOKS_READ_INVOICE' && Object.keys(args).join(',')==='invoice_id' && /^\d+$/.test(String(args.invoice_id))) return this.invoice(String(args.invoice_id));
     throw new QuickBooksSyncError('Only approved QuickBooks read tools are allowed',403,'operation_not_allowed');
   };
   async invoice(id:string, includePaymentLink=false) {

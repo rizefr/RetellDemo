@@ -18,9 +18,10 @@ export type SourceInvoice = {
   source_sync_token: string | null; block_reasons: string[]; eligible: boolean; mapping_valid: boolean;
   source_values: Record<string, unknown>;
   last_contact?:string|null; next_action?:string|null; promised_payment_date?:string|null; preferred_contact?:string|null;
+  source_record_state?: 'unavailable'; source_issue_verified_at?: string;
 };
 export class QuickBooksSyncError extends Error {
-  constructor(message: string, public status = 409, public code = 'quickbooks_blocked') { super(message); }
+  constructor(message: string, public status = 409, public code = 'quickbooks_blocked', public evidence?: {provider_invoice_id:string;realm_id:string;fault_code:string}) { super(message); }
 }
 const ID = /^[A-Za-z0-9_-]{1,100}$/;
 const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
@@ -137,14 +138,16 @@ export function buildQuickBooksPreview(connection: QuickBooksConnection, rows: S
   return { ...payload, hash, status:'preview' as const, counts:{fetched:rows.length,eligible:rows.filter(r=>r.eligible).length,quarantined:rows.filter(r=>!r.mapping_valid).length,excluded:rows.filter(r=>!r.eligible).length}, totals_by_currency:Object.values(totals), exclusions:rows.filter(r=>r.block_reasons.length).map(r=>({invoice_id:r.invoice_id,provider_invoice_id:r.provider_invoice_id,reasons:r.block_reasons})),created_at:now.toISOString(),expires_at:new Date(now.getTime()+15*60*1000).toISOString(),accounting_writes:false,outreach_started:false };
 }
 export type ReadExecutor = (tool: string, args: Record<string,unknown>) => Promise<any>;
-export async function readQuickBooksInvoices(execute: ReadExecutor, connection: QuickBooksConnection, now = new Date(), knownInvoiceIds: string[] = []) {
+export async function readQuickBooksInvoices(execute: ReadExecutor, connection: QuickBooksConnection, now = new Date(), knownInvoiceIds: string[] = [], knownRows: SourceInvoice[] = []) {
   if (!Array.isArray(knownInvoiceIds) || knownInvoiceIds.length > 10000 || knownInvoiceIds.some(id => typeof id !== 'string' || !ID.test(id))) {
     throw new QuickBooksSyncError('Tracked QuickBooks invoice identities are invalid; nothing imported',409,'invalid_source_identity');
   }
   // Consumer tool responses are size bounded; ten-row reads are live verified.
   const pageSize = connection.credential_mode === 'consumer_mcp' ? 10 : 100;
   const idChunkSize = connection.credential_mode === 'consumer_mcp' ? 10 : 50;
-  const invoices: any[] = [], customers = new Map<string,any>(), seen = new Set<string>();
+  const invoices: any[] = [], unavailable:SourceInvoice[]=[], customers = new Map<string,any>(), seen = new Set<string>();
+  const previous=new Map(knownRows.map(row=>[row.provider_invoice_id,row]));
+  if(previous.size!==knownRows.length||knownRows.some(row=>row.source_provider!=='quickbooks'||row.source_realm_id!==connection.realm_id||!knownInvoiceIds.includes(row.provider_invoice_id)))throw new QuickBooksSyncError('Tracked source provenance is invalid',409,'invalid_source_identity');
   const readPage = async (entity: 'Invoice' | 'Customer', query: string, startPosition: number, limit: number) => {
     const response = await execute('QUICKBOOKS_QUERY_ENTITIES',{query});
     const data = response?.QueryResponse;
@@ -187,7 +190,23 @@ export async function readQuickBooksInvoices(execute: ReadExecutor, connection: 
       if (!chunk.includes(id) || returned.has(id) || seen.has(id)) throw new QuickBooksSyncError('Tracked QuickBooks invoice identity mismatch; nothing imported',502,'invalid_source_identity');
       returned.add(id); seen.add(id); invoices.push(invoice);
     }
-    if (returned.size!==chunk.length) throw new QuickBooksSyncError('A tracked QuickBooks invoice is missing; review the source before importing',409,'tracked_invoice_missing');
+    for(const id of chunk.filter(id=>!returned.has(id))){
+      const old=previous.get(id);
+      if(!old)throw new QuickBooksSyncError('A tracked QuickBooks invoice is missing; review the source before importing',409,'tracked_invoice_missing');
+      try{
+        const response=await execute('QUICKBOOKS_READ_INVOICE',{invoice_id:id});
+        const invoice=response.Invoice??response;
+        if(String(invoice?.Id)!==id)throw new QuickBooksSyncError('Exact source invoice identity mismatch',502,'invalid_source_identity');
+        seen.add(id);invoices.push(invoice);
+      }catch(error){
+        if(!(error instanceof QuickBooksSyncError)||error.code!=='invoice_unavailable'||error.evidence?.provider_invoice_id!==id||error.evidence.realm_id!==connection.realm_id||error.evidence.fault_code!=='610')throw error;
+        // A proven unavailable source is quarantined, never marked paid. Preserve
+        // the last verified source and all local history; unknown balance is null.
+        const lastVerified=old.source_record_state==='unavailable'?old.source_values.last_verified_source:structuredClone(old);
+        if(!lastVerified||!ID.test(old.provider_customer_id))throw new QuickBooksSyncError('Unavailable source provenance is incomplete',409,'invalid_source_identity');
+        unavailable.push({...old,source_record_state:'unavailable',source_issue_verified_at:now.toISOString(),source_balance_cents:null,days_overdue:null,mapping_valid:false,eligible:false,payment_link_available:false,payment_link:null,block_reasons:['source_invoice_unavailable','manual_source_reconciliation_required'],source_values:{...old.source_values,last_verified_source:lastVerified,unavailable_evidence:{...error.evidence,observed_at:now.toISOString()}}});
+      }
+    }
   }
 
   const customerIds=[...new Set<string>(invoices.map(invoice=>str(invoice.CustomerRef?.value)).filter(id=>ID.test(id)))];
@@ -201,7 +220,7 @@ export async function readQuickBooksInvoices(execute: ReadExecutor, connection: 
       customers.set(id,customer);
     }
   }
-  return buildQuickBooksPreview(connection,invoices.map(i=>normalizeQuickBooksInvoice(i,customers.get(str(i.CustomerRef?.value)),connection,now)),now);
+  return buildQuickBooksPreview(connection,[...invoices.map(i=>normalizeQuickBooksInvoice(i,customers.get(str(i.CustomerRef?.value)),connection,now)),...unavailable],now);
 }
 export const QUICKBOOKS_REPORT_COLUMNS: Array<[string,keyof SourceInvoice]> = [
   ['Customer/account','customer_account'],['QuickBooks invoice ID','provider_invoice_id'],['Invoice number','invoice_id'],['Inspection/service','service_description'],['Inspection date','inspection_date'],['Invoice date','invoice_date'],['Due date','original_due_date'],['Original total','original_total_cents'],['Remaining balance','source_balance_cents'],['Currency','currency'],['Days overdue','days_overdue'],['Phone','phone_number'],['Customer email','email'],['Invoice email','invoice_email'],['Accounting source link (not payment)','source_link'],['Payment link available','payment_link_available'],['Last sync','source_verified_at'],['Eligible','eligible'],['Block reason','block_reasons'],['Last contact','last_contact'],['Next action','next_action'],['Promised payment date','promised_payment_date'],['Preferred contact','preferred_contact'],
