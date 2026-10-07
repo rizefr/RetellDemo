@@ -116,7 +116,17 @@ export class QuickBooksConsumerMcp {
  }
  private async call(name:'COMPOSIO_MANAGE_CONNECTIONS'|'COMPOSIO_MULTI_EXECUTE_TOOL',args:JsonObject){
   await this.initialize();const result=await this.rpc('tools/call',{name,arguments:args});
-  if(result?.isError)throw error('Composio could not complete the read','provider_read_failed');
+  if(result?.isError){
+   // MCP may mark a native tool failure at the protocol layer. Only the
+   // already-validated single invoice request may inspect a complete 610 fault.
+   if(name==='COMPOSIO_MULTI_EXECUTE_TOOL'&&args.tools?.length===1&&args.tools[0].tool_slug==='QUICKBOOKS_READ_INVOICE'){
+    const blocks=Array.isArray(result.content)?result.content.filter((part:any)=>part.type==='text'&&typeof part.text==='string'):[];
+    let value:any=result.structuredContent;
+    if(!value&&blocks.length===1){try{value=JSON.parse(blocks[0].text);}catch{}}
+    if(value){try{readConsumerToolResult(value,'QUICKBOOKS_READ_INVOICE');}catch(cause){if(cause instanceof QuickBooksSyncError&&cause.code==='invoice_unavailable')throw cause;}}
+   }
+   throw error('Composio could not complete the read','provider_read_failed');
+  }
   if(result?.structuredContent && typeof result.structuredContent==='object')return result.structuredContent;
   const blocks=Array.isArray(result?.content)?result.content.filter((part:any)=>part.type==='text'&&typeof part.text==='string'):[];
   if(blocks.length!==1)throw error('Composio returned an incomplete read result','consumer_mcp_partial_response');
