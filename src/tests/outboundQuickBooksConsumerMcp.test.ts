@@ -64,6 +64,11 @@ describe('Composio consumer read-only transport',()=>{
   const h=harness({toolResult:{isError:true,content:[{type:'text',text:`sensitive ${key}`}]}});await expect(h.client.executeRead('QUICKBOOKS_GET_COMPANY_INFO',{minorversion:75})).rejects.toThrow('Composio could not complete the read');expect(h.calls.filter(c=>c.body.method==='tools/call')).toHaveLength(1);
   const request=vi.fn().mockResolvedValue(new Response(key,{status:401}));await expect(new QuickBooksConsumerMcp(connection,request,()=>key).listConnections()).rejects.toThrow('Composio consumer authorization failed or expired');expect(request).toHaveBeenCalledTimes(1);
  });
+ it('handles a complete exact missing-invoice fault when MCP marks the call as an error, without accepting other errors',async()=>{
+  const value={successful:false,data:{total_count:1,success_count:0,error_count:1,results:[{index:0,tool_slug:'QUICKBOOKS_READ_INVOICE',response:{successful:false,error:'API response: '+JSON.stringify({Fault:{type:'ValidationFault',Error:[{code:'610',Message:'Object Not Found'}]}})}}]}};
+  for(const toolResult of [{isError:true,structuredContent:value},{isError:true,content:[{type:'text',text:JSON.stringify(value)}]}]){const h=harness({toolResult});await expect(h.client.executeRead('QUICKBOOKS_READ_INVOICE',{invoice_id:'5117',minorversion:75})).rejects.toMatchObject({code:'invoice_unavailable'});expect(h.calls.filter(c=>c.body.method==='tools/call')).toHaveLength(1);}
+  for(const toolResult of [{isError:true,structuredContent:toolData('QUICKBOOKS_READ_INVOICE',{Invoice:{Id:'5117'}})},{isError:true,content:[{type:'text',text:JSON.stringify(value)},{type:'text',text:'ambiguous'}]},{isError:true,structuredContent:{...value,data:{...value.data,remote_file_info:{path:'partial'}}}}]){const h=harness({toolResult});await expect(h.client.executeRead('QUICKBOOKS_READ_INVOICE',{invoice_id:'5117',minorversion:75})).rejects.toMatchObject({code:'provider_read_failed'});}
+ });
  it('rejects malformed or ambiguous result text instead of accepting a partial response',async()=>{
   for(const content of [[{type:'text',text:'not-json'}],[{type:'text',text:'{}'},{type:'text',text:'{}'}]]){const h=harness({toolResult:{content}});await expect(h.client.listConnections()).rejects.toThrow(/invalid read result|incomplete read result/);}
  });
