@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readQuickBooksInvoices, type QuickBooksConnection } from '../services/outboundQuickBooksSync';
+import { readQuickBooksInvoices, normalizeQuickBooksInvoice, QuickBooksSyncError, type QuickBooksConnection } from '../services/outboundQuickBooksSync';
 
 const now = new Date('2026-09-14T16:00:00Z');
 const connection: QuickBooksConnection = { business_id:'fixture-business', realm_id:'12345', company_name:'Fixture LLC', environment:'sandbox', connected_account_id:'ca_fixture', connection_owner_id:'fixture-owner', timezone:'America/New_York', verified_at:now.toISOString(), status:'active', source_country:'US' };
@@ -46,6 +46,42 @@ describe('open and tracked QuickBooks synchronization',()=>{
     const execute=source([invoice('1')]);
     await expect(readQuickBooksInvoices(execute,connection,now,['1','2'])).rejects.toMatchObject({code:'tracked_invoice_missing'});
     expect(execute.mock.calls.some(c=>String(c[1].query).startsWith('SELECT * FROM Customer'))).toBe(false);
+  });
+
+  it('quarantines a source proven unavailable by an exact bound 610 read, preserving provenance without inventing payment',async()=>{
+    const old=normalizeQuickBooksInvoice(invoice('2'),customer('2'),connection,new Date('2026-09-01T00:00:00Z'));
+    const queries=source([invoice('1')]);
+    const execute=vi.fn(async(tool:string,args:Record<string,unknown>)=>{
+      if(tool==='QUICKBOOKS_READ_INVOICE')throw new QuickBooksSyncError('redacted',409,'invoice_unavailable',{provider_invoice_id:'2',realm_id:connection.realm_id,fault_code:'610'});
+      return queries(tool,args);
+    });
+    const result=await readQuickBooksInvoices(execute,connection,now,['1','2'],[old]);
+    const row=result.rows.find(r=>r.provider_invoice_id==='2')!;
+    expect(row).toMatchObject({source_record_state:'unavailable',source_balance_cents:null,days_overdue:null,mapping_valid:false,eligible:false,payment_link:null,payment_link_available:false,source_verified_at:old.source_verified_at});
+    expect(row.block_reasons).toContain('source_invoice_unavailable');expect(row.block_reasons).not.toContain('invoice_paid');
+    expect(row.source_values.last_verified_source).toEqual(old);expect(old.source_balance_cents).toBe(10000);
+    expect(result.totals_by_currency[0].remaining_balance_minor).toBe(10000);
+    const repeated=await readQuickBooksInvoices(execute,connection,now,['2'],[row]);
+    expect(repeated.rows.find(r=>r.provider_invoice_id==='2')!.source_values.last_verified_source).toEqual(old);
+  });
+
+  it('hydrates a missing query result by exact invoice read when the source still exists',async()=>{
+    const old=normalizeQuickBooksInvoice(invoice('2'),customer('2'),connection,now),queries=source([]);
+    const execute=async(tool:string,args:Record<string,unknown>)=>tool==='QUICKBOOKS_READ_INVOICE'?invoice('2',15):queries(tool,args);
+    const result=await readQuickBooksInvoices(execute,connection,now,['2'],[old]);
+    expect(result.rows[0].source_balance_cents).toBe(1500);expect(result.rows[0].source_record_state).toBeUndefined();
+  });
+
+  it.each([
+    new QuickBooksSyncError('expired',503,'provider_authorization_failed'),
+    new QuickBooksSyncError('unbound',409,'invoice_unavailable'),
+    new QuickBooksSyncError('other company',409,'invoice_unavailable',{provider_invoice_id:'2',realm_id:'other',fault_code:'610'}),
+    new QuickBooksSyncError('other invoice',409,'invoice_unavailable',{provider_invoice_id:'3',realm_id:connection.realm_id,fault_code:'610'}),
+    new QuickBooksSyncError('other fault',409,'invoice_unavailable',{provider_invoice_id:'2',realm_id:connection.realm_id,fault_code:'500'}),
+  ])('keeps incomplete or mismatched exact reads fail closed (%s)',async error=>{
+    const old=normalizeQuickBooksInvoice(invoice('2'),customer('2'),connection,now),queries=source([]);
+    const execute=async(tool:string,args:Record<string,unknown>)=>{if(tool==='QUICKBOOKS_READ_INVOICE')throw error;return queries(tool,args);};
+    await expect(readQuickBooksInvoices(execute,connection,now,['2'],[old])).rejects.toBe(error);
   });
 
   it('keeps a tracked invoice outstanding when its exact read still has a balance',async()=>{

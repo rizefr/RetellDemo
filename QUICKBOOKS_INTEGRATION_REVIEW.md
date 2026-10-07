@@ -70,3 +70,8 @@ Private read snapshots, provider logs and the workbook reconciliation are retain
 - [Composio scoped project permissions](https://docs.composio.dev/reference/authenticating-to-composio/project-api-key-permissions)
 - [Composio proxy transport implementation](https://github.com/ComposioHQ/composio/blob/next/ts/packages/core/src/models/Tools.ts)
 - [Google Sheets protected ranges](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/sheets#ProtectedRange)
+# Source recovery — October 7, 2026
+
+A tracked invoice can disappear from an exact QuickBooks query after deletion. The importer now attempts an exact invoice read through the same verified company/account. Only a validated Intuit Object Not Found (610) result bound to that invoice and realm permits quarantine; authentication failures, mismatched identities, generic failures, and truncated responses still abort the preview.
+
+The quarantined source keeps the last verified payload and the new unavailability evidence. Its current balance and days overdue are unknown, its mapping is unverified, and it is excluded from overdue totals and outreach. It is never marked paid. Existing application history, contact preferences, disputes, and previously verified values remain intact. The existing apply function clears source verification and cancels pending follow-ups for invalid mappings; no accounting writes or schema change is needed.

@@ -10,12 +10,12 @@ export type QuickBooksReviewJob={job_id:string;claim_token:string};
 export async function getQuickBooksConnection(businessId:string): Promise<QuickBooksConnection | null> {
   return check(await db().from('outbound_quickbooks_connections').select('*').eq('business_id',businessId).maybeSingle());
 }
-async function getTrackedQuickBooksInvoiceIds(connection:QuickBooksConnection):Promise<string[]> {
-  const ids:string[]=[];
+async function getTrackedQuickBooksInvoices(connection:QuickBooksConnection):Promise<SourceInvoice[]> {
+  const sources:SourceInvoice[]=[];
   for(let offset=0;offset<10000;offset+=500){
-    const rows=check(await db().from('outbound_quickbooks_source_invoices').select('provider_invoice_id').eq('business_id',connection.business_id).eq('realm_id',connection.realm_id).order('provider_invoice_id').range(offset,offset+499))||[];
-    for(const row of rows)ids.push(String(row.provider_invoice_id));
-    if(rows.length<500)return ids;
+    const rows=check(await db().from('outbound_quickbooks_source_invoices').select('provider_invoice_id,source_data').eq('business_id',connection.business_id).eq('realm_id',connection.realm_id).order('provider_invoice_id').range(offset,offset+499))||[];
+    for(const row of rows){if(row.source_data?.provider_invoice_id!==String(row.provider_invoice_id)||row.source_data?.source_realm_id!==connection.realm_id)throw new QuickBooksSyncError('Tracked source provenance mismatch',409,'invalid_source_identity');sources.push(row.source_data);}
+    if(rows.length<500)return sources;
   }
   throw new QuickBooksSyncError('Tracked invoice reconciliation exceeds the safe limit',503,'reconciliation_limit');
 }
@@ -38,8 +38,8 @@ export async function previewQuickBooksSync(businessId:string,job?:QuickBooksRev
   if(!lease) throw new QuickBooksSyncError('A QuickBooks refresh is already running',409,'sync_in_progress');
   try {
     const company=await provider.verifyCompany();
-    const trackedInvoiceIds=await getTrackedQuickBooksInvoiceIds(c);
-    const preview=await readQuickBooksInvoices(provider.execute,{...c,source_country:company.source_country},new Date(),trackedInvoiceIds);
+    const tracked=await getTrackedQuickBooksInvoices(c);
+    const preview=await readQuickBooksInvoices(provider.execute,{...c,source_country:company.source_country},new Date(),tracked.map(row=>row.provider_invoice_id),tracked);
     const row=check(await db().from('outbound_quickbooks_sync_runs').insert({business_id:businessId,realm_id:c.realm_id,review_job_id:job?.job_id||null,preview_hash:preview.hash,status:'preview',preview,expires_at:preview.expires_at}).select('*').single());
     await insertOutboundEvent({business_id:businessId,source:'quickbooks',event_type:'quickbooks_sync_preview',payload:{sync_run_id:row.id,counts:preview.counts,totals_by_currency:preview.totals_by_currency}});
     return {...preview,id:row.id};
@@ -74,7 +74,7 @@ export async function getQuickBooksQueue(businessId:string) {
     if(local?.outbound_customers?.outreach_paused)reasons.push(local.outbound_customers.pause_reason||'customer_paused');
     if(local && !['unpaid','payment_link_sent'].includes(local.status))reasons.push(`invoice_${local.status}`);
     const lastContact=(local?.outbound_call_attempts||[]).map((call:any)=>call.created_at).sort().at(-1)||null;
-    return {...row,internal_invoice_id:record.outbound_invoice_id,block_reasons:[...new Set(reasons)],eligible:reasons.length===0,last_contact:lastContact,next_action:row.source_balance_cents===0?'Paid — no outreach':reasons.length?'Review exclusion':'Manual review required',promised_payment_date:local?.expected_payment_date||null,preferred_contact:local?.outbound_customers?.payment_contact_preference||null};
+    return {...row,internal_invoice_id:record.outbound_invoice_id,block_reasons:[...new Set(reasons)],eligible:reasons.length===0,last_contact:lastContact,next_action:row.source_record_state==='unavailable'?'QuickBooks source unavailable — manual review':row.source_balance_cents===0?'Paid — no outreach':reasons.length?'Review exclusion':'Manual review required',promised_payment_date:local?.expected_payment_date||null,preferred_contact:local?.outbound_customers?.payment_contact_preference||null};
   });
   const invoices=allInvoices.filter((row:any)=>(row.source_balance_cents||0)>0 && (row.days_overdue??0)>14);
   const byCustomer=new Map<string,any>();
