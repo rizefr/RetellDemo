@@ -180,6 +180,7 @@ export async function getBackendStatus(detectedBaseUrl: string) {
   const quickBooksConfigured = Boolean(
     env.QUICKBOOKS_CLIENT_ID && env.QUICKBOOKS_CLIENT_SECRET && env.QUICKBOOKS_REDIRECT_URI,
   );
+  const managedQuickBooksConfigured = Boolean(process.env.QUICKBOOKS_COMPOSIO_API_KEY);
 
   return {
     checked_at: new Date().toISOString(),
@@ -207,7 +208,7 @@ export async function getBackendStatus(detectedBaseUrl: string) {
         state: state(Boolean(outboundData?.ready_for_single_test_call), outbound.available),
         message: outbound.available
           ? outboundData?.ready_for_single_test_call
-            ? "Ready for one gated test call."
+            ? "Test-call configuration ready; current account and recipient preflight required."
             : "Setup or call gates need review."
           : "Outbound status unavailable.",
         error: outbound.error,
@@ -256,10 +257,12 @@ export async function getBackendStatus(detectedBaseUrl: string) {
         inbound_normal_flow: "disabled",
       },
       quickbooks: {
-        state: quickBooksConfigured ? "warning" : "unavailable",
-        configured: quickBooksConfigured,
-        environment: env.QUICKBOOKS_ENVIRONMENT,
-        message: quickBooksConfigured ? "Credentials present; integration remains scaffold/status only." : "Scaffold only.",
+        state: managedQuickBooksConfigured || quickBooksConfigured ? "warning" : "unavailable",
+        configured: managedQuickBooksConfigured || quickBooksConfigured,
+        provider: managedQuickBooksConfigured ? "composio" : quickBooksConfigured ? "oauth_scaffold" : "unconfigured",
+        message: managedQuickBooksConfigured
+          ? "Managed read integration configured. Open Outbound Collections for the selected company's verified connection, environment, and sync status."
+          : quickBooksConfigured ? "OAuth credentials present; direct token exchange is not enabled." : "QuickBooks credentials are not configured.",
       },
     },
     outbound: {

@@ -1,3 +1,4 @@
+import { enforceOutboundLoginBudget } from "../services/outboundLoginBudget";
 import express from "express";
 import { env } from "../config/env";
 import {
@@ -88,8 +89,9 @@ function sendError(res: express.Response, error: unknown) {
   res.status(status).json({ error: error instanceof Error ? error.message : "Outbound request failed" });
 }
 
-outboundApiRouter.post("/auth/login", (req, res) => {
+outboundApiRouter.post("/auth/login", async (req, res) => {
   const token = typeof req.body?.token === "string" ? req.body.token : "";
+  if (!await enforceOutboundLoginBudget(res)) return;
   if (!isAuthorizedOutboundAdmin({ authorization: `Bearer ${token}` }, env.OUTBOUND_ADMIN_TOKEN)) {
     res.status(401).json({ error: "Invalid admin token" });
     return;

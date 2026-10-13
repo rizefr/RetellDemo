@@ -1,3 +1,4 @@
+import { enforceOutboundLoginBudget } from "../services/outboundLoginBudget";
 import express from "express";
 import { env } from "../config/env";
 import {
@@ -25,7 +26,7 @@ function sendError(res: express.Response, error: unknown) {
   res.status(400).json({ error: error instanceof Error ? error.message : "Backend request failed" });
 }
 
-backendApiRouter.post("/auth/login", (req, res) => {
+backendApiRouter.post("/auth/login", async (req, res) => {
   if (!env.OUTBOUND_ADMIN_TOKEN) {
     res.status(503).json({ error: "Backend admin token is not configured" });
     return;
@@ -37,6 +38,7 @@ backendApiRouter.post("/auth/login", (req, res) => {
     return;
   }
 
+  if (!await enforceOutboundLoginBudget(res)) return;
   if (!isAuthorizedOutboundAdmin({ authorization: `Bearer ${token}` }, env.OUTBOUND_ADMIN_TOKEN)) {
     res.status(401).json({ error: "Wrong admin token" });
     return;

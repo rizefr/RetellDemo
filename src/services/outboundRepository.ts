@@ -492,58 +492,23 @@ export async function updateOutboundDemoDetails(input: {
   customerPatch: Record<string, unknown>;
   invoicePatch: Record<string, unknown>;
 }) {
-  const context=await getOutboundInvoiceContext(input.invoiceId);
-  if(String(context.business.id)!==input.businessId || String(context.customer.id)!==input.customerId || String(context.customer.business_id)!==input.businessId || String(context.invoice.business_id)!==input.businessId) throw new OutboundDatabaseError("Demo record associations do not match",403);
-  if(context.invoice.source_provider!=="local" || context.invoice.source_system==="quickbooks" || context.invoice.quickbooks_invoice_id || context.business.is_demo!==true) throw new OutboundDatabaseError("Presentation edits require isolated demo records",409);
-  if (context.invoice.status === "paid") throw new OutboundDatabaseError("Paid invoices cannot be edited in Presentation Mode",409);
-  const client = db();
+  // One RPC owns validation, row locks and all three writes. Never fall back to
+  // separate updates: a missing migration must fail closed without partial saves.
   const cleanPatch = (patch: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
-  const businessPatch = cleanPatch(input.businessPatch);
-  const customerPatch = cleanPatch(input.customerPatch);
-  const invoicePatch = cleanPatch(input.invoicePatch);
-  const [businessResult, customerResult, invoiceResult] = await Promise.all([
-    Object.keys(businessPatch).length
-      ? client
-          .from("outbound_businesses")
-          .update(businessPatch)
-          .eq("id", input.businessId)
-          .eq("is_demo", true)
-          .select("*")
-          .maybeSingle()
-      : client.from("outbound_businesses").select("*").eq("id", input.businessId)
-          .eq("is_demo", true).maybeSingle(),
-    Object.keys(customerPatch).length
-      ? client
-          .from("outbound_customers")
-          .update(customerPatch)
-          .eq("id", input.customerId)
-          .eq("business_id", input.businessId)
-          .select("*")
-          .maybeSingle()
-      : client.from("outbound_customers").select("*").eq("id", input.customerId)
-          .eq("business_id", input.businessId).maybeSingle(),
-    Object.keys(invoicePatch).length
-      ? client
-          .from("outbound_invoices")
-          .update(invoicePatch)
-          .eq("id", input.invoiceId)
-          .eq("business_id", input.businessId)
-          .eq("customer_id", input.customerId)
-          .eq("source_provider", "local")
-          .neq("status", "paid")
-          .select("*")
-          .maybeSingle()
-      : client.from("outbound_invoices").select("*").eq("id", input.invoiceId)
-          .eq("business_id", input.businessId)
-          .eq("customer_id", input.customerId)
-          .eq("source_provider", "local").maybeSingle(),
-  ]);
-  return {
-    business: unwrap(businessResult, true),
-    customer: unwrap(customerResult, true),
-    invoice: unwrap(invoiceResult, true),
-  };
+  const result = await db().rpc("outbound_update_demo_details", {
+    p_business_id: input.businessId,
+    p_customer_id: input.customerId,
+    p_invoice_id: input.invoiceId,
+    p_business_patch: cleanPatch(input.businessPatch),
+    p_customer_patch: cleanPatch(input.customerPatch),
+    p_invoice_patch: cleanPatch(input.invoicePatch),
+  });
+  if (result.error) {
+    const status = ({ PT400: 400, PT403: 403, PT404: 404, PT409: 409 } as Record<string, number>)[result.error.code] || 500;
+    throw new OutboundDatabaseError(result.error.message, status);
+  }
+  return unwrap(result) as { business: Record<string, unknown>; customer: Record<string, unknown>; invoice: Record<string, unknown> };
 }
 
 export async function setOutboundPause(id: string, paused: boolean, reason: string | null) {

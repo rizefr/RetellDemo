@@ -260,3 +260,12 @@ Repository code must not call deprecated SDK `client.agent.list()` or legacy `GE
 - `listRetellPhoneNumbersV2`: `GET /v2/list-phone-numbers`, reads `items`, `has_more`, and `pagination_key`.
 
 Do not send or depend on `pagination_key_version`.
+
+
+## October 13 backend submission checkpoint
+
+Manual start reserves one attempt, then re-verifies the selected accounting invoice and all current business/customer/recipient/authorization gates. Only that attempt's own reservation is excluded from active-call detection. Paid, paused, suppressed, invalid or zero/unknown balance, changed recipient, competing attempt and revoked authorization stop submission. Changed business/customer/invoice/account/payment-link context requires a new preflight so saved dynamic variables cannot describe stale facts. Callback tasks must remain pending for the exact invoice.
+
+After every asynchronous check, the backend rechecks the actual effective calling time and temporary authorization expiry synchronously before Retell submission. An after-hours test still needs its existing explicit confirmation and test-mode/allowlist/batch-one conditions; late use is recorded accurately. Provider submission has no automatic retry; ambiguous acceptance retains its reservation for reconciliation. These checks do not launch calls or change agent/phone bindings.
+
+Presentation Mode saves now use one service-role-only database transaction for the exact isolated Demo business/customer/invoice. Source fields, associations, payment status and outreach locks cannot be patched. Paid or source-protected rows reject before writes; any later failure rolls back all three records. The editor reflects those server rules.

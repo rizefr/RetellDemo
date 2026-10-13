@@ -519,3 +519,10 @@ A small batch should remain `dry_run` until one single call, signature verificat
 - No medical, financial, regulated, or third-party debt in this version.
 - The business is responsible for contact rights, consent where required, and the underlying customer relationship.
 - Avoid threats, harassment, pressure, shame, repeated pushing, and sensitive identity collection.
+
+
+### Admin sign-in protection
+
+Both outbound and unified-backend sign-in routes share a durable PostgreSQL budget of 20 token attempts per 60-second window, checked before token comparison. Production fails closed if this protection is unavailable. The counter contains no credential, customer or visitor-address data and is accessible only to `service_role`. Existing authenticated sessions and provider callbacks do not consume the budget. It is a global budget for the current single-admin deployment: sustained hostile requests can temporarily deny new sign-ins, so it is not a replacement for per-client edge abuse controls in a future multi-user release. Apply the additive `outbound_admin_login_budget` migration before deploying the dependent code.
+
+Presentation Mode also requires the additive `outbound_atomic_demo_details` RPC migration before deployment. Reverting the application leaves both additive database objects safely unused; do not remove them to roll back code.

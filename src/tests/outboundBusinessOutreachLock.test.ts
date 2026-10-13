@@ -98,6 +98,84 @@ describe('business outbound outreach lock', () => {
     noCallEffects();
   });
 
+  it.each([
+    ['paid', 'invoice_not_outstanding'],
+    ['paused', 'outreach_paused'],
+    ['recipient', 'recipient_changed_since_preflight'],
+    ['allowlist', 'test_number_not_allowlisted'],
+  ])('blocks a %s change immediately before provider submission', async (change, reason) => {
+    const initial = context(true, 'local');
+    const latest = structuredClone(initial);
+    if (change === 'paid') latest.invoice.status = 'paid';
+    if (change === 'paused') latest.customer.outreach_paused = true;
+    if (change === 'recipient') { latest.customer.phone_number = '+12125550124'; latest.business.test_phone_allowlist.push('+12125550124'); }
+    if (change === 'allowlist') latest.business.test_phone_allowlist = [];
+    mocks.context.mockResolvedValueOnce(initial).mockResolvedValue(latest);
+    const { startOutboundCall } = await import('../services/outboundCalls');
+    await expect(startOutboundCall(invoiceId, undefined, now)).rejects.toThrow(reason);
+    expect(mocks.phoneCall).not.toHaveBeenCalled();
+    expect(mocks.updateAttempt).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({status:'error'}));
+  });
+
+  it('rejects a temporary authorization revoked after preflight', async () => {
+    mocks.context.mockResolvedValue(context(true,'local'));
+    const authorized = {id:authorizationId,business_id:businessId,phone_number:phone,expires_at:'2099-01-01T00:00:00.000Z',revoked_at:null};
+    mocks.authorization.mockResolvedValueOnce(authorized).mockResolvedValue({...authorized,revoked_at:'2026-09-14T16:00:00.000Z'});
+    const { startOutboundCall } = await import('../services/outboundCalls');
+    await expect(startOutboundCall(invoiceId,undefined,now,undefined,authorizationId)).rejects.toThrow('revoked');
+    expect(mocks.phoneCall).not.toHaveBeenCalled();
+  });
+
+  it('ignores only its own reserved attempt during the final eligibility check', async () => {
+    const initial=context(true,'local');
+    const latest={...initial,activeCall:{id:'00000000-0000-4000-8000-000000000015'}};
+    mocks.context.mockResolvedValueOnce(initial).mockResolvedValue(latest);
+    mocks.phoneCall.mockResolvedValue({call_id:'call_local_fixture',call_status:'registered'});
+    const { startOutboundCall }=await import('../services/outboundCalls');
+    await startOutboundCall(invoiceId,undefined,now);
+    expect(mocks.phoneCall).toHaveBeenCalledOnce();
+  });
+
+  it.each(['window','authorization'])('blocks %s expiry during final asynchronous verification', async kind => {
+    const clock=vi.spyOn(Date,'now').mockReturnValue(0);
+    const initial=context(true,'local');
+    const latest=structuredClone(initial);
+    mocks.context.mockResolvedValueOnce(initial).mockImplementationOnce(async()=>{clock.mockReturnValue(2000);return latest;});
+    const time=new Date(kind==='window'?'2026-09-14T19:59:59.000Z':'2026-09-14T16:00:00.000Z');
+    mocks.authorization.mockResolvedValue({id:authorizationId,business_id:businessId,phone_number:phone,expires_at:'2026-09-14T16:00:01.000Z',revoked_at:null});
+    const {startOutboundCall}=await import('../services/outboundCalls');
+    await expect(startOutboundCall(invoiceId,undefined,time,undefined,kind==='authorization'?authorizationId:undefined)).rejects.toThrow(kind==='window'?'outside_calling_window':'expired');
+    expect(mocks.phoneCall).not.toHaveBeenCalled();clock.mockRestore();
+  });
+
+  it('blocks a changed account summary before speaking stale totals', async()=>{
+    const initial={...context(true,'local'),account:{openInvoiceCount:2,totalAmountDueCents:10000}};
+    const latest={...initial,account:{openInvoiceCount:1,totalAmountDueCents:5000}};
+    mocks.context.mockResolvedValueOnce(initial).mockResolvedValue(latest);
+    const {startOutboundCall}=await import('../services/outboundCalls');
+    await expect(startOutboundCall(invoiceId,undefined,now)).rejects.toThrow('context_changed_since_preflight');
+    expect(mocks.phoneCall).not.toHaveBeenCalled();
+  });
+
+  it.each([0,-1,NaN])('blocks an outstanding invoice with invalid balance %s',async balance=>{
+    const record=context(true,'local');record.invoice.amount_due_cents=balance;mocks.context.mockResolvedValue(record);
+    const {inspectOutboundCallEligibility}=await import('../services/outboundCalls');
+    expect(await inspectOutboundCallEligibility(invoiceId,now)).toMatchObject({eligible:false,reason:'invoice_has_no_verified_balance'});
+    expect(mocks.createAttempt).not.toHaveBeenCalled();expect(mocks.phoneCall).not.toHaveBeenCalled();
+  });
+
+  it('reports an explicit after-hours override first needed during final verification',async()=>{
+    const clock=vi.spyOn(Date,'now').mockReturnValue(0);
+    const record=context(true,'local');
+    mocks.context.mockResolvedValueOnce(record).mockImplementationOnce(async()=>{clock.mockReturnValue(2000);return record;});
+    mocks.phoneCall.mockResolvedValue({call_id:'call_local_fixture',call_status:'registered'});
+    const {startOutboundCall}=await import('../services/outboundCalls');
+    const result=await startOutboundCall(invoiceId,{acknowledged:true,confirmation:'I UNDERSTAND THIS IS AN AFTER-HOURS TEST',reason:'self_test'},new Date('2026-09-14T19:59:59.000Z'));
+    expect(result.after_hours_override_used).toBe(true);
+    expect(mocks.event).toHaveBeenCalledWith(expect.objectContaining({event_type:'after_hours_test_override_authorized',payload:expect.objectContaining({applied_at_final_submission:true})}));
+    clock.mockRestore();
+  });
+
   it('preserves an explicitly enabled existing demo', async () => {
     const demo = context(true, 'local'); demo.business.is_demo = true;
     mocks.context.mockResolvedValue(demo);
