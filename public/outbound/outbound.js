@@ -568,6 +568,8 @@ async function saveDemoDetails() {
     });
     activeDemoPreflight = null;
     document.getElementById("demo-start-call").disabled = true;
+    await refreshAll();
+    if (selectedDemoInvoice()?.id !== invoice.id) return;
     setDemoFeedback("Demo variables saved. Run Preflight Check again so the backend can evaluate the updated call context.", [
       ...(activeDemoAuthorization?.id && !demoAuthorizationExpired()
         ? [{ label: "Demo number authorized", tone: "ready" }]
@@ -575,7 +577,6 @@ async function saveDemoDetails() {
       { label: "Preflight required", tone: "warning" },
     ]);
     setStatus("Demo variables saved. Invoice payment status was not changed.");
-    await refreshAll();
   } catch (error) {
     const message = friendlyErrorMessage(error);
     setDemoFeedback(message, [{ label: "Blocked", tone: "blocked" }]);

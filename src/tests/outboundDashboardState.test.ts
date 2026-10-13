@@ -31,6 +31,26 @@ function dashboardHarness() {
 }
 
 describe("collections dashboard state boundaries", () => {
+  it("keeps successful demo-save feedback visible after refreshed editor rendering", async () => {
+    const h = dashboardHarness();
+    h.run(`selectedDemoInvoice = () => ({id:"demo-invoice",outbound_customers:{id:"customer"},outbound_businesses:{id:"business"}});
+      api = async () => ({});
+      refreshAll = async () => { setDemoFeedback("Refreshed editor"); setStatus("Refreshed data"); };`);
+    await h.run("saveDemoDetails()");
+    expect(h.node("demo-last-result").textContent).toContain("Demo variables saved");
+    expect(h.node("page-status").textContent).toContain("payment status was not changed");
+    expect(h.node("demo-start-call").disabled).toBe(true);
+  });
+
+  it("does not attach save-success feedback to a different invoice selected during refresh", async () => {
+    const h = dashboardHarness();
+    h.run(`selectedDemoInvoice = () => ({id:"demo-invoice",outbound_customers:{id:"customer"},outbound_businesses:{id:"business"}});
+      api = async () => ({});
+      refreshAll = async () => { selectedDemoInvoice = () => ({id:"other-invoice"}); setDemoFeedback("Other invoice selected"); };`);
+    await h.run("saveDemoDetails()");
+    expect(h.node("demo-last-result").textContent).toBe("Other invoice selected");
+  });
+
   it("keeps selected-business invoices separate and distinguishes synced source records", () => {
     const h = dashboardHarness();
     h.node("settings-business").value = "company-a";
