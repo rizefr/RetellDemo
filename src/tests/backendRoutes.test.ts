@@ -130,4 +130,14 @@ describe("unified backend routes", () => {
       expect(status.body.integrations.quickbooks.environment).toBeUndefined();
     } finally { vi.unstubAllEnvs(); }
   });
+
+  it("recognizes the supported managed consumer transport and keeps it redacted", async () => {
+    vi.stubEnv("QUICKBOOKS_COMPOSIO_API_KEY", "");
+    vi.stubEnv("QUICKBOOKS_COMPOSIO_CONSUMER_KEY", "ck_test_private_consumer_123456");
+    try {
+      const status = await request(app).get("/api/backend/status").set("Authorization", `Bearer ${testEnv.token}`);
+      expect(status.body.integrations.quickbooks).toMatchObject({ configured: true, provider: "composio", state: "warning" });
+      expect(JSON.stringify(status.body)).not.toContain("ck_test_private_consumer_123456");
+    } finally { vi.unstubAllEnvs(); }
+  });
 });
