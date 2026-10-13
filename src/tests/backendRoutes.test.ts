@@ -118,4 +118,16 @@ describe("unified backend routes", () => {
     expect(blockedInbound.status).toBe(401);
     expect(blockedInbound.text).toContain("Inbound Admin Login");
   });
+
+  it("reports managed QuickBooks configuration without claiming a verified company or exposing the credential", async () => {
+    vi.stubEnv("QUICKBOOKS_COMPOSIO_API_KEY", "managed-secret-test-only");
+    try {
+      const status = await request(app).get("/api/backend/status").set("Authorization", `Bearer ${testEnv.token}`);
+      expect(status.status).toBe(200);
+      expect(status.body.integrations.quickbooks).toMatchObject({ configured: true, provider: "composio", state: "warning" });
+      expect(status.body.integrations.quickbooks.message).toContain("selected company's verified connection");
+      expect(JSON.stringify(status.body)).not.toContain("managed-secret-test-only");
+      expect(status.body.integrations.quickbooks.environment).toBeUndefined();
+    } finally { vi.unstubAllEnvs(); }
+  });
 });

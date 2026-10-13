@@ -418,7 +418,12 @@ function selectedDemoInvoice() {
 
 function populateDemoEditor(invoice) {
   demoReadinessRevision++;
-  if (!invoice) return;
+  if (!invoice) {
+    document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea, #demo-save-details").forEach((control) => { control.disabled = true; });
+    activeDemoPreflight = null;
+    document.getElementById("demo-start-call").disabled = true;
+    return;
+  }
   const customer = invoice.outbound_customers || {};
   const business = invoice.outbound_businesses || {};
   document.getElementById("demo-call-mode").value = invoice.demo_call_mode || "first_reminder";
@@ -443,9 +448,14 @@ function populateDemoEditor(invoice) {
   document.getElementById("demo-prior-concern-note").value = invoice.prior_concern_note || "";
   document.getElementById("demo-callback-details").value = invoice.callback_details || "";
   document.getElementById("demo-mailing-instructions").value = selectedBusiness()?.payment_mailing_instructions || "";
-  const sourceLocked = isQuickBooksInvoice(invoice);
-  document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea, #demo-save-details").forEach((control) => { control.disabled = sourceLocked; });
-  if (sourceLocked) setDemoFeedback("This is a synced QuickBooks invoice. Accounting values are protected; select a local demo invoice to edit presentation details.", [{ label: "Synced · protected", tone: "info" }]);
+  const sourceLocked = isQuickBooksInvoice(invoice) || invoice.source_provider !== "local";
+  const demoBusiness = (dashboardState.businesses || []).find((item) => item.id === invoice.business_id);
+  const paid = invoice.status === "paid";
+  const editorLocked = sourceLocked || demoBusiness?.is_demo !== true || paid;
+  document.querySelectorAll(".demo-editor input, .demo-editor select, .demo-editor textarea, #demo-save-details").forEach((control) => { control.disabled = editorLocked; });
+  if (sourceLocked) setDemoFeedback(isQuickBooksInvoice(invoice) ? "This is a synced QuickBooks invoice. Accounting values are protected; select a local demo invoice to edit presentation details." : "Accounting source is unverified. Select a local demo invoice to edit presentation details.", [{ label: isQuickBooksInvoice(invoice) ? "Synced · protected" : "Source · protected", tone: "info" }]);
+  else if (demoBusiness?.is_demo !== true) setDemoFeedback("Presentation edits require an isolated Demo workspace. Open demo to edit sample records.", [{ label: "Workspace · protected", tone: "info" }]);
+  else if (paid) setDemoFeedback("Paid invoices cannot be edited in Presentation Mode. Select an unpaid demo invoice.", [{ label: "Paid · protected", tone: "info" }]);
   else setDemoFeedback("This is a local demo invoice. Save any changes, then run the backend preflight for the selected test number.", [{ label: "Local · editable", tone: "info" }]);
   activeDemoPreflight = null;
   document.getElementById("demo-start-call").disabled = true;

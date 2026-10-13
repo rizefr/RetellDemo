@@ -100,3 +100,10 @@ After the final response-mapping correction, 35 focused TypeScript tests passed 
 ## Publication gate
 
 Selected unpublished versions are outbound V96 and callback V7. Publish only after the dependent backend routes and migrations are deployed and verified. Read back selected agent/flow versions, tools, unchanged voice settings and both collections number bindings after publication. Preserve V91/V5 for rollback. Deployment/publication verification belongs in the final deployment ledger; a native mock pass is not a production integration pass.
+
+
+## October 13, 2026 readiness readback
+
+Fresh, read-only provider inspection confirms outbound V96 and collection-callback V7 are published and resolve through `latest_published`. Both flow hashes and voice/runtime hashes match the verified release; collections number bindings and the protected unrelated number binding are unchanged. GPT-4.1 and Gilfoy remain selected. The September publication gate above is historical and has been satisfied by current provider readback.
+
+A fresh native regression batch was rejected with HTTP 402 before a batch ID was returned. All reachable custom functions had first been verified to have nonempty catch-all mocks. No fresh simulation pass score, telephone audio quality, or new cost saving is claimed. The September benchmark remains the price/performance evidence; the caller model and prompt are unchanged. Account billing/testing access needs operator verification before native tests can be completed.

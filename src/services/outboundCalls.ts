@@ -107,6 +107,7 @@ export async function inspectOutboundCallEligibility(
   now = new Date(),
   afterHoursOverride?: AfterHoursOverrideRequest,
   demoCallAuthorizationId?: string,
+  ownReservedAttemptId?: string,
 ) {
   let context = await getOutboundInvoiceContext(invoiceId);
   if (!outboundBusinessRuntimeSettings(context.business).outreachEnabled) {
@@ -133,6 +134,12 @@ export async function inspectOutboundCallEligibility(
       demo_call_authorization: null,
       effective_phone_number: String(context.customer.phone_number),
     };
+  }
+  const balance = Number(context.invoice.amount_due_cents);
+  if (["unpaid", "payment_link_sent"].includes(String(context.invoice.status)) &&
+      (!Number.isSafeInteger(balance) || balance <= 0)) {
+    return {context,eligible:false as const,reason:"invoice_has_no_verified_balance",override_used:false,
+      demo_call_authorization:null,effective_phone_number:String(context.customer.phone_number)};
   }
   const demoAuthorization = await activeDemoAuthorization(
     demoCallAuthorizationId,
@@ -172,7 +179,7 @@ export async function inspectOutboundCallEligibility(
     phoneNumber: effectivePhoneNumber,
     invoiceStatus: String(context.invoice.status),
     outreachPaused: Boolean(context.customer.outreach_paused),
-    hasActiveCall: Boolean(context.activeCall),
+    hasActiveCall: Boolean(context.activeCall && String(context.activeCall.id) !== ownReservedAttemptId),
     testMode: runtime.testMode,
     allowlist: effectiveAllowlist,
   });
@@ -271,6 +278,7 @@ export async function startOutboundCall(
   followupTaskId?: string,
   demoCallAuthorizationId?: string,
 ) {
+  const startedAt = Date.now();
   const selectedAgent = outboundConversationFlowAgent();
   if (!selectedAgent.configured) throw new Error(selectedAgent.reason || "Retell agent is not configured");
   if (!env.RETELL_FROM_NUMBER) throw new Error("RETELL_FROM_NUMBER is required");
@@ -442,15 +450,68 @@ export async function startOutboundCall(
     ),
   };
 
+  let afterHoursOverrideUsed = eligibility.override_used;
   let providerRequestStarted = false;
   let providerAccepted = false;
   let providerCallId: string | undefined;
   try {
-    if(context.invoice.source_provider === "quickbooks") await reverifyQuickBooksInvoiceBeforeOutreach(invoiceId);
-    if(await isOutboundPhoneSuppressed(String(context.business.id),effectivePhoneNumber)) throw new Error("Outbound call blocked: number_suppressed");
-    const latestContext = await getOutboundInvoiceContext(invoiceId);
-    if (!outboundBusinessRuntimeSettings(latestContext.business).outreachEnabled) {
-      throw new Error("Outbound call blocked: business_outreach_disabled");
+    // Recheck every gate after reserving the attempt. Exclude only this attempt;
+    // another reservation, paid/paused state, revoked authorization or changed
+    // destination must still stop the provider request.
+    const submission = await inspectOutboundCallEligibility(
+      invoiceId, new Date(now.getTime() + Math.max(0, Date.now() - startedAt)),
+      afterHoursOverride, demoCallAuthorizationId, String(attempt.id),
+    );
+    if (!submission.eligible) throw new Error(`Outbound call blocked: ${submission.reason}`);
+    if (submission.effective_phone_number !== effectivePhoneNumber) {
+      throw new Error("Outbound call blocked: recipient_changed_since_preflight");
+    }
+    const stableRecord = (record: Record<string, unknown>) => Object.fromEntries(
+      Object.entries(record).filter(([key]) => !["updated_at", "source_verified_at", "source_updated_at", "source_sync_run_id", "source_sync_token"].includes(key)),
+    );
+    if (["business", "customer", "invoice"].some(key =>
+      JSON.stringify(stableRecord(context[key as "business" | "customer" | "invoice"])) !==
+      JSON.stringify(stableRecord(submission.context[key as "business" | "customer" | "invoice"])))) {
+      throw new Error("Outbound call blocked: context_changed_since_preflight");
+    }
+    if (JSON.stringify(context.account) !== JSON.stringify(submission.context.account) ||
+        JSON.stringify(context.paymentLink) !== JSON.stringify(submission.context.paymentLink)) {
+      throw new Error("Outbound call blocked: context_changed_since_preflight");
+    }
+    if (followupTask) {
+      const latestTask = await getOutboundFollowupTask(String(followupTask.id));
+      if (latestTask.status !== "pending" || String(latestTask.invoice_id) !== invoiceId) {
+        throw new Error("Outbound call blocked: callback_task_not_pending_for_invoice");
+      }
+    }
+    // No awaited work follows these time checks before provider submission.
+    const submissionNow = new Date(now.getTime() + Math.max(0, Date.now() - startedAt));
+    const authorization = submission.demo_call_authorization;
+    if (authorization && (!Number.isFinite(Date.parse(String(authorization.expires_at))) ||
+        Date.parse(String(authorization.expires_at)) <= submissionNow.getTime())) {
+      throw new Error("Demo call authorization has expired");
+    }
+    const finalRuntime = outboundBusinessRuntimeSettings(submission.context.business);
+    const finalAllowlist = authorization
+      ? Array.from(new Set([...finalRuntime.allowlist, String(authorization.phone_number)]))
+      : finalRuntime.allowlist;
+    const finalGate = evaluateOutboundCallEligibility({
+      now: submissionNow,
+      timezone: String(submission.context.customer.timezone || submission.context.business.default_timezone),
+      phoneNumber: effectivePhoneNumber,
+      invoiceStatus: String(submission.context.invoice.status),
+      outreachPaused: Boolean(submission.context.customer.outreach_paused),
+      hasActiveCall: Boolean(submission.context.activeCall && String(submission.context.activeCall.id) !== String(attempt.id)),
+      testMode: finalRuntime.testMode,
+      allowlist: finalAllowlist,
+    });
+    if (!finalGate.eligible) {
+      const override = afterHoursOverride && finalGate.reason === "outside_calling_window"
+        ? evaluateAfterHoursTestOverride({overrideConfigured:finalRuntime.allowAfterHoursTestOverride,
+            testMode:finalRuntime.testMode,maxBatchSize:finalRuntime.maxBatchSize,phoneNumber:effectivePhoneNumber,
+            allowlist:finalAllowlist,...afterHoursOverride}) : null;
+      if (!override?.allowed) throw new Error(`Outbound call blocked: ${finalGate.reason}`);
+      afterHoursOverrideUsed = true;
     }
     const retell = getRetellClient();
     providerRequestStarted = true;
@@ -469,6 +530,13 @@ export async function startOutboundCall(
       retell_call_id: call.call_id,
       status: call.call_status,
     });
+    if (afterHoursOverrideUsed && !eligibility.override_used && afterHoursOverride) {
+      await insertOutboundEvent({business_id:String(context.business.id),customer_id:String(context.customer.id),
+        invoice_id:String(context.invoice.id),event_type:"after_hours_test_override_authorized",source:"admin",
+        payload:{destination_phone_number:effectivePhoneNumber,reason:afterHoursOverride.reason,
+          confirmation:afterHoursOverride.confirmation,authorized_at:submissionNow.toISOString(),
+          test_mode:finalRuntime.testMode,applied_at_final_submission:true}});
+    }
     if (followupTask) {
       await updateOutboundFollowupTask(String(followupTask.id), {
         status: "in_progress",
@@ -498,7 +566,7 @@ export async function startOutboundCall(
       call_id: call.call_id,
       status: call.call_status,
       attempt_id: attempt.id,
-      after_hours_override_used: eligibility.override_used,
+      after_hours_override_used: afterHoursOverrideUsed,
       agent_variant: "conversation_flow",
       agent_label: "Conversation Flow",
     };

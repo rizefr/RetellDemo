@@ -96,10 +96,11 @@ describe("collections dashboard state boundaries", () => {
 
   it("resets the protected source banner and editable controls when changing QuickBooks to local demo and back",()=>{
     const h=dashboardHarness();
-    h.run('populateDemoEditor({source_provider:"quickbooks",outbound_customers:{},outbound_businesses:{}})');
+    h.run('dashboardState.businesses=[{id:"demo",is_demo:true}]');
+    h.run('populateDemoEditor({business_id:"demo",source_provider:"quickbooks",outbound_customers:{},outbound_businesses:{}})');
     expect(h.node("demo-save-details").disabled).toBe(true);
     expect(h.node("demo-last-result").textContent).toContain("synced QuickBooks");
-    h.run('populateDemoEditor({source_provider:"local",outbound_customers:{},outbound_businesses:{is_demo:true}})');
+    h.run('populateDemoEditor({business_id:"demo",source_provider:"local",outbound_customers:{},outbound_businesses:{is_demo:true}})');
     expect(h.node("demo-save-details").disabled).toBe(false);
     expect(h.node("demo-last-result").textContent).toContain("local demo invoice");
     expect(h.node("demo-last-result").textContent).not.toContain("synced QuickBooks");
@@ -107,6 +108,19 @@ describe("collections dashboard state boundaries", () => {
     h.run('populateDemoEditor({source_provider:"quickbooks",outbound_customers:{},outbound_businesses:{}})');
     expect(h.node("demo-save-details").disabled).toBe(true);
     expect(h.run('document.getElementById("demo-feedback-badges").options[0].textContent')).toBe("Synced · protected");
+  });
+
+  it("locks paid, non-demo and missing presentation selections, then unlocks an eligible sample", () => {
+    const h=dashboardHarness();
+    h.run('dashboardState.businesses=[{id:"demo",is_demo:true},{id:"live",is_demo:false}]');
+    for (const row of [{business_id:"demo",source_provider:"local",status:"paid"},{business_id:"live",source_provider:"local",status:"unpaid"},null]) {
+      h.run(`populateDemoEditor(${JSON.stringify(row)})`);
+      expect(h.node("demo-save-details").disabled).toBe(true);
+      expect(h.node("demo-first-name").disabled).toBe(true);
+      expect(h.node("demo-start-call").disabled).toBe(true);
+    }
+    h.run('populateDemoEditor({business_id:"demo",source_provider:"local",status:"unpaid"})');
+    expect(h.node("demo-save-details").disabled).toBe(false);
   });
 
   it("clears old tenant controls immediately and starts independent business panels without waiting for source reads",async()=>{
