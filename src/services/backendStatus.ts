@@ -1,6 +1,7 @@
 import { env, isProduction } from "../config/env";
 import { getInboundStatus } from "./inboundStatus";
 import { getOutboundSetupStatus } from "./outboundSetup";
+import { quickBooksServerCredentialConfigured } from "./outboundQuickBooksProvider";
 
 type StatusResult<T> = {
   available: boolean;
@@ -180,7 +181,7 @@ export async function getBackendStatus(detectedBaseUrl: string) {
   const quickBooksConfigured = Boolean(
     env.QUICKBOOKS_CLIENT_ID && env.QUICKBOOKS_CLIENT_SECRET && env.QUICKBOOKS_REDIRECT_URI,
   );
-  const managedQuickBooksConfigured = Boolean(process.env.QUICKBOOKS_COMPOSIO_API_KEY);
+  const managedQuickBooksConfigured = quickBooksServerCredentialConfigured();
 
   return {
     checked_at: new Date().toISOString(),

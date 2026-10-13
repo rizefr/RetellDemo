@@ -10,7 +10,7 @@ const business = "00000000-0000-4000-8000-000000000001";
 const customer = "00000000-0000-4000-8000-000000000002";
 const invoice = "00000000-0000-4000-8000-000000000003";
 let db: any;
-const migration = fs.readFileSync(path.resolve(process.cwd(), "supabase/migrations/20261013160000_outbound_atomic_demo_details.sql"), "utf8");
+const migration = fs.readFileSync(path.resolve(process.cwd(), "supabase/migrations/20261013203000_outbound_demo_source_columns.sql"), "utf8");
 const save = (patches: Record<string, unknown>[] = [{business_name: "Changed"}, {first_name: "Changed"}, {invoice_date: "2026-04-07"}], ids = [business, customer, invoice]) => db.query("select public.outbound_update_demo_details($1,$2,$3,$4,$5,$6) as saved", [...ids, ...patches.map(p => JSON.stringify(p))]);
 const state = async () => (await db.query(`select
  (select to_jsonb(b) from outbound_businesses b) as business,
@@ -25,7 +25,7 @@ describe("atomic demo RPC in isolated PostgreSQL engine", () => {
       create role anon; create role authenticated; create role service_role;
       create table outbound_businesses(id uuid primary key, is_demo boolean not null, business_name text not null check(length(trim(business_name))>0), payment_mailing_instructions text);
       create table outbound_customers(id uuid primary key, business_id uuid references outbound_businesses(id), first_name text, last_name text, account_company_name text, phone_number text check(phone_number ~ '^\\+[1-9][0-9]{7,14}$'), email text, preferred_email text, preferred_phone_number text, payment_contact_preference text);
-      create table outbound_invoices(id uuid primary key, business_id uuid references outbound_businesses(id), customer_id uuid references outbound_customers(id), source_provider text, source_system text, quickbooks_invoice_id text, status text, invoice_id text, amount_due_cents integer check(amount_due_cents>0), inspection_date date, invoice_date date, original_due_date date, service_description text, inspection_type text, expected_payment_date date, demo_call_mode text, previous_call_date date, followup_reason text, prior_concern_note text, preferred_payment_method text, callback_details text);
+      create table outbound_invoices(id uuid primary key, business_id uuid references outbound_businesses(id), customer_id uuid references outbound_customers(id), source_provider text, source_realm_id text, provider_invoice_id text, provider_customer_id text, status text, invoice_id text, amount_due_cents integer check(amount_due_cents>0), inspection_date date, invoice_date date, original_due_date date, service_description text, inspection_type text, expected_payment_date date, demo_call_mode text, previous_call_date date, followup_reason text, prior_concern_note text, preferred_payment_method text, callback_details text);
       alter table outbound_businesses enable row level security;
       alter table outbound_customers enable row level security;
       alter table outbound_invoices enable row level security;
@@ -64,7 +64,7 @@ describe("atomic demo RPC in isolated PostgreSQL engine", () => {
     await expect(save()).rejects.toMatchObject({code:"PT409"});
     expect(await state()).toEqual(before);
   });
-  it.each(["source_provider='quickbooks'","source_provider='unverified'","source_system='quickbooks'","quickbooks_invoice_id='81'"])("rejects protected source %s", async change => {
+  it.each(["source_provider='quickbooks'","source_provider='unverified'","source_realm_id='9130357319687676'","provider_invoice_id='81'","provider_customer_id='1'"])("rejects protected source %s", async change => {
     await db.exec(`update outbound_invoices set ${change}`);
     const before = await state();
     await expect(save()).rejects.toMatchObject({code:"PT409"});
